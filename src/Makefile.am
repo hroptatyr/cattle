@@ -18,6 +18,11 @@ CLEANFILES =
 CLEANFILES += version.c
 EXTRA_DIST += version.c.in
 
+noinst_LTLIBRARIES += libcattle.la
+libcattle_la_SOURCES = cattle.h
+libcattle_la_SOURCES += caev.c caev.h
+libcattle_la_SOURCES += version.c version.h
+
 
 version.c: version.c.in $(top_builddir)/version.mk
 	sed -e 's,[@]VERSION[@],$(VERSION),g' <$(srcdir)/$@.in >$@
