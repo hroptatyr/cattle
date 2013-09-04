@@ -371,6 +371,9 @@ AC_DEFUN([SXE_FEATFLAGS], [dnl
 		XCCLDFLAGS="${XCCLDFLAGS} \${XCCFLAG} -static-libgcc"], [:],
 		[${SXE_CFLAGS}])
 
+	SXE_CHECK_COMPILER_FLAG([-intel-extensions], [dnl
+		featflags="${featflags} -intel-extensions"])
+
 	AC_SUBST([XCCLDFLAGS])
 	AC_SUBST([XCCFLAG])
 ])dnl SXE_FEATFLAGS
