@@ -76,24 +76,7 @@ main(int argc, char *argv[])
 		goto out;
 	}
 
-	ctl_caev_t dvca[] = {{
-			.mktprc.a = -2.00df,
-		}, {
-			.mktprc.a = -1.50df,
-		}};
-	ctl_caev_t splf[] = {{
-			.mktprc.r = (ctl_ratio_t){10, 1},
-		}, {
-			.mktprc.r = (ctl_ratio_t){5, 2},
-		}};
-
-	ctl_caev_pr(dvca[0]);
-	ctl_caev_pr(dvca[1]);
-	ctl_caev_pr(ctl_caev_add(dvca[0], dvca[1]));
-
-	ctl_caev_pr(splf[0]);
-	ctl_caev_pr(splf[1]);
-	ctl_caev_pr(ctl_caev_add(splf[0], splf[1]));
+	;
 
 out:
 	/* just to make sure */
