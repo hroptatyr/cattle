@@ -26,7 +26,23 @@ TST_LOG_COMPILER = $(builddir)/clitoris
 AM_TST_LOG_FLAGS = -v --builddir $(top_builddir)/src
 AM_LOG_COMPILER = false
 
+EXTRA_DIST += caev-io.c
+cattle_CFLAGS = -I$(top_srcdir)/src
+cattle_LIBS = $(top_builddir)/src/libcattle.la
 
+check_PROGRAMS += caev.01
+caev_01_SOURCES = caev.01.c
+caev_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_01_LDADD = $(cattle_LIBS)
+TESTS += caev.01
+TESTS += caev.01.clit
+
+check_PROGRAMS += caev.02
+caev_02_SOURCES = caev.02.c
+caev_02_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_02_LDADD = $(cattle_LIBS)
+TESTS += caev.02
+TESTS += caev.02.clit
 
 
 ## our friendly helpers
