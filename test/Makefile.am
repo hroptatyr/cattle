@@ -20,4 +20,28 @@ batch_tests =
 check_PROGRAMS =
 CLEANFILES = $(check_PROGRAMS)
 
+TEST_EXTENSIONS += .clit
+TESTS_ENVIRONMENT = root=$(top_srcdir)
+TST_LOG_COMPILER = $(builddir)/clitoris
+AM_TST_LOG_FLAGS = -v --builddir $(top_builddir)/src
+AM_LOG_COMPILER = false
+
+
+
+
+## our friendly helpers
+check_PROGRAMS += clitoris
+clitoris_CPPFLAGS = $(AM_CPPFLAGS)
+clitoris_CPPFLAGS += -D_GNU_SOURCE
+clitoris_LDFLAGS = $(AM_LDFLAGS) -static
+clitoris_LDADD = -lutil
+BUILT_SOURCES += clitoris.x clitoris.h
+
+
+## ggo rule
+%.x %.h: %.ggo
+	$(AM_V_GEN) gengetopt -F $* -c x -i $<
+	@sed -e 's,_PARSER_VERSION VERSION,_PARSER_VERSION "$(VERSION)",g' \
+	     $*.h > $*.h-t \
+	&& mv $*.h-t $*.h
 ## Makefile.am ends here
