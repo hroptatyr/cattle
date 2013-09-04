@@ -24,6 +24,13 @@ libcattle_la_SOURCES += caev.c caev.h
 libcattle_la_SOURCES += version.c version.h
 libcattle_la_SOURCES += nifty.h
 
+bin_PROGRAMS += cattle
+cattle_SOURCES = cattle.c
+cattle_CPPFLAGS = $(AM_CPPFLAGS)
+cattle_CPPFLAGS += -DSTANDALONE
+cattle_LDADD = libcattle.la
+BUILT_SOURCES += cattle.x cattle.xh
+
 
 version.c: version.c.in $(top_builddir)/version.mk
 	sed -e 's,[@]VERSION[@],$(VERSION),g' <$(srcdir)/$@.in >$@

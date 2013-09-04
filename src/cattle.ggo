@@ -1,0 +1,6 @@
+args "--unamed-opts=DATE"
+package "cattle"
+usage "cattle [OPTIONS...] DATEs...
+   or: cattle [OPTIONS...] --series FILE"
+description "Tool to apply corporate actions to time series."
+
