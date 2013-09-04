@@ -46,9 +46,12 @@
 #include <tgmath.h>
 #include "cattle.h"
 #include "caev.h"
+#include "nifty.h"
 
 typedef __rp_actor_t rp_t;
 typedef __rq_actor_t rq_t;
+
+static ctl_ratio_t null_ratio;
 
 
 /* aux */
@@ -113,9 +116,15 @@ static __attribute__((const, pure)) ctl_ratio_t
 ratio_canon(ctl_ratio_t x)
 {
 /* canonicalise X */
-	unsigned int g = gcd(x.p >= 0 ? x.p : -x.p, x.q);
-	ctl_ratio_t res = {
-		.p = x.p / g,
+	unsigned int g;
+	ctl_ratio_t res;
+
+	if (UNLIKELY(x.p == 0)) {
+		return null_ratio;
+	}
+	g = gcd(x.p > 0 ? x.p : -x.p, x.q);
+	res = (ctl_ratio_t){
+		.p = x.p / (signed int)g,
 		.q = x.q / g,
 	};
 	return res;
