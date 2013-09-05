@@ -94,4 +94,10 @@ extern ctl_caev_t ctl_caev_sub(ctl_caev_t x, ctl_caev_t y);
  * Return the reverse corporate action event of X. */
 extern ctl_caev_t ctl_caev_rev(ctl_caev_t x);
 
+
+/* caev actions */
+/**
+ * Return the fundamentals after CAEV acted on X. */
+extern ctl_fund_t ctl_caev_act(ctl_caev_t, ctl_fund_t x);
+
 #endif	/* INCLUDED_caev_h_ */

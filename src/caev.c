@@ -206,6 +206,28 @@ quant_actor_rev(ctl_quant_actor_t x)
 	return res;
 }
 
+static ctl_price_t
+price_act(ctl_price_actor_t a, ctl_price_t x)
+{
+	ctl_price_t res = x + a.a;
+
+	if (a.r.p) {
+		res = (res * a.r.q) / a.r.p;
+	}
+	return res;
+}
+
+static ctl_quant_t
+quant_act(ctl_quant_actor_t a, ctl_quant_t x)
+{
+	ctl_quant_t res = x + a.a;
+
+	if (a.r.p) {
+		res = (res * a.r.p) / a.r.q;
+	}
+	return res;
+}
+
 
 /* API impl */
 ctl_caev_t
@@ -237,6 +259,19 @@ ctl_caev_rev(ctl_caev_t x)
 		.mktprc = price_actor_rev(x.mktprc),
 		.nomval = price_actor_rev(x.nomval),
 		.outsec = quant_actor_rev(x.outsec),
+	};
+	return res;
+}
+
+
+/* actions */
+ctl_fund_t
+ctl_caev_act(ctl_caev_t e, ctl_fund_t x)
+{
+	ctl_fund_t res = {
+		.mktprc = price_act(e.mktprc, x.mktprc),
+		.nomval = price_act(e.nomval, x.nomval),
+		.outsec = quant_act(e.outsec, x.outsec),
 	};
 	return res;
 }
