@@ -4,9 +4,9 @@ int
 main(void)
 {
 	ctl_caev_t splf[] = {{
-			.mktprc.r = (ctl_ratio_t){10, 1},
+			.mktprc.r = (ctl_ratio_t){1, 10},
 		}, {
-			.mktprc.r = (ctl_ratio_t){5, 2},
+			.mktprc.r = (ctl_ratio_t){2, 5},
 		}};
 	ctl_fund_t f = {
 		.mktprc = 17.50df,

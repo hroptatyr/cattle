@@ -212,7 +212,7 @@ price_act(ctl_price_actor_t a, ctl_price_t x)
 	ctl_price_t res = x + a.a;
 
 	if (a.r.p) {
-		res = (res * a.r.q) / a.r.p;
+		res = (res * a.r.p) / a.r.q;
 	}
 	return res;
 }
