@@ -48,9 +48,6 @@
 #include "caev.h"
 #include "nifty.h"
 
-typedef __rp_actor_t rp_t;
-typedef __rq_actor_t rq_t;
-
 static ctl_ratio_t null_ratio;
 
 
@@ -169,40 +166,40 @@ ratio_rev(ctl_ratio_t x)
 }
 
 
-static rp_t
-rp_add(rp_t x, rp_t y)
+static ctl_price_actor_t
+price_actor_add(ctl_price_actor_t x, ctl_price_actor_t y)
 {
-	rp_t res = {
+	ctl_price_actor_t res = {
 		.r = ratio_add(x.r, y.r),
 		.a = price_add(x.a, y.a),
 	};
 	return res;
 }
 
-static rq_t
-rq_add(rq_t x, rq_t y)
+static ctl_quant_actor_t
+quant_actor_add(ctl_quant_actor_t x, ctl_quant_actor_t y)
 {
-	rq_t res = {
+	ctl_quant_actor_t res = {
 		.r = ratio_add(x.r, y.r),
 		.a = quant_add(x.a, y.a),
 	};
 	return res;
 }
 
-static rp_t
-rp_rev(rp_t x)
+static ctl_price_actor_t
+price_actor_rev(ctl_price_actor_t x)
 {
-	rp_t res = {
+	ctl_price_actor_t res = {
 		.r = ratio_rev(x.r),
 		.a = price_rev(x.a),
 	};
 	return res;
 }
 
-static rq_t
-rq_rev(rq_t x)
+static ctl_quant_actor_t
+quant_actor_rev(ctl_quant_actor_t x)
 {
-	rq_t res = {
+	ctl_quant_actor_t res = {
 		.r = ratio_rev(x.r),
 		.a = quant_rev(x.a),
 	};
@@ -215,9 +212,9 @@ ctl_caev_t
 ctl_caev_add(ctl_caev_t x, ctl_caev_t y)
 {
 	ctl_caev_t res = {
-		.mktprc = rp_add(x.mktprc, y.mktprc),
-		.nomval = rp_add(x.nomval, y.nomval),
-		.outsec = rq_add(x.outsec, y.outsec),
+		.mktprc = price_actor_add(x.mktprc, y.mktprc),
+		.nomval = price_actor_add(x.nomval, y.nomval),
+		.outsec = quant_actor_add(x.outsec, y.outsec),
 	};
 	return res;
 }
@@ -226,9 +223,9 @@ ctl_caev_t
 ctl_caev_sub(ctl_caev_t x, ctl_caev_t y)
 {
 	ctl_caev_t res = {
-		.mktprc = rp_add(x.mktprc, rp_rev(y.mktprc)),
-		.nomval = rp_add(x.nomval, rp_rev(y.nomval)),
-		.outsec = rq_add(x.outsec, rq_rev(y.outsec)),
+		.mktprc = price_actor_add(x.mktprc, price_actor_rev(y.mktprc)),
+		.nomval = price_actor_add(x.nomval, price_actor_rev(y.nomval)),
+		.outsec = quant_actor_add(x.outsec, quant_actor_rev(y.outsec)),
 	};
 	return res;
 }
@@ -237,9 +234,9 @@ ctl_caev_t
 ctl_caev_rev(ctl_caev_t x)
 {
 	ctl_caev_t res = {
-		.mktprc = rp_rev(x.mktprc),
-		.nomval = rp_rev(x.nomval),
-		.outsec = rq_rev(x.outsec),
+		.mktprc = price_actor_rev(x.mktprc),
+		.nomval = price_actor_rev(x.nomval),
+		.outsec = quant_actor_rev(x.outsec),
 	};
 	return res;
 }

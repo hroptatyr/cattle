@@ -44,19 +44,8 @@
  * - market price per security
  * - nominal value of a security
  * - outstanding securities
- * so they get their own types, see below. */
-
-/**
- * Market determined price of a security. */
-typedef ctl_price_t ctl_mktprc_t;
-
-/**
- * Issuer determined price of a security. */
-typedef ctl_price_t ctl_nomval_t;
-
-/**
- * Number of outstanding securities. */
-typedef ctl_quantity_t ctl_outsec_t;
+ * so they get their own type, fund stands for fundamentals. */
+typedef struct ctl_fund_s ctl_fund_t;
 
 /**
  * A corporate action event to us is a 3-tuple of linear operators,
@@ -64,21 +53,31 @@ typedef ctl_quantity_t ctl_outsec_t;
  * outstanding shares. */
 typedef struct ctl_caev_s ctl_caev_t;
 
-/* actual layouts */
-typedef struct {
-	ctl_ratio_t r;
-	ctl_price_t a;
-} __rp_actor_t;
+/**
+ * An actor is a parametrisation of what it takes for a corporate action
+ * event to change (act on) the fundamentals. */
+#define DEFACTOR(x)				\
+	typedef struct ctl_##x##_actor_s ctl_##x##_actor_t;	\
+	struct ctl_##x##_actor_s {				\
+		ctl_ratio_t r;					\
+		ctl_##x##_t a;					\
+	}
+#define ACTOR(x)	ctl_##x##_actor_t
 
-typedef struct {
-	ctl_ratio_t r;
-	ctl_quantity_t a;
-} __rq_actor_t;
+/* actual layouts */
+struct ctl_fund_s {
+	ctl_price_t mktprc;
+	ctl_price_t nomval;
+	ctl_quant_t outsec;
+};
+
+DEFACTOR(price);
+DEFACTOR(quant);
 
 struct ctl_caev_s {
-	__rp_actor_t mktprc;
-	__rp_actor_t nomval;
-	__rq_actor_t outsec;
+	ctl_price_actor_t mktprc;
+	ctl_price_actor_t nomval;
+	ctl_quant_actor_t outsec;
 };
 
 
