@@ -49,7 +49,7 @@ typedef _Decimal32 ctl_price_t;
 
 /**
  * Quantities. */
-typedef _Decimal32 ctl_quantity_t;
+typedef _Decimal32 ctl_quant_t;
 
 /* actual layouts */
 struct ctl_ratio_s {

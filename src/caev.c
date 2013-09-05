@@ -106,8 +106,8 @@ price_add(ctl_price_t x, ctl_price_t y)
 	return x + y;
 }
 
-static __attribute__((const, pure)) ctl_quantity_t
-quant_add(ctl_quantity_t x, ctl_quantity_t y)
+static __attribute__((const, pure)) ctl_quant_t
+quant_add(ctl_quant_t x, ctl_quant_t y)
 {
 	return x + y;
 }
@@ -147,8 +147,8 @@ price_rev(ctl_price_t x)
 	return -x;
 }
 
-static __attribute__((const, pure)) ctl_quantity_t
-quant_rev(ctl_quantity_t x)
+static __attribute__((const, pure)) ctl_quant_t
+quant_rev(ctl_quant_t x)
 {
 	return -x;
 }
