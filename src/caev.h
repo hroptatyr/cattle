@@ -97,7 +97,9 @@ extern ctl_caev_t ctl_caev_rev(ctl_caev_t x);
 
 /* caev actions */
 /**
- * Return the fundamentals after CAEV acted on X. */
+ * Return the fundamentals after CAEV acted on X.
+ * For prices it is assumed that currencies match, for quanities it is
+ * assumed that the quantified objects match. */
 extern ctl_fund_t ctl_caev_act(ctl_caev_t, ctl_fund_t x);
 
 #endif	/* INCLUDED_caev_h_ */
