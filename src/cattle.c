@@ -46,15 +46,6 @@
 #include "cattle.h"
 #include "caev.h"
 
-static void
-ctl_caev_pr(ctl_caev_t e)
-{
-	printf("m: %d<-%u + %f\t", e.mktprc.r.p, e.mktprc.r.q, (float)e.mktprc.a);
-	printf("n: %d<-%u + %f\t", e.nomval.r.p, e.nomval.r.q, (float)e.nomval.a);
-	printf("o: %d<-%u + %f\n", e.outsec.r.p, e.outsec.r.q, (float)e.outsec.a);
-	return;
-}
-
 
 #if defined STANDALONE
 #if defined __INTEL_COMPILER
