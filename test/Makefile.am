@@ -72,6 +72,34 @@ caev_06_LDADD = $(cattle_LIBS)
 TESTS += caev.06
 TESTS += caev.06.clit
 
+check_PROGRAMS += caev_pact.01
+caev_pact_01_SOURCES = caev_pact.01.c
+caev_pact_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_pact_01_LDADD = $(cattle_LIBS)
+TESTS += caev_pact.01
+TESTS += caev_pact.01.clit
+
+check_PROGRAMS += caev_pact.02
+caev_pact_02_SOURCES = caev_pact.02.c
+caev_pact_02_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_pact_02_LDADD = $(cattle_LIBS)
+TESTS += caev_pact.02
+TESTS += caev_pact.02.clit
+
+check_PROGRAMS += caev_qact.01
+caev_qact_01_SOURCES = caev_qact.01.c
+caev_qact_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_qact_01_LDADD = $(cattle_LIBS)
+TESTS += caev_qact.01
+TESTS += caev_qact.01.clit
+
+check_PROGRAMS += caev_qact.02
+caev_qact_02_SOURCES = caev_qact.02.c
+caev_qact_02_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_qact_02_LDADD = $(cattle_LIBS)
+TESTS += caev_qact.02
+TESTS += caev_qact.02.clit
+
 
 ## our friendly helpers
 check_PROGRAMS += clitoris
