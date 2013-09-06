@@ -120,6 +120,12 @@ caev_supp_05_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 caev_supp_05_LDADD = $(cattle_LIBS)
 TESTS += caev-supp.05.clit
 
+check_PROGRAMS += caev-supp.06
+caev_supp_06_SOURCES = caev-supp.06.c
+caev_supp_06_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_supp_06_LDADD = $(cattle_LIBS)
+TESTS += caev-supp.06.clit
+
 
 ## our friendly helpers
 check_PROGRAMS += clitoris
