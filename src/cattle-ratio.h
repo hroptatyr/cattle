@@ -1,6 +1,6 @@
-/*** nifty.h -- generally handy macroes
+/*** cattle-ratio.h -- ratios
  *
- * Copyright (C) 2009-2013 Sebastian Freundt
+ * Copyright (C) 2013 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -34,58 +34,52 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_nifty_h_
-#define INCLUDED_nifty_h_
+#if !defined INCLUDED_cattle_ratio_h_
+#define INCLUDED_cattle_ratio_h_
 
-#if !defined LIKELY
-# define LIKELY(_x)	__builtin_expect((_x), 1)
-#endif	/* !LIKELY */
-#if !defined UNLIKELY
-# define UNLIKELY(_x)	__builtin_expect((_x), 0)
-#endif	/* UNLIKELY */
+/**
+ * Ratios, as used by newo and adex fields, unitless. */
+typedef struct ctl_ratio_s ctl_ratio_t;
 
-#if !defined UNUSED
-# define UNUSED(_x)	_x __attribute__((unused))
-#endif	/* !UNUSED */
+struct ctl_ratio_s {
+	signed int p;
+	unsigned int q;
+};
 
-#if !defined ALGN
-# define ALGN(_x, to)	_x __attribute__((aligned(to)))
-#endif	/* !ALGN */
+
+/* helpers */
+/**
+ * Return the canonicalised ratio. */
+extern ctl_ratio_t ctl_ratio_canon(ctl_ratio_t);
 
-#if !defined countof
-# define countof(x)	(sizeof(x) / sizeof(*x))
-#endif	/* !countof */
-
-#define _paste(x, y)	x ## y
-#define paste(x, y)	_paste(x, y)
-
-#if !defined with
-# define with(args...)							\
-	for (args, *paste(__ep, __LINE__) = (void*)1;			\
-	     paste(__ep, __LINE__); paste(__ep, __LINE__)= 0)
-#endif	/* !with */
-
-#if !defined if_with
-# define if_with(init, args...)					\
-	for (init, *paste(__ep, __LINE__) = (void*)1;			\
-	     paste(__ep, __LINE__) && (args); paste(__ep, __LINE__)= 0)
-#endif	/* !if_with */
-
-#define once					\
-	static int paste(__, __LINE__);		\
-	if (!paste(__, __LINE__)++)
-#define but_first				\
-	static int paste(__, __LINE__);		\
-	if (paste(__, __LINE__)++)
-
-static __inline void*
-deconst(const void *cp)
+/**
+ * Return the reciprocal ratio of X. */
+static __inline __attribute__((const, pure)) ctl_ratio_t
+ctl_ratio_recipr(ctl_ratio_t x)
 {
-	union {
-		const void *c;
-		void *p;
-	} tmp = {cp};
-	return tmp.p;
+	ctl_ratio_t res;
+
+	if (x.p >= 0) {
+		res.p = x.q;
+		res.q = x.p;
+	} else {
+		res.p = -x.q;
+		res.q = -x.p;
+	}
+	return res;
 }
 
-#endif	/* INCLUDED_nifty_h_ */
+/**
+ * Return the composition of two ratios. */
+static __inline __attribute__((const, pure)) ctl_ratio_t
+ctl_ratio_compos(ctl_ratio_t x, ctl_ratio_t y)
+{
+	ctl_ratio_t res = {
+		.p = x.p * y.p,
+		.q = x.q * y.q,
+	};
+	/* canonicalise? */
+	return ctl_ratio_canon(res);
+}
+
+#endif	/* INCLUDED_cattle_ratio_h_ */

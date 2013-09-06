@@ -1,6 +1,6 @@
-/*** nifty.h -- generally handy macroes
+/*** cattle-price.h -- prices (currency unaware)
  *
- * Copyright (C) 2009-2013 Sebastian Freundt
+ * Copyright (C) 2013 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -34,58 +34,30 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_nifty_h_
-#define INCLUDED_nifty_h_
+#if !defined INCLUDED_cattle_price_h_
+#define INCLUDED_cattle_price_h_
 
-#if !defined LIKELY
-# define LIKELY(_x)	__builtin_expect((_x), 1)
-#endif	/* !LIKELY */
-#if !defined UNLIKELY
-# define UNLIKELY(_x)	__builtin_expect((_x), 0)
-#endif	/* UNLIKELY */
+/**
+ * Prices, as used by nett, grss, etc. fields.
+ * Unit is currency but the currency is unspecified. */
+typedef _Decimal32 ctl_price_t;
 
-#if !defined UNUSED
-# define UNUSED(_x)	_x __attribute__((unused))
-#endif	/* !UNUSED */
-
-#if !defined ALGN
-# define ALGN(_x, to)	_x __attribute__((aligned(to)))
-#endif	/* !ALGN */
-
-#if !defined countof
-# define countof(x)	(sizeof(x) / sizeof(*x))
-#endif	/* !countof */
-
-#define _paste(x, y)	x ## y
-#define paste(x, y)	_paste(x, y)
-
-#if !defined with
-# define with(args...)							\
-	for (args, *paste(__ep, __LINE__) = (void*)1;			\
-	     paste(__ep, __LINE__); paste(__ep, __LINE__)= 0)
-#endif	/* !with */
-
-#if !defined if_with
-# define if_with(init, args...)					\
-	for (init, *paste(__ep, __LINE__) = (void*)1;			\
-	     paste(__ep, __LINE__) && (args); paste(__ep, __LINE__)= 0)
-#endif	/* !if_with */
-
-#define once					\
-	static int paste(__, __LINE__);		\
-	if (!paste(__, __LINE__)++)
-#define but_first				\
-	static int paste(__, __LINE__);		\
-	if (paste(__, __LINE__)++)
-
-static __inline void*
-deconst(const void *cp)
+
+/* helpers */
+/**
+ * Return the reciprocal price of X. */
+static __inline __attribute__((const, pure)) ctl_price_t
+ctl_price_recipr(ctl_price_t x)
 {
-	union {
-		const void *c;
-		void *p;
-	} tmp = {cp};
-	return tmp.p;
+	return -x;
 }
 
-#endif	/* INCLUDED_nifty_h_ */
+/**
+ * Return the composition of two price applications. */
+static __inline __attribute__((const, pure)) ctl_price_t
+ctl_price_compos(ctl_price_t x, ctl_price_t y)
+{
+	return x + y;
+}
+
+#endif	/* INCLUDED_cattle_price_h_ */

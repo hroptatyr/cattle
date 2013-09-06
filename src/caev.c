@@ -48,121 +48,41 @@
 #include "caev.h"
 #include "nifty.h"
 
-static ctl_ratio_t null_ratio;
-
-
-/* aux */
-static unsigned int
-gcd(unsigned int u, unsigned int v)
-{
-	unsigned int shift;
-
-	/* GCD(0,v) == v; GCD(u,0) == u, GCD(0,0) == 0 */
-	if (u == 0) {
-		return v;
-	} else if (v == 0) {
-		return u;
-	}
-
-	/* determine greatest 2-power factor in u and v */
-	for (shift = 0; ((u | v) & 1) == 0U; shift++) {
-		u >>= 1;
-		v >>= 1;
-	}
-
-	/* cancel all further 2-powers in u */
-	while ((u & 1) == 0) {
-		u >>= 1;
-	}
-
-	/* u is odd. */
-	do {
-		/* cancel all 2-powers in v */
-		while ((v & 1) == 0) {
-			v >>= 1;
-		}
-
-		/* u, v are now both odd, swap s.t. u <= v
-		 * then set v = v - u (which is even) */
-		if (u > v) {
-			unsigned int t = v;
-			v = u;
-			u = t;
-		}
-		v -= u;
-	} while (v != 0);
-
-	/* restore common 2-power */
-	return u << shift;
-}
-
 
 static __attribute__((const, pure)) ctl_price_t
 price_add(ctl_price_t x, ctl_price_t y)
 {
-	return x + y;
+	return ctl_price_compos(x, y);
 }
 
 static __attribute__((const, pure)) ctl_quant_t
 quant_add(ctl_quant_t x, ctl_quant_t y)
 {
-	return x + y;
-}
-
-static __attribute__((const, pure)) ctl_ratio_t
-ratio_canon(ctl_ratio_t x)
-{
-/* canonicalise X */
-	unsigned int g;
-	ctl_ratio_t res;
-
-	if (UNLIKELY(x.p == 0)) {
-		return null_ratio;
-	}
-	g = gcd(x.p > 0 ? x.p : -x.p, x.q);
-	res = (ctl_ratio_t){
-		.p = x.p / (signed int)g,
-		.q = x.q / g,
-	};
-	return res;
+	return ctl_quant_compos(x, y);
 }
 
 static __attribute__((const, pure)) ctl_ratio_t
 ratio_add(ctl_ratio_t x, ctl_ratio_t y)
 {
-	ctl_ratio_t res = {
-		.p = x.p * y.p,
-		.q = x.q * y.q,
-	};
-	/* canonicalise? */
-	return ratio_canon(res);
+	return ctl_ratio_compos(x, y);
 }
 
 static __attribute__((const, pure)) ctl_price_t
 price_rev(ctl_price_t x)
 {
-	return -x;
+	return ctl_price_recipr(x);
 }
 
 static __attribute__((const, pure)) ctl_quant_t
 quant_rev(ctl_quant_t x)
 {
-	return -x;
+	return ctl_quant_recipr(x);
 }
 
 static __attribute__((const, pure)) ctl_ratio_t
 ratio_rev(ctl_ratio_t x)
 {
-	ctl_ratio_t res;
-
-	if (x.p >= 0) {
-		res.p = x.q;
-		res.q = x.p;
-	} else {
-		res.p = -x.q;
-		res.q = -x.p;
-	}
-	return res;
+	return ctl_ratio_recipr(x);
 }
 
 
