@@ -22,8 +22,8 @@ CLEANFILES = $(check_PROGRAMS)
 
 TEST_EXTENSIONS += .clit
 TESTS_ENVIRONMENT = root=$(top_srcdir)
-TST_LOG_COMPILER = $(builddir)/clitoris
-AM_TST_LOG_FLAGS = -v --builddir $(top_builddir)/src
+CLIT_LOG_COMPILER = $(builddir)/clitoris
+AM_CLIT_LOG_FLAGS = -v --builddir $(builddir)
 AM_LOG_COMPILER = false
 
 EXTRA_DIST += caev-io.c
