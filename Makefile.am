@@ -13,6 +13,7 @@ EXTRA_DIST =
 DISTCLEANFILES =
 
 EXTRA_DIST += build-aux/git-version-gen
+EXTRA_DIST += README.md
 
 DISTCLEANFILES += version.mk
 
