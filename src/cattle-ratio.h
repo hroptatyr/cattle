@@ -82,4 +82,18 @@ ctl_ratio_compos(ctl_ratio_t x, ctl_ratio_t y)
 	return ctl_ratio_canon(res);
 }
 
+static inline __attribute__((const, pure)) ctl_ratio_t
+ctl_adex_to_newo(ctl_ratio_t adex)
+{
+	adex.p += adex.q;
+	return adex;
+}
+
+static inline __attribute__((const, pure)) ctl_ratio_t
+ctl_newo_to_adex(ctl_ratio_t newo)
+{
+	newo.p -= newo.q;
+	return newo;
+}
+
 #endif	/* INCLUDED_cattle_ratio_h_ */
