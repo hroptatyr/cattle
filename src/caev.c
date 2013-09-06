@@ -52,7 +52,7 @@
 static __attribute__((const, pure)) ctl_price_t
 price_add(ctl_price_t x, ctl_price_t y)
 {
-	return x + y;
+	return ctl_price_compos(x, y);
 }
 
 static __attribute__((const, pure)) ctl_quant_t
@@ -70,7 +70,7 @@ ratio_add(ctl_ratio_t x, ctl_ratio_t y)
 static __attribute__((const, pure)) ctl_price_t
 price_rev(ctl_price_t x)
 {
-	return -x;
+	return ctl_price_recipr(x);
 }
 
 static __attribute__((const, pure)) ctl_quant_t

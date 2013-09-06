@@ -1,4 +1,4 @@
-/*** cattle.h -- tool to apply corporate actions
+/*** cattle-price.h -- prices (currency unaware)
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,14 +34,30 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_cattle_h_
-#define INCLUDED_cattle_h_
-
-#include "cattle-ratio.h"
-#include "cattle-price.h"
+#if !defined INCLUDED_cattle_price_h_
+#define INCLUDED_cattle_price_h_
 
 /**
- * Quantities. */
-typedef _Decimal32 ctl_quant_t;
+ * Prices, as used by nett, grss, etc. fields.
+ * Unit is currency but the currency is unspecified. */
+typedef _Decimal32 ctl_price_t;
 
-#endif	/* INCLUDED_cattle_h_ */
+
+/* helpers */
+/**
+ * Return the reciprocal price of X. */
+static __inline __attribute__((const, pure)) ctl_price_t
+ctl_price_recipr(ctl_price_t x)
+{
+	return -x;
+}
+
+/**
+ * Return the composition of two price applications. */
+static __inline __attribute__((const, pure)) ctl_price_t
+ctl_price_compos(ctl_price_t x, ctl_price_t y)
+{
+	return x + y;
+}
+
+#endif	/* INCLUDED_cattle_price_h_ */
