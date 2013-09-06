@@ -32,6 +32,7 @@ libcattle_la_SOURCES += caev-supp.h
 libcattle_la_SOURCES += caev=bonu.c
 libcattle_la_SOURCES += caev=drip.c
 libcattle_la_SOURCES += caev=dvca.c
+libcattle_la_SOURCES += caev=dvse.c
 libcattle_la_SOURCES += caev=splf.c
 libcattle_la_SOURCES += caev=splr.c
 

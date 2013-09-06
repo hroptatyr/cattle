@@ -1,4 +1,4 @@
-/*** caev=splf.c -- forward split
+/*** caev=dvse.c -- stock dividends
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,34 +34,19 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_caev_supp_h_
-#define INCLUDED_caev_supp_h_
-
 #include "cattle.h"
 #include "caev.h"
+#include "caev-supp.h"
 
-/**
- * Return bonus distribution event based on pro-rata assignments. */
-extern ctl_caev_t make_bonu(ctl_ratio_t adex);
+ctl_caev_t
+make_dvse(ctl_ratio_t adex)
+{
+/* return the event actor for the pro-rata assignment */
+	ctl_caev_t res = {
+		.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
+		.outsec.r = ctl_adex_to_newo(adex),
+	};
+	return res;
+}
 
-/**
- * Return dividend reinvestment event based on additional securities. */
-extern ctl_caev_t make_drip(ctl_ratio_t adex);
-
-/**
- * Return cash dividend event based on net price per security. */
-extern ctl_caev_t make_dvca(ctl_price_t nett);
-
-/**
- * Return stock dividend event based on pro-rata assignments. */
-extern ctl_caev_t make_dvse(ctl_ratio_t adex);
-
-/**
- * Return forward split event based on new-for-old ratio. */
-extern ctl_caev_t make_splf(ctl_ratio_t newo);
-
-/**
- * Return reverse split event based on new-for-old ratio. */
-extern ctl_caev_t make_splr(ctl_ratio_t newo);
-
-#endif	/* INCLUDED_caev_supp_h_ */
+/* caev=dvse.c ends here*/
