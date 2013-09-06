@@ -58,7 +58,7 @@ price_add(ctl_price_t x, ctl_price_t y)
 static __attribute__((const, pure)) ctl_quant_t
 quant_add(ctl_quant_t x, ctl_quant_t y)
 {
-	return x + y;
+	return ctl_quant_compos(x, y);
 }
 
 static __attribute__((const, pure)) ctl_ratio_t
@@ -76,7 +76,7 @@ price_rev(ctl_price_t x)
 static __attribute__((const, pure)) ctl_quant_t
 quant_rev(ctl_quant_t x)
 {
-	return -x;
+	return ctl_quant_recipr(x);
 }
 
 static __attribute__((const, pure)) ctl_ratio_t
