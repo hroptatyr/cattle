@@ -44,7 +44,8 @@ make_splf(ctl_ratio_t newo)
 /* return the event actor for the new-for-old ratio */
 	ctl_caev_t res = {
 		.mktprc.r = ctl_ratio_recipr(newo),
-		.nomval.r = newo,
+		.nomval.r = ctl_ratio_recipr(newo),
+		.outsec.r = newo,
 	};
 	return res;
 }
