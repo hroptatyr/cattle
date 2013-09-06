@@ -37,11 +37,7 @@
 #if !defined INCLUDED_cattle_h_
 #define INCLUDED_cattle_h_
 
-#include <mathimf.h>
-
-/**
- * Ratios. */
-typedef struct ctl_ratio_s ctl_ratio_t;
+#include "cattle-ratio.h"
 
 /**
  * Prices. */
@@ -50,11 +46,5 @@ typedef _Decimal32 ctl_price_t;
 /**
  * Quantities. */
 typedef _Decimal32 ctl_quant_t;
-
-/* actual layouts */
-struct ctl_ratio_s {
-	signed int p;
-	unsigned int q;
-};
 
 #endif	/* INCLUDED_cattle_h_ */
