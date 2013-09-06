@@ -1,4 +1,4 @@
-/*** cattle-ratio.h -- ratios
+/*** caev=splf.c -- forward split
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,66 +34,34 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_cattle_ratio_h_
-#define INCLUDED_cattle_ratio_h_
+#if !defined INCLUDED_caev_supp_h_
+#define INCLUDED_caev_supp_h_
+
+#include "cattle.h"
+#include "caev.h"
 
 /**
- * Ratios, as used by newo and adex fields, unitless. */
-typedef struct ctl_ratio_s ctl_ratio_t;
-
-struct ctl_ratio_s {
-	signed int p;
-	unsigned int q;
-};
-
-
-/* helpers */
-/**
- * Return the canonicalised ratio. */
-extern ctl_ratio_t ctl_ratio_canon(ctl_ratio_t);
+ * Return bonus distribution event based on pro-rata assignments. */
+extern ctl_caev_t make_bonu(ctl_ratio_t adex);
 
 /**
- * Return the reciprocal ratio of X. */
-static __inline __attribute__((const, pure)) ctl_ratio_t
-ctl_ratio_recipr(ctl_ratio_t x)
-{
-	ctl_ratio_t res;
-
-	if (x.p >= 0) {
-		res.p = x.q;
-		res.q = x.p;
-	} else {
-		res.p = -x.q;
-		res.q = -x.p;
-	}
-	return res;
-}
+ * Return dividend reinvestment event based on additional securities. */
+extern ctl_caev_t make_drip(ctl_ratio_t adex);
 
 /**
- * Return the composition of two ratios. */
-static __inline __attribute__((const, pure)) ctl_ratio_t
-ctl_ratio_compos(ctl_ratio_t x, ctl_ratio_t y)
-{
-	ctl_ratio_t res = {
-		.p = x.p * y.p,
-		.q = x.q * y.q,
-	};
-	/* canonicalise? */
-	return ctl_ratio_canon(res);
-}
+ * Return cash dividend event based on net price per security. */
+extern ctl_caev_t make_dvca(ctl_price_t nett);
 
-static inline __attribute__((const, pure)) ctl_ratio_t
-ctl_adex_to_newo(ctl_ratio_t adex)
-{
-	adex.p += adex.q;
-	return adex;
-}
+/**
+ * Return stock dividend event based on pro-rata assignments. */
+extern ctl_caev_t make_dvse(ctl_ratio_t adex);
 
-static inline __attribute__((const, pure)) ctl_ratio_t
-ctl_newo_to_adex(ctl_ratio_t newo)
-{
-	newo.p -= newo.q;
-	return newo;
-}
+/**
+ * Return forward split event based on new-for-old ratio. */
+extern ctl_caev_t make_splf(ctl_ratio_t newo);
 
-#endif	/* INCLUDED_cattle_ratio_h_ */
+/**
+ * Return reverse split event based on new-for-old ratio. */
+extern ctl_caev_t make_splr(ctl_ratio_t newo);
+
+#endif	/* INCLUDED_caev_supp_h_ */

@@ -27,6 +27,14 @@ libcattle_la_SOURCES += cattle-quant.c cattle-quant.h
 libcattle_la_SOURCES += caev.c caev.h
 libcattle_la_SOURCES += version.c version.h
 libcattle_la_SOURCES += nifty.h
+## actual mt564 events
+libcattle_la_SOURCES += caev-supp.h
+libcattle_la_SOURCES += caev=bonu.c
+libcattle_la_SOURCES += caev=drip.c
+libcattle_la_SOURCES += caev=dvca.c
+libcattle_la_SOURCES += caev=dvse.c
+libcattle_la_SOURCES += caev=splf.c
+libcattle_la_SOURCES += caev=splr.c
 
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c

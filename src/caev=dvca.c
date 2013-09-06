@@ -1,4 +1,4 @@
-/*** cattle-ratio.h -- ratios
+/*** caev=dvca.c -- cash dividend
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,66 +34,18 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_cattle_ratio_h_
-#define INCLUDED_cattle_ratio_h_
+#include "cattle.h"
+#include "caev.h"
+#include "caev-supp.h"
 
-/**
- * Ratios, as used by newo and adex fields, unitless. */
-typedef struct ctl_ratio_s ctl_ratio_t;
-
-struct ctl_ratio_s {
-	signed int p;
-	unsigned int q;
-};
-
-
-/* helpers */
-/**
- * Return the canonicalised ratio. */
-extern ctl_ratio_t ctl_ratio_canon(ctl_ratio_t);
-
-/**
- * Return the reciprocal ratio of X. */
-static __inline __attribute__((const, pure)) ctl_ratio_t
-ctl_ratio_recipr(ctl_ratio_t x)
+ctl_caev_t
+make_dvca(ctl_price_t nett)
 {
-	ctl_ratio_t res;
-
-	if (x.p >= 0) {
-		res.p = x.q;
-		res.q = x.p;
-	} else {
-		res.p = -x.q;
-		res.q = -x.p;
-	}
+/* return the event actor for absolute net payment */
+	ctl_caev_t res = {
+		.mktprc.a = -nett,
+	};
 	return res;
 }
 
-/**
- * Return the composition of two ratios. */
-static __inline __attribute__((const, pure)) ctl_ratio_t
-ctl_ratio_compos(ctl_ratio_t x, ctl_ratio_t y)
-{
-	ctl_ratio_t res = {
-		.p = x.p * y.p,
-		.q = x.q * y.q,
-	};
-	/* canonicalise? */
-	return ctl_ratio_canon(res);
-}
-
-static inline __attribute__((const, pure)) ctl_ratio_t
-ctl_adex_to_newo(ctl_ratio_t adex)
-{
-	adex.p += adex.q;
-	return adex;
-}
-
-static inline __attribute__((const, pure)) ctl_ratio_t
-ctl_newo_to_adex(ctl_ratio_t newo)
-{
-	newo.p -= newo.q;
-	return newo;
-}
-
-#endif	/* INCLUDED_cattle_ratio_h_ */
+/* caev=dvca.c ends here*/
