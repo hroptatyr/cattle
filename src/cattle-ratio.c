@@ -1,6 +1,6 @@
-/*** nifty.h -- generally handy macroes
+/*** cattle-ratio.c -- ratios
  *
- * Copyright (C) 2009-2013 Sebastian Freundt
+ * Copyright (C) 2013 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -34,58 +34,74 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_nifty_h_
-#define INCLUDED_nifty_h_
+#include "cattle-ratio.h"
+#include "nifty.h"
 
-#if !defined LIKELY
-# define LIKELY(_x)	__builtin_expect((_x), 1)
-#endif	/* !LIKELY */
-#if !defined UNLIKELY
-# define UNLIKELY(_x)	__builtin_expect((_x), 0)
-#endif	/* UNLIKELY */
+static ctl_ratio_t null_ratio;
 
-#if !defined UNUSED
-# define UNUSED(_x)	_x __attribute__((unused))
-#endif	/* !UNUSED */
-
-#if !defined ALGN
-# define ALGN(_x, to)	_x __attribute__((aligned(to)))
-#endif	/* !ALGN */
-
-#if !defined countof
-# define countof(x)	(sizeof(x) / sizeof(*x))
-#endif	/* !countof */
-
-#define _paste(x, y)	x ## y
-#define paste(x, y)	_paste(x, y)
-
-#if !defined with
-# define with(args...)							\
-	for (args, *paste(__ep, __LINE__) = (void*)1;			\
-	     paste(__ep, __LINE__); paste(__ep, __LINE__)= 0)
-#endif	/* !with */
-
-#if !defined if_with
-# define if_with(init, args...)					\
-	for (init, *paste(__ep, __LINE__) = (void*)1;			\
-	     paste(__ep, __LINE__) && (args); paste(__ep, __LINE__)= 0)
-#endif	/* !if_with */
-
-#define once					\
-	static int paste(__, __LINE__);		\
-	if (!paste(__, __LINE__)++)
-#define but_first				\
-	static int paste(__, __LINE__);		\
-	if (paste(__, __LINE__)++)
-
-static __inline void*
-deconst(const void *cp)
+
+/* aux */
+static unsigned int
+gcd(unsigned int u, unsigned int v)
 {
-	union {
-		const void *c;
-		void *p;
-	} tmp = {cp};
-	return tmp.p;
+	unsigned int shift;
+
+	/* GCD(0,v) == v; GCD(u,0) == u, GCD(0,0) == 0 */
+	if (u == 0) {
+		return v;
+	} else if (v == 0) {
+		return u;
+	}
+
+	/* determine greatest 2-power factor in u and v */
+	for (shift = 0; ((u | v) & 1) == 0U; shift++) {
+		u >>= 1;
+		v >>= 1;
+	}
+
+	/* cancel all further 2-powers in u */
+	while ((u & 1) == 0) {
+		u >>= 1;
+	}
+
+	/* u is odd. */
+	do {
+		/* cancel all 2-powers in v */
+		while ((v & 1) == 0) {
+			v >>= 1;
+		}
+
+		/* u, v are now both odd, swap s.t. u <= v
+		 * then set v = v - u (which is even) */
+		if (u > v) {
+			unsigned int t = v;
+			v = u;
+			u = t;
+		}
+		v -= u;
+	} while (v != 0);
+
+	/* restore common 2-power */
+	return u << shift;
 }
 
-#endif	/* INCLUDED_nifty_h_ */
+
+ctl_ratio_t
+ctl_ratio_canon(ctl_ratio_t x)
+{
+/* canonicalise X */
+	unsigned int g;
+	ctl_ratio_t res;
+
+	if (UNLIKELY(x.p == 0)) {
+		return null_ratio;
+	}
+	g = gcd(x.p > 0 ? x.p : -x.p, x.q);
+	res = (ctl_ratio_t){
+		.p = x.p / (signed int)g,
+		.q = x.q / g,
+	};
+	return res;
+}
+
+/* cattle-ratio.c ends here */
