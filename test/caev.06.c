@@ -16,8 +16,14 @@ main(void)
 	ctl_caev_pr(rev);
 	ctl_caev_pr(r2v);
 
+	/* unroll more, so we dont suffer from initialisation problems */
+	rev = ctl_caev_rev(r2v);
+	splf = ctl_caev_rev(rev);
+
 	/* rev should be an involution */
 	if (memcmp(&splf, &r2v, sizeof(splf))) {
+		ctl_aux_hexpr(&splf, sizeof(splf));
+		ctl_aux_hexpr(&r2v, sizeof(r2v));
 		res = 1;
 	}
 	return res;

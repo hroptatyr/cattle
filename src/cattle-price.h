@@ -49,7 +49,7 @@ typedef _Decimal32 ctl_price_t;
 static __inline __attribute__((const, pure)) ctl_price_t
 ctl_price_recipr(ctl_price_t x)
 {
-	return -x;
+	return x ? -x : 0.df;
 }
 
 /**

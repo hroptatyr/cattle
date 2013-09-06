@@ -49,7 +49,7 @@ typedef _Decimal32 ctl_quant_t;
 static __inline __attribute__((const, pure)) ctl_quant_t
 ctl_quant_recipr(ctl_quant_t x)
 {
-	return -x;
+	return x ? -x : 0.df;
 }
 
 /**
