@@ -78,7 +78,7 @@
 	static int paste(__, __LINE__);		\
 	if (paste(__, __LINE__)++)
 
-static inline void*
+static __inline void*
 deconst(const void *cp)
 {
 	union {
