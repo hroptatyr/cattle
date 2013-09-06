@@ -42,10 +42,9 @@ ctl_caev_t
 make_bonu(ctl_ratio_t adex)
 {
 /* return the event actor for the pro-rata assignment */
-	ctl_ratio_t full = (adex.p += adex.q, adex);
 	ctl_caev_t res = {
-		.mktprc.r = ctl_ratio_recipr(full),
-		.nomval.r = full,
+		.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
+		.outsec.r = ctl_adex_to_newo(adex),
 	};
 	return res;
 }

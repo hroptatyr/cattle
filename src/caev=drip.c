@@ -43,7 +43,7 @@ make_drip(ctl_ratio_t adex)
 {
 /* return the event actor for absolute net payment */
 	ctl_caev_t res = {
-		.mktprc.r = adex,
+		.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
 	};
 	return res;
 }
