@@ -1,4 +1,4 @@
-/*** cattle.h -- tool to apply corporate actions
+/*** cattle-quant.h -- quantities (instrument unaware)
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,11 +34,30 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_cattle_h_
-#define INCLUDED_cattle_h_
+#if !defined INCLUDED_cattle_quant_h_
+#define INCLUDED_cattle_quant_h_
 
-#include "cattle-ratio.h"
-#include "cattle-price.h"
-#include "cattle-quant.h"
+/**
+ * Prices, as used by psta, etc. fields.
+ * Unit is quantity but the instrument is unspecified. */
+typedef _Decimal32 ctl_quant_t;
 
-#endif	/* INCLUDED_cattle_h_ */
+
+/* helpers */
+/**
+ * Return the reciprocal quantity of X. */
+static __inline __attribute__((const, pure)) ctl_quant_t
+ctl_quant_recipr(ctl_quant_t x)
+{
+	return -x;
+}
+
+/**
+ * Return the composition of two quantity applications. */
+static __inline __attribute__((const, pure)) ctl_quant_t
+ctl_quant_compos(ctl_quant_t x, ctl_quant_t y)
+{
+	return x + y;
+}
+
+#endif	/* INCLUDED_cattle_quant_h_ */

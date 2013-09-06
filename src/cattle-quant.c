@@ -1,4 +1,4 @@
-/*** cattle.h -- tool to apply corporate actions
+/*** cattle-quant.c -- quantities (instrument unaware)
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,11 +34,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_cattle_h_
-#define INCLUDED_cattle_h_
-
-#include "cattle-ratio.h"
-#include "cattle-price.h"
 #include "cattle-quant.h"
+#include "nifty.h"
 
-#endif	/* INCLUDED_cattle_h_ */
+/* cattle-quant.c ends here */
