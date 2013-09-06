@@ -23,6 +23,7 @@ noinst_LTLIBRARIES += libcattle.la
 libcattle_la_SOURCES = cattle.h
 libcattle_la_SOURCES += cattle-ratio.c cattle-ratio.h
 libcattle_la_SOURCES += cattle-price.c cattle-price.h
+libcattle_la_SOURCES += cattle-quant.c cattle-quant.h
 libcattle_la_SOURCES += caev.c caev.h
 libcattle_la_SOURCES += version.c version.h
 libcattle_la_SOURCES += nifty.h
