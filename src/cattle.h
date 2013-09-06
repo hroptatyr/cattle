@@ -38,10 +38,7 @@
 #define INCLUDED_cattle_h_
 
 #include "cattle-ratio.h"
-
-/**
- * Prices. */
-typedef _Decimal32 ctl_price_t;
+#include "cattle-price.h"
 
 /**
  * Quantities. */
