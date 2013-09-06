@@ -39,9 +39,6 @@
 
 #include "cattle-ratio.h"
 #include "cattle-price.h"
-
-/**
- * Quantities. */
-typedef _Decimal32 ctl_quant_t;
+#include "cattle-quant.h"
 
 #endif	/* INCLUDED_cattle_h_ */
