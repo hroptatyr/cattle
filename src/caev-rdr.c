@@ -224,7 +224,7 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 	default:
 		break;
 	}
-	out:
+out:
 	return (ctl_caev_t){};
 }
 
