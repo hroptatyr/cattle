@@ -38,8 +38,8 @@ libcattle_la_SOURCES += caev=dvca.c
 libcattle_la_SOURCES += caev=dvse.c
 libcattle_la_SOURCES += caev=splf.c
 libcattle_la_SOURCES += caev=splr.c
-libcattle_la_SOURCES += caev-rdr.gperf
-BUILT_SOURCES += caev-rdr.c
+libcattle_la_SOURCES += caev-rdr-gp.erf
+BUILT_SOURCES += caev-rdr-gp.c
 
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
@@ -53,7 +53,7 @@ version.c: version.c.in $(top_builddir)/version.mk
 	sed -e 's,[@]VERSION[@],$(VERSION),g' <$(srcdir)/$@.in >$@
 
 ## gperf rule
-%.c: %.gperf
+%.c: %.erf
 	$(AM_V_GEN) $(GPERF) -L ANSI-C $< --output-file $@
 
 ## gengetopt rule with sed hack to avoid using VERSION and config.h
