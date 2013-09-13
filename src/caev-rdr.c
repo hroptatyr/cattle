@@ -54,19 +54,11 @@
 # pragma warning (default:869)
 #endif	/* __INTEL_COMPILER */
 
-typedef union {
-	ctl_ratio_t rt;
-	ctl_price_t pr;
-	ctl_perio_t pe;
-	ctl_quant_t qu;
-	ctl_date_t dt;
-} fldval_t;
-
-
-static fldval_t
+
+static ctl_fld_val_t
 snarf_fv(ctl_fld_unk_t fc, const char *s)
 {
-	fldval_t res = {};
+	ctl_fld_val_t res = {};
 	const char *vp = *s == '=' ? s : strchr(s, '=');
 
 	if (UNLIKELY(vp++ == NULL)) {
@@ -95,7 +87,7 @@ snarf_fv(ctl_fld_unk_t fc, const char *s)
 			break;
 		}
 		/* otherwise ass */
-		res.rt = (ctl_ratio_t){p, q};
+		res.r = (ctl_ratio_t){p, q};
 		break;
 	}
 	case CTL_FLD_TYPE_PRICE: {
@@ -106,7 +98,7 @@ snarf_fv(ctl_fld_unk_t fc, const char *s)
 		if (*pp != '"' && *pp != '\'') {
 			break;
 		}
-		res.pr = (ctl_price_t)p;
+		res.p = (ctl_price_t)p;
 		break;
 	}
 	case CTL_FLD_TYPE_PERIOD:
@@ -120,14 +112,17 @@ snarf_fv(ctl_fld_unk_t fc, const char *s)
 }
 
 
-void
+ctl_caev_t
 ctl_caev_rdr(struct ctl_ctx_s ctx[static 1], echs_instant_t t, const char *s)
 {
+	static struct ctl_fld_s *flds;
+	static size_t nflds;
 	ctl_caev_code_t ccod;
+	size_t fldi;
 
 	if (strncmp(s, "caev=", sizeof("caev=") - 1U)) {
 		/* not a caev message */
-		return;
+		goto out;
 	}
 	/* otherwise try and read the code */
 	switch (*(s += sizeof("caev=") - 1U)) {
@@ -142,7 +137,7 @@ ctl_caev_rdr(struct ctl_ctx_s ctx[static 1], echs_instant_t t, const char *s)
 	with (ctl_caev_rdr_t m = __ctl_caev_codify(s, 4U)) {
 		if (LIKELY(m == NULL)) {
 			/* not a caev message */
-			return;
+			goto out;
 		}
 		/* otherwise assign the caev code */
 		ccod = m->code;
@@ -150,12 +145,26 @@ ctl_caev_rdr(struct ctl_ctx_s ctx[static 1], echs_instant_t t, const char *s)
 		s += 4U;
 	}
 
+#define CHECK_FLDS							\
+	if (UNLIKELY(fldi >= nflds)) {					\
+		const size_t nu = nflds + 64U;				\
+		flds = realloc(flds, nu * sizeof(*flds));		\
+		memset(flds + nflds, 0, (nu - nflds) * sizeof(*flds));	\
+		nflds = nu;						\
+	}
+#define MAKE_FLD(x, y)	(ctl_fld_t){(ctl_fld_unk_t)(x), {y}}
+
+	/* reset field counter */
+	fldi = 0U;
+	/* add the instant passed onto us as ex-date */
+	CHECK_FLDS;
+	flds[fldi++] = MAKE_FLD(CTL_FLD_XDTE, .d = (ctl_date_t)t);
 	/* now look for .XXXX= or .XXXX/ */
 	for (const char *sp = s; (sp = strchr(sp, '.')) != NULL; sp++) {
 		switch (sp[5U]) {
 			ctl_fld_rdr_t f;
 			ctl_fld_unk_t fc;
-			fldval_t fv;
+			ctl_fld_val_t fv;
 		case '/':
 		case '=':
 			/* ah, could be a field */
@@ -166,20 +175,57 @@ ctl_caev_rdr(struct ctl_ctx_s ctx[static 1], echs_instant_t t, const char *s)
 			fc = (ctl_fld_unk_t)f->fc;
 			fv = snarf_fv(fc, sp += 5U);
 
-			switch (ctl_fld_type(fc)) {
-			case CTL_FLD_TYPE_PRICE:
-				printf("got %u -> %f\n", fc, (float)fv.pr);
-				break;
-			case CTL_FLD_TYPE_RATIO:
-				printf("got %u -> %i:%u\n", fc, fv.rt.p, fv.rt.q);
-				break;
+			/* bang to array */
+			if (fldi >= nflds) {
+				const size_t nu = nflds + 64U;
+				flds = realloc(flds, nu * sizeof(*flds));
+				memset(flds + nflds, 0, 64U * sizeof(*flds));
+				nflds = nu;
 			}
+			/* actually add the field now */
+			flds[fldi++] = (ctl_fld_t){fc, fv};
 			break;
 		default:
 			break;
 		}
 	}
-	return;
+
+	switch (ccod) {
+	case CTL_CAEV_BONU:
+		return make_bonu(flds, fldi);
+	case CTL_CAEV_CAPD:
+		break;
+	case CTL_CAEV_CAPG:
+		break;
+	case CTL_CAEV_DECR:
+		break;
+	case CTL_CAEV_DRIP:
+		return make_drip(flds, fldi);
+	case CTL_CAEV_DVCA:
+		return make_dvca(flds, fldi);
+	case CTL_CAEV_DVOP:
+		break;
+	case CTL_CAEV_DVSC:
+		break;
+	case CTL_CAEV_DVSE:
+		return make_dvse(flds, fldi);
+	case CTL_CAEV_INCR:
+		break;
+	case CTL_CAEV_LIQU:
+		break;
+	case CTL_CAEV_RHDI:
+		break;
+	case CTL_CAEV_RHTS:
+		break;
+	case CTL_CAEV_SPLF:
+		return make_splf(flds, fldi);
+	case CTL_CAEV_SPLR:
+		return make_splr(flds, fldi);
+	default:
+		break;
+	}
+	out:
+	return (ctl_caev_t){};
 }
 
 /* caev-rdr.c ends here */

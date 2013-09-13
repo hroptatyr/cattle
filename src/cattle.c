@@ -47,6 +47,7 @@
 #include <errno.h>
 #include "cattle.h"
 #include "caev.h"
+#include "caev-rdr.h"
 #include "nifty.h"
 #include "dt-strpf.h"
 #include "wheap.h"
@@ -83,13 +84,6 @@ ctl_add_caev(struct ctl_ctx_s ctx[static 1], echs_instant_t inst, uintptr_t msg)
 	return;
 }
 
-static void
-ctl_parse_caev(struct ctl_ctx_s ctx[static 1], echs_instant_t t, const char *s)
-{
-	ctl_add_caev(ctx, t, (uintptr_t)strdup(s));
-	return;
-}
-
 
 /* public api, might go to libcattle one day */
 ctl_ctx_t
@@ -122,7 +116,7 @@ ctl_open_caev_file(const char *fn)
 			break;
 		}
 		/* insert */
-		ctl_parse_caev(ctx, t, p + 1U);
+		ctl_caev_rdr(ctx, t, p + 1U);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
