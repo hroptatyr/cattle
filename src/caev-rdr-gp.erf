@@ -1,5 +1,5 @@
 %{
-typedef struct ctl_caev_rdr_s *ctl_caev_rdr_t;
+typedef const struct ctl_caev_rdr_s *ctl_caev_rdr_t;
 
 #include "caev-supp.h"
 
