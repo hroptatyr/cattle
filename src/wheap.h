@@ -50,8 +50,13 @@ extern echs_instant_t ctl_wheap_top_rank(ctl_wheap_t);
 extern uintptr_t ctl_wheap_top(ctl_wheap_t);
 extern uintptr_t ctl_wheap_pop(ctl_wheap_t);
 
-extern void ctl_wheap_add_deferred(ctl_wheap_t, echs_instant_t, uintptr_t);
 extern void ctl_wheap_add(ctl_wheap_t, echs_instant_t, uintptr_t);
-extern void ctl_wheap_sort(ctl_wheap_t);
+
+/**
+ * Bulk inserts. */
+extern void ctl_wheap_add_deferred(ctl_wheap_t, echs_instant_t, uintptr_t);
+/**
+ * Recreate the heap property after deferred inserts. */
+extern void ctl_wheap_fix_deferred(ctl_wheap_t);
 
 #endif	/* INCLUDED_wheap_h_ */

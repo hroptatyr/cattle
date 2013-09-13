@@ -34,6 +34,11 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  **/
+/**
+ * Weak heaps according to:
+ * The Weak-Heap Data Structure, Variants and Applications
+ * Stefan Edelkamp, Amr Elmasry, Jyrki Katajainen
+ * Jan 2013, Elsevier */
 #if defined HAVE_CONFIG_H
 # include "config.h"
 #endif	/* HAVE_CONFIG_H */
@@ -50,8 +55,9 @@ struct ctl_wheap_s {
 	uintptr_t *colours;
 	uint_fast32_t *rbits;
 
-	/** if heap obeys the heap property */
-	bool heapp;
+	/** number of recent bulk inserts (deferred adds)
+	 * also used as an indicator for the heap property, 0 means yes. */
+	size_t ndfr;
 	/** allocated size */
 	size_t z;
 	/** number of cells on the heap */
@@ -100,24 +106,28 @@ __wheap_cell_rneg(ctl_wheap_t h, size_t i)
 	return h->rbits[cidx] ^= 1U << bidx;
 }
 
+static inline void
+__wheap_void_rbit(ctl_wheap_t h, size_t i)
+{
+	const size_t wid = sizeof(*h->rbits) * 8U;
+	size_t cidx = i / wid, bidx = i % wid;
+
+	h->rbits[cidx] &= ~(1 << bidx);
+	return;
+}
+
 static inline __attribute__((pure, const)) size_t
 __wheap_cell_dad(ctl_wheap_t UNUSED(h), size_t i)
 {
 	return i >> 1U;
 }
 
-#if 0
 static inline void
 __wheap_void_dad(ctl_wheap_t h, size_t i)
 {
-	const size_t wid = sizeof(*h->rbits) * 8U;
-	size_t didx = __wheap_cell_dad(h, i);
-	size_t cidx = didx / wid, bidx = didx % wid;
-
-	h->rbits[cidx] &= ~(1 << bidx);
+	__wheap_void_rbit(h, __wheap_cell_dad(h, i));
 	return;
 }
-#endif	/* 0 */
 
 static inline size_t
 __wheap_cell_pop(ctl_wheap_t h, size_t i)
@@ -136,7 +146,7 @@ __wheap_cell_bro(ctl_wheap_t h, size_t i)
 	return 2U * i + __wheap_cell_rbit(h, i);
 }
 
-static inline __attribute__((unused)) size_t
+static inline size_t
 __wheap_cell_sis(ctl_wheap_t h, size_t i)
 {
 /* sisters are to the right */
@@ -178,70 +188,73 @@ __wheapify_mrg(ctl_wheap_t h, size_t i, size_t j)
 }
 
 static void
-__wheapify_mrgfor(ctl_wheap_t h, size_t m)
-{
-/* aka MergeForest(m) in Edelkamp/Wegener's paper */
-	size_t x = 1U;
-
-	if (UNLIKELY(m <= 1U)) {
-		return;
-	}
-
-	for (size_t l; (l = __wheap_cell_bro(h, x)) < m; x = l);
-	for (; x > 0; x = __wheap_cell_dad(h, x)) {
-		/* merge(m, x), then move on to parent */
-		__wheapify_mrg(h, m, x);
-	}
-	return;
-}
-
-static __attribute__((unused)) void
-__wheapify_sift_up(ctl_wheap_t h, size_t m)
+__wheapify_sift_up(ctl_wheap_t h, size_t j)
 {
 /* aka sift-up(j) in Edelkamp's improved paper */
-	while (m) {
-		size_t i = __wheap_cell_pop(h, m);
-
-		if (__wheapify_mrg(h, i, m)) {
-			break;
-		}
-		m = i;
-	}
+	for (size_t i;
+	     j > 0U && (
+		     i = __wheap_cell_pop(h, j),
+		     !__wheapify_mrg(h, i, j)
+		     ); j = i);
 	return;
 }
 
-static __attribute__((unused)) void
-__wheapify(ctl_wheap_t h)
+static void
+__wheapify_sift_down(ctl_wheap_t h, size_t j)
 {
-	if (UNLIKELY(h->n == 0U)) {
+/* aka sift-down(j) in Edelkamp's improved paper */
+	size_t k;
+
+	if ((k = __wheap_cell_sis(h, j)) >= h->n) {
 		return;
 	}
-
-	for (size_t i = h->n - 1U; i > 0U; i--) {
-		__wheapify_mrg(h, __wheap_cell_pop(h, i), i);
+	for (size_t nu; (nu = __wheap_cell_bro(h, k)) < h->n; k = nu);
+	for (; k != j; k = __wheap_cell_dad(h, k)) {
+		__wheapify_mrg(h, j, k);
 	}
 	return;
 }
 
 static void
-wheap_sort(ctl_wheap_t h)
+__wheapify_dfr(ctl_wheap_t h)
 {
-	if (UNLIKELY(h->n == 0U)) {
+/* assume the last K elements of H have been ins'd by _add_dfr() */
+	size_t n;
+	size_t r;
+	size_t l;
+
+	if (UNLIKELY(h->ndfr == 0U)) {
+		/* say what? */
+		return;
+	} else if (UNLIKELY((n = h->n - h->ndfr) > h->n)) {
+		/* not sure what happened */
+		h->ndfr = 0U;
 		return;
 	}
 
-	/* normally WeakHeapify is called first
-	 * howbeit, our wheaps always suffice the weak property */
-	for (size_t s = h->n - 1U; s > 1U; s--) {
-		__wheapify_mrgfor(h, s);
+	/* left/right ass'ment */
+	r = n + h->ndfr - 1U;
+	if ((l = __wheap_cell_dad(h, r)) < n) {
+		/* l = max{dad(r), n} */
+		l = n;
 	}
-	/* now the i-th most extreme value is at index h->n - i */
-	with (const size_t lim = __wheap_cell_dad(h, h->n + 1U)) {
-		for (size_t i = 1, j = h->n - 1U; i < lim; i++, j--) {
-			__wheap_swap(h, i, j);
+	while (r > l + 1U) {
+		l = __wheap_cell_dad(h, l);
+		r = __wheap_cell_dad(h, r);
+		for (size_t j = l; j <= r; j++) {
+			__wheapify_sift_down(h, j);
 		}
 	}
-	h->heapp = true;
+	if (r > 0U) {
+		size_t pop = __wheap_cell_pop(h, r);
+		__wheapify_sift_down(h, pop);
+	}
+	if (l > 0U) {
+		size_t pop = __wheap_cell_pop(h, l);
+		__wheapify_sift_down(h, pop);
+		__wheapify_sift_up(h, pop);
+	}
+	__wheapify_sift_up(h, 0U);
 	return;
 }
 
@@ -259,17 +272,22 @@ wheap_add_dfr(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 	h->colours[idx] = msg;
 
 	/* we now violate the heap property */
-	h->heapp = false;
+	h->ndfr++;
 	h->n++;
 	return idx;
 }
 
-#if 0
 static size_t
 wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 {
 	size_t idx;
 
+#if defined AUTO_FIXUP_BULK_OPS
+	/* check for unfixed bulks */
+	if (UNLIKELY(h->ndfr > 0U)) {
+		__wheapify_dfr(h);
+	}
+#endif	/* AUTO_FIXUP_BULK_OPS */
 	/* check for resize */
 	if (UNLIKELY((idx = h->n) + 1U >= h->z)) {
 		__wheap_resz(h, h->z * 2U);
@@ -277,25 +295,16 @@ wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 
 	h->cells[idx] = inst;
 	h->colours[idx] = msg;
+	__wheap_void_rbit(h, idx);
+
+	if (!(idx & 0x1U)) {
+		__wheap_void_dad(h, idx);
+	}
+
 	__wheapify_sift_up(h, idx);
 	h->n++;
 	return idx;
 }
-#else  /* !0 */
-static void
-wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
-{
-	/* add with deferral, then bottom-up wheapify */
-	for (size_t idx = wheap_add_dfr(h, inst, msg), pop;
-	     idx && (
-		     pop = __wheap_cell_pop(h, idx),
-		     __wheapify_mrg(h, pop, idx)
-		     );
-	     idx = pop);
-	h->heapp = true;
-	return;
-}
-#endif	/* 0 */
 
 static uintptr_t
 wheap_pop(ctl_wheap_t h)
@@ -305,19 +314,26 @@ wheap_pop(ctl_wheap_t h)
 
 	if (UNLIKELY(h->n == 0U)) {
 		return 0U;
+#if defined AUTO_FIXUP_BULK_OPS
+	} else if (UNLIKELY(h->ndfr > 0U)) {
+		/* fix up bulk inserts? */
+		__wheapify_dfr(h);
+#endif	/* AUTO_FIXUP_BULK_OPS */
 	}
 
 	res = h->colours[0U];
 
-	/* MergeForest(end_idx) */
 	end_idx = --h->n;
-	__wheapify_mrgfor(h, end_idx);
 
 	h->cells[0U] = h->cells[end_idx];
 	h->cells[end_idx] = (echs_instant_t){};
 
 	h->colours[0U] = h->colours[end_idx];
 	h->colours[end_idx] = (uintptr_t)NULL;
+
+	if (end_idx > 1) {
+		__wheapify_sift_down(h, 0U);
+	}
 	return res;
 }
 
@@ -326,6 +342,11 @@ wheap_top(ctl_wheap_t h)
 {
 	if (UNLIKELY(h->n == 0U)) {
 		return 0U;
+#if defined AUTO_FIXUP_BULK_OPS
+	} else if (UNLIKELY(h->ndfr > 0U)) {
+		/* fix up bulk inserts? */
+		__wheapify_dfr(h);
+#endif	/* AUTO_FIXUP_BULK_OPS */
 	}
 
 	return h->colours[0U];
@@ -336,6 +357,11 @@ wheap_top_rank(ctl_wheap_t h)
 {
 	if (UNLIKELY(h->n == 0U)) {
 		return (echs_instant_t){};
+#if defined AUTO_FIXUP_BULK_OPS
+	} else if (UNLIKELY(h->ndfr > 0U)) {
+		/* fix up bulk inserts? */
+		__wheapify_dfr(h);
+#endif	/* AUTO_FIXUP_BULK_OPS */
 	}
 
 	return h->cells[0U];
@@ -353,7 +379,7 @@ make_ctl_wheap(void)
 
 	/* status so far */
 	h->n = 0U;
-	h->heapp = true;
+	h->ndfr = 0U;
 	/* minimum size, say, 64 innit? */
 	h->z = 64U;
 
@@ -392,13 +418,6 @@ ctl_wheap_pop(ctl_wheap_t h)
 }
 
 void
-ctl_wheap_add_deferred(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
-{
-	wheap_add_dfr(h, inst, msg);
-	return;
-}
-
-void
 ctl_wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 {
 	wheap_add(h, inst, msg);
@@ -406,9 +425,16 @@ ctl_wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 }
 
 void
-ctl_wheap_sort(ctl_wheap_t h)
+ctl_wheap_add_deferred(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 {
-	wheap_sort(h);
+	wheap_add_dfr(h, inst, msg);
+	return;
+}
+
+void
+ctl_wheap_fix_deferred(ctl_wheap_t h)
+{
+	__wheapify_dfr(h);
 	return;
 }
 
