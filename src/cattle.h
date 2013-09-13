@@ -41,4 +41,11 @@
 #include "cattle-price.h"
 #include "cattle-quant.h"
 
+typedef struct ctl_ctx_s *ctl_ctx_t;
+
+
+/* for the cattle tool */
+extern ctl_ctx_t ctl_open_caev_file(const char *fn);
+extern void ctl_close_caev_file(ctl_ctx_t);
+
 #endif	/* INCLUDED_cattle_h_ */
