@@ -1,4 +1,4 @@
-/*** cattle.h -- tool to apply corporate actions
+/*** cattle-date.h -- dates
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,20 +34,17 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_cattle_h_
-#define INCLUDED_cattle_h_
+#if !defined INCLUDED_cattle_perio_h_
+#define INCLUDED_cattle_perio_h_
 
-#include "cattle-ratio.h"
-#include "cattle-price.h"
-#include "cattle-quant.h"
-#include "cattle-perio.h"
-#include "cattle-date.h"
+/* it's just more than convenient to define periods as echs_instants */
+#include "instant.h"
 
-typedef struct ctl_ctx_s *ctl_ctx_t;
+typedef struct ctl_perio_s ctl_perio_t;
 
-
-/* for the cattle tool */
-extern ctl_ctx_t ctl_open_caev_file(const char *fn);
-extern void ctl_close_caev_file(ctl_ctx_t);
+struct ctl_perio_s {
+	echs_instant_t from;
+	echs_instant_t till;
+};
 
-#endif	/* INCLUDED_cattle_h_ */
+#endif	/* INCLUDED_cattle_perio_h_ */
