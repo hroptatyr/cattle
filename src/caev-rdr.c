@@ -113,7 +113,7 @@ snarf_fv(ctl_fld_unk_t fc, const char *s)
 
 
 ctl_caev_t
-ctl_caev_rdr(struct ctl_ctx_s ctx[static 1], echs_instant_t t, const char *s)
+ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 {
 	static struct ctl_fld_s *flds;
 	static size_t nflds;
