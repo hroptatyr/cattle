@@ -1,0 +1,39 @@
+%{
+typedef struct ctl_caev_rdr_s *ctl_caev_rdr_t;
+
+#include "caev-supp.h"
+
+%}
+%7bit
+%readonly-tables
+%enum
+%switch=1
+%struct-type
+%define slot-name caev
+%define hash-function-name __ctl_caev_code_hash
+%define lookup-function-name __ctl_caev_codify
+%null-strings
+%ignore-case
+%compare-strncmp
+
+struct ctl_caev_rdr_s {
+	const char *caev;
+	ctl_caev_code_t code;
+};
+
+%%
+bonu, CTL_CAEV_BONU
+capd, CTL_CAEV_CAPD
+capg, CTL_CAEV_CAPG
+decr, CTL_CAEV_DECR
+drip, CTL_CAEV_DRIP
+dvca, CTL_CAEV_DVCA
+dvop, CTL_CAEV_DVOP
+dvsc, CTL_CAEV_DVSC
+dvse, CTL_CAEV_DVSE
+incr, CTL_CAEV_INCR
+liqu, CTL_CAEV_LIQU
+rhdi, CTL_CAEV_RHDI
+rhts, CTL_CAEV_RHTS
+splf, CTL_CAEV_SPLF
+splr, CTL_CAEV_SPLR

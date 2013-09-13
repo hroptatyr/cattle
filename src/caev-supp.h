@@ -40,6 +40,28 @@
 #include "cattle.h"
 #include "caev.h"
 
+typedef enum {
+	CTL_CAEV_UNK,
+	CTL_CAEV_BONU,
+	CTL_CAEV_CAPD,
+	CTL_CAEV_CAPG,
+	CTL_CAEV_DECR,
+	CTL_CAEV_DRIP,
+	CTL_CAEV_DVCA,
+	CTL_CAEV_DVOP,
+	CTL_CAEV_DVSC,
+	CTL_CAEV_DVSE,
+	CTL_CAEV_INCR,
+	CTL_CAEV_LIQU,
+	CTL_CAEV_RHDI,
+	CTL_CAEV_RHTS,
+	CTL_CAEV_SPLF,
+	CTL_CAEV_SPLR,
+} ctl_caev_code_t;
+
+
+/* the following use SMPG_CA_Global_Market_Practice_Part_2_SR2013_v_1_2
+ * grid values as their parameters. */
 /**
  * Return bonus distribution event based on pro-rata assignments. */
 extern ctl_caev_t make_bonu(ctl_ratio_t adex);
