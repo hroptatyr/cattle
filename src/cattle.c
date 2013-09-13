@@ -76,25 +76,19 @@ error(const char *fmt, ...)
 }
 
 
-/* callbacks */
-static inline void
-ctl_add_caev(struct ctl_ctx_s ctx[static 1], echs_instant_t inst, uintptr_t msg)
-{
-	ctl_wheap_add_deferred(ctx->q, inst, msg);
-	return;
-}
-
-
 /* public api, might go to libcattle one day */
 ctl_ctx_t
 ctl_open_caev_file(const char *fn)
 {
 /* wants a const char *fn */
+	static ctl_caev_t *caevs;
+	static size_t ncaevs;
 	char *line = NULL;
 	size_t llen = 0UL;
 	ssize_t nrd;
 	struct ctl_ctx_s *ctx; 
 	FILE *f;
+	size_t caevi = 0U;
 
 	if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		goto nul;
@@ -115,8 +109,25 @@ ctl_open_caev_file(const char *fn)
 		} else if (__inst_0_p(t = dt_strp(line))) {
 			break;
 		}
-		/* insert */
-		ctl_caev_rdr(ctx, t, p + 1U);
+		/* otherwise try to read the whole shebang */
+		with (ctl_caev_t c = ctl_caev_rdr(ctx, t, p + 1U)) {
+			uintptr_t qmsg;
+
+			/* resize check */
+			if (caevi >= ncaevs) {
+				size_t nu = ncaevs + 64U;
+				caevs = realloc(caevs, nu * sizeof(*caevs));
+				ncaevs = nu;
+			}
+
+			/* `clone' C */
+			qmsg = (uintptr_t)(caevs + caevi);
+			caevs[caevi++] = c;
+			/* insert to heap */
+			ctl_wheap_add_deferred(ctx->q, t, qmsg);
+			/* also sum them up */
+			ctx->sum = ctl_caev_add(ctx->sum, c);
+		}
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
@@ -151,6 +162,8 @@ ctl_close_caev_file(ctl_ctx_t x)
 # pragma warning (default:593)
 #endif	/* __INTEL_COMPILER */
 
+#include "../test/caev-io.c"
+
 int
 main(int argc, char *argv[])
 {
@@ -175,12 +188,11 @@ main(int argc, char *argv[])
 		char *bp = buf;
 
 		bp += dt_strf(buf, sizeof(buf), t);
-		*bp++ = '\t';
-		with (char *s = (void*)x) {
-			strcpy(bp, s);
-			free(s);
-		}
+		*bp++ = '\0';
 		puts(buf);
+		with (ctl_caev_t c = *(ctl_caev_t*)x) {
+			ctl_caev_pr(c);
+		}
 	}
 
 	/* and out again */
