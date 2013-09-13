@@ -59,4 +59,8 @@ extern void ctl_wheap_add_deferred(ctl_wheap_t, echs_instant_t, uintptr_t);
  * Recreate the heap property after deferred inserts. */
 extern void ctl_wheap_fix_deferred(ctl_wheap_t);
 
+/**
+ * Sort the entire heap. */
+extern void ctl_wheap_sort(ctl_wheap_t);
+
 #endif	/* INCLUDED_wheap_h_ */

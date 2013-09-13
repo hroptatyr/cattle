@@ -188,6 +188,24 @@ __wheapify_mrg(ctl_wheap_t h, size_t i, size_t j)
 }
 
 static void
+__wheapify_mrgfor(ctl_wheap_t h, size_t m)
+{
+/* aka MergeForest(m) in Edelkamp/Wegener's paper */
+	size_t x = 1U;
+
+	if (UNLIKELY(m <= 1U)) {
+		return;
+	}
+
+	for (size_t l; (l = __wheap_cell_bro(h, x)) < m; x = l);
+	for (; x > 0; x = __wheap_cell_dad(h, x)) {
+		/* merge(m, x), then move on to parent */
+		__wheapify_mrg(h, m, x);
+	}
+	return;
+}
+
+static void
 __wheapify_sift_up(ctl_wheap_t h, size_t j)
 {
 /* aka sift-up(j) in Edelkamp's improved paper */
@@ -367,6 +385,28 @@ wheap_top_rank(ctl_wheap_t h)
 	return h->cells[0U];
 }
 
+static void
+wheap_sort(ctl_wheap_t h)
+{
+	if (UNLIKELY(h->n == 0U)) {
+		return;
+	}
+
+	/* normally WeakHeapify is called first
+	 * howbeit, our wheaps always suffice the weak property */
+	for (size_t s = h->n - 1U; s > 1U; s--) {
+		__wheapify_mrgfor(h, s);
+	}
+	/* now the i-th most extreme value is at index h->n - i */
+	with (const size_t lim = __wheap_cell_dad(h, h->n + 1U)) {
+		for (size_t i = 1, j = h->n - 1U; i < lim; i++, j--) {
+			__wheap_swap(h, i, j);
+		}
+	}
+	h->ndfr = 0U;
+	return;
+}
+
 
 ctl_wheap_t
 make_ctl_wheap(void)
@@ -435,6 +475,13 @@ void
 ctl_wheap_fix_deferred(ctl_wheap_t h)
 {
 	__wheapify_dfr(h);
+	return;
+}
+
+void
+ctl_wheap_sort(ctl_wheap_t h)
+{
+	wheap_sort(h);
 	return;
 }
 
