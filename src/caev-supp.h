@@ -37,6 +37,7 @@
 #if !defined INCLUDED_caev_supp_h_
 #define INCLUDED_caev_supp_h_
 
+#include <stdlib.h>
 #include "cattle.h"
 #include "caev.h"
 
