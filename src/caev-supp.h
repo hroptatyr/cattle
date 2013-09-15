@@ -302,4 +302,15 @@ ctl_fld_type(ctl_fld_unk_t code)
 	return CTL_FLD_TYPE_UNK;
 }
 
+static inline __attribute__((pure)) ctl_fld_t
+ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_unk_t fld)
+{
+	for (size_t i = 0; i < n; i++) {
+		if (f[i].code == fld) {
+			return f[i];
+		}
+	}
+	return (ctl_fld_t){CTL_FLD_UNK};
+}
+
 #endif	/* INCLUDED_caev_supp_h_ */
