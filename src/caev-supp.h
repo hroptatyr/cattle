@@ -250,37 +250,37 @@ typedef enum {
  * grid values as their parameters. */
 /**
  * Return bonus distribution event based on pro-rata assignments. */
-extern ctl_caev_t make_bonu(ctl_fld_t f[static 1], size_t n);
+extern ctl_caev_t make_bonu(const ctl_fld_t f[static 1], size_t n);
 
 #if 0
 /**
  * Return capital from the capital account. */
-extern ctl_caev_t make_capd(ctl_fld_t f[static 1], size_t n);
+extern ctl_caev_t make_capd(const ctl_fld_t f[static 1], size_t n);
 
 /**
  * Return capital gains from the capital account. */
-extern ctl_caev_t make_capg(ctl_fld_t f[static 1], size_t n);
+extern ctl_caev_t make_capg(const ctl_fld_t f[static 1], size_t n);
 #endif	/* 0 */
 
 /**
  * Return dividend reinvestment event based on additional securities. */
-extern ctl_caev_t make_drip(ctl_fld_t f[static 1], size_t n);
+extern ctl_caev_t make_drip(const ctl_fld_t f[static 1], size_t n);
 
 /**
  * Return cash dividend event based on net price per security. */
-extern ctl_caev_t make_dvca(ctl_fld_t f[static 1], size_t n);
+extern ctl_caev_t make_dvca(const ctl_fld_t f[static 1], size_t n);
 
 /**
  * Return stock dividend event based on pro-rata assignments. */
-extern ctl_caev_t make_dvse(ctl_fld_t f[static 1], size_t n);
+extern ctl_caev_t make_dvse(const ctl_fld_t f[static 1], size_t n);
 
 /**
  * Return forward split event based on new-for-old ratio. */
-extern ctl_caev_t make_splf(ctl_fld_t f[static 1], size_t n);
+extern ctl_caev_t make_splf(const ctl_fld_t f[static 1], size_t n);
 
 /**
  * Return reverse split event based on new-for-old ratio. */
-extern ctl_caev_t make_splr(ctl_fld_t f[static 1], size_t n);
+extern ctl_caev_t make_splr(const ctl_fld_t f[static 1], size_t n);
 
 
 /* helpers */
