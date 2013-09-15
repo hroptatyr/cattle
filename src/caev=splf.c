@@ -39,15 +39,21 @@
 #include "caev-supp.h"
 
 ctl_caev_t
-make_splf(ctl_ratio_t newo)
+make_splf(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for the new-for-old ratio */
-	ctl_caev_t res = {
-		.mktprc.r = ctl_ratio_recipr(newo),
-		.nomval.r = ctl_ratio_recipr(newo),
-		.outsec.r = newo,
-	};
-	return res;
+	ctl_fld_t fnewo;
+
+	if (CTL_FIND_FLD(fnewo, f, nf, CTL_FLD_NEWO)) {
+		ctl_ratio_t newo = fnewo.beef.r;
+		ctl_caev_t res = {
+			.mktprc.r = ctl_ratio_recipr(newo),
+			.nomval.r = ctl_ratio_recipr(newo),
+			.outsec.r = newo,
+		};
+		return res;
+	}
+	return (ctl_caev_t){};
 }
 
 /* caev=splf.c ends here*/

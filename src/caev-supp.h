@@ -313,4 +313,7 @@ ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_unk_t fld)
 	return (ctl_fld_t){CTL_FLD_UNK};
 }
 
+#define CTL_FIND_FLD(tgt, f, nf, fld)					\
+	((tgt = ctl_find_fld((f), (nf), (ctl_fld_unk_t)fld)).code == fld)
+
 #endif	/* INCLUDED_caev_supp_h_ */

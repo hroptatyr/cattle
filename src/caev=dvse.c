@@ -39,14 +39,20 @@
 #include "caev-supp.h"
 
 ctl_caev_t
-make_dvse(ctl_ratio_t adex)
+make_dvse(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for the pro-rata assignment */
-	ctl_caev_t res = {
-		.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
-		.outsec.r = ctl_adex_to_newo(adex),
-	};
-	return res;
+	ctl_fld_t fadex;
+
+	if (CTL_FIND_FLD(fadex, f, nf, CTL_FLD_ADEX)) {
+		ctl_ratio_t adex = fadex.beef.r;
+		ctl_caev_t res = {
+			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
+			.outsec.r = ctl_adex_to_newo(adex),
+		};
+		return res;
+	}
+	return (ctl_caev_t){};
 }
 
 /* caev=dvse.c ends here*/
