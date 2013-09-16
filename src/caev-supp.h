@@ -352,6 +352,9 @@ ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_key_t fld)
 	return (ctl_fld_t){CTL_FLD_UNK};
 }
 
+#define MAKE_CTL_FLD(slot, x, y...)		\
+	(ctl_fld_t){{.slot = x}, {.slot = y}}
+
 #define WITH_CTL_FLD(x, fcod, flds, nflds, slot)			\
 	for (ctl_fld_t fld = ctl_find_fld(flds, nflds, fcod);		\
 	     fld.code.unk == fcod; fld.code.unk = CTL_FLD_UNK)		\

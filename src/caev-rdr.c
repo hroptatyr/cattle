@@ -157,14 +157,13 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 		memset(flds + nflds, 0, (nu - nflds) * sizeof(*flds));	\
 		nflds = nu;						\
 	}
-#define MAKE_FLD(slot, x, y)	(ctl_fld_t){{.slot = x}, {.slot = y}}
 
 	/* reset field counter */
 	fldi = 0U;
 	/* add the instant passed onto us as ex-date */
 	CHECK_FLDS;
-	flds[fldi++] = MAKE_FLD(admin, CTL_FLD_CAEV, ccod);
-	flds[fldi++] = MAKE_FLD(date, CTL_FLD_XDTE, t);
+	flds[fldi++] = MAKE_CTL_FLD(admin, CTL_FLD_CAEV, ccod);
+	flds[fldi++] = MAKE_CTL_FLD(date, CTL_FLD_XDTE, t);
 	/* now look for .XXXX= or .XXXX/ */
 	for (const char *sp = s; (sp = strchr(sp, '.')) != NULL; sp++) {
 		switch (sp[5U]) {
