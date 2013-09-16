@@ -43,10 +43,7 @@ make_bonu(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for the pro-rata assignment
  * we're only interested in adex fields */
-	ctl_fld_t fadex;
-
-	if (CTL_FIND_FLD(fadex, f, nf, CTL_FLD_ADEX)) {
-		ctl_ratio_t adex = fadex.beef.r;
+	WITH_CTL_FLD(ctl_ratio_t adex, CTL_FLD_ADEX, f, nf, /*slot*/r) {
 		ctl_caev_t res = {
 			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
 			.outsec.r = ctl_adex_to_newo(adex),

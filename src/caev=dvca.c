@@ -42,10 +42,7 @@ ctl_caev_t
 make_dvca(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for absolute net payment */
-	ctl_fld_t fnett;
-
-	if (CTL_FIND_FLD(fnett, f, nf, CTL_FLD_NETT)) {
-		ctl_price_t nett = fnett.beef.p;
+	WITH_CTL_FLD(ctl_price_t nett, CTL_FLD_NETT, f, nf, /*slot*/p) {
 		ctl_caev_t res = {
 			.mktprc.a = -nett,
 		};

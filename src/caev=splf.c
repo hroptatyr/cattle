@@ -42,10 +42,7 @@ ctl_caev_t
 make_splf(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for the new-for-old ratio */
-	ctl_fld_t fnewo;
-
-	if (CTL_FIND_FLD(fnewo, f, nf, CTL_FLD_NEWO)) {
-		ctl_ratio_t newo = fnewo.beef.r;
+	WITH_CTL_FLD(ctl_ratio_t newo, CTL_FLD_NEWO, f, nf, /*slot*/r) {
 		ctl_caev_t res = {
 			.mktprc.r = ctl_ratio_recipr(newo),
 			.nomval.r = ctl_ratio_recipr(newo),
