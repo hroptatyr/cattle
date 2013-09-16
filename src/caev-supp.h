@@ -49,28 +49,18 @@ typedef enum {
 	CTL_FLD_UNK_LAST,
 } ctl_fld_unk_t;
 
+/* admin fields */
 typedef enum {
-	CTL_CAEV_UNK,
-	CTL_CAEV_BONU,
-	CTL_CAEV_CAPD,
-	CTL_CAEV_CAPG,
-	CTL_CAEV_DECR,
-	CTL_CAEV_DRIP,
-	CTL_CAEV_DVCA,
-	CTL_CAEV_DVOP,
-	CTL_CAEV_DVSC,
-	CTL_CAEV_DVSE,
-	CTL_CAEV_INCR,
-	CTL_CAEV_LIQU,
-	CTL_CAEV_RHDI,
-	CTL_CAEV_RHTS,
-	CTL_CAEV_SPLF,
-	CTL_CAEV_SPLR,
-} ctl_caev_code_t;
+	CTL_FLD_ADMIN_FIRST = CTL_FLD_UNK_LAST + 1U,
+	CTL_FLD_CAEV = CTL_FLD_ADMIN_FIRST,
+	CTL_FLD_CAMV,
+	CTL_FLD_CAOP,
+	CTL_FLD_ADMIN_LAST,
+} ctl_fld_admin_t;
 
 /* date fields */
 typedef enum {
-	CTL_FLD_DATE_FIRST = CTL_FLD_UNK_LAST + 1U,
+	CTL_FLD_DATE_FIRST = CTL_FLD_ADMIN_LAST + 1U,
 	CTL_FLD_ANOU = CTL_FLD_DATE_FIRST,
 	CTL_FLD_AVAL,
 	CTL_FLD_CERT,
@@ -226,14 +216,37 @@ typedef enum {
 
 typedef enum {
 	CTL_FLD_TYPE_UNK,
+	CTL_FLD_TYPE_ADMIN,
 	CTL_FLD_TYPE_DATE,
 	CTL_FLD_TYPE_RATIO,
 	CTL_FLD_TYPE_PRICE,
 	CTL_FLD_TYPE_PERIO,
 } ctl_fld_type_t;
 
+/* value codes */
+typedef enum {
+	CTL_CAEV_UNK,
+	CTL_CAEV_BONU,
+	CTL_CAEV_CAPD,
+	CTL_CAEV_CAPG,
+	CTL_CAEV_DECR,
+	CTL_CAEV_DRIP,
+	CTL_CAEV_DVCA,
+	CTL_CAEV_DVOP,
+	CTL_CAEV_DVSC,
+	CTL_CAEV_DVSE,
+	CTL_CAEV_INCR,
+	CTL_CAEV_LIQU,
+	CTL_CAEV_RHDI,
+	CTL_CAEV_RHTS,
+	CTL_CAEV_SPLF,
+	CTL_CAEV_SPLR,
+} ctl_caev_code_t;
+
+
 typedef union __attribute__((transparent_union)) {
 	ctl_fld_unk_t unk;
+	ctl_fld_admin_t admin;
 	ctl_fld_ratio_t ratio;
 	ctl_fld_price_t price;
 	ctl_fld_perio_t perio;
@@ -308,6 +321,8 @@ static inline __attribute__((pure, const)) ctl_fld_type_t
 ctl_fld_type(ctl_fld_key_t code)
 {
 	switch (code.unk) {
+	case CTL_FLD_ADMIN_FIRST ... CTL_FLD_ADMIN_LAST:
+		return CTL_FLD_TYPE_ADMIN;
 	case CTL_FLD_DATE_FIRST ... CTL_FLD_DATE_LAST:
 		return CTL_FLD_TYPE_DATE;
 	case CTL_FLD_RATIO_FIRST ... CTL_FLD_RATIO_LAST:;
