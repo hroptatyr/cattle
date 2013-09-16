@@ -1,4 +1,4 @@
-/*** caev-rdr.h -- reader for caev message strings
+/*** caev-rdr.c -- reader for caev message strings
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
