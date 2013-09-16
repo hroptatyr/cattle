@@ -69,6 +69,10 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 	}
 
 	switch (ctl_fld_type(fc)) {
+	case CTL_FLD_TYPE_ADMIN:
+		;
+		break;
+
 	case CTL_FLD_TYPE_DATE:
 		;
 		break;
@@ -118,6 +122,7 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 	static struct ctl_fld_s *flds;
 	static size_t nflds;
 	ctl_caev_code_t ccod;
+	ctl_caev_t res = {};
 	size_t fldi;
 
 	if (strncmp(s, "caev=", sizeof("caev=") - 1U)) {
@@ -158,6 +163,7 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 	fldi = 0U;
 	/* add the instant passed onto us as ex-date */
 	CHECK_FLDS;
+	flds[fldi++] = MAKE_FLD(admin, CTL_FLD_CAEV, ccod);
 	flds[fldi++] = MAKE_FLD(date, CTL_FLD_XDTE, t);
 	/* now look for .XXXX= or .XXXX/ */
 	for (const char *sp = s; (sp = strchr(sp, '.')) != NULL; sp++) {
@@ -189,43 +195,10 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 			break;
 		}
 	}
-
-	switch (ccod) {
-	case CTL_CAEV_BONU:
-		return make_bonu(flds, fldi);
-	case CTL_CAEV_CAPD:
-		break;
-	case CTL_CAEV_CAPG:
-		break;
-	case CTL_CAEV_DECR:
-		break;
-	case CTL_CAEV_DRIP:
-		return make_drip(flds, fldi);
-	case CTL_CAEV_DVCA:
-		return make_dvca(flds, fldi);
-	case CTL_CAEV_DVOP:
-		break;
-	case CTL_CAEV_DVSC:
-		break;
-	case CTL_CAEV_DVSE:
-		return make_dvse(flds, fldi);
-	case CTL_CAEV_INCR:
-		break;
-	case CTL_CAEV_LIQU:
-		break;
-	case CTL_CAEV_RHDI:
-		break;
-	case CTL_CAEV_RHTS:
-		break;
-	case CTL_CAEV_SPLF:
-		return make_splf(flds, fldi);
-	case CTL_CAEV_SPLR:
-		return make_splr(flds, fldi);
-	default:
-		break;
-	}
+	/* just let the actual mt564 support figure everything out */
+	res = make_caev(flds, fldi);
 out:
-	return (ctl_caev_t){};
+	return res;
 }
 
 /* caev-rdr.c ends here */
