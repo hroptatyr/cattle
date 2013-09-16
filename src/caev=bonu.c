@@ -39,14 +39,18 @@
 #include "caev-supp.h"
 
 ctl_caev_t
-make_bonu(ctl_ratio_t adex)
+make_bonu(const ctl_fld_t f[static 1], size_t nf)
 {
-/* return the event actor for the pro-rata assignment */
-	ctl_caev_t res = {
-		.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
-		.outsec.r = ctl_adex_to_newo(adex),
-	};
-	return res;
+/* return the event actor for the pro-rata assignment
+ * we're only interested in adex fields */
+	WITH_CTL_FLD(ctl_ratio_t adex, CTL_FLD_ADEX, f, nf, ratio) {
+		ctl_caev_t res = {
+			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
+			.outsec.r = ctl_adex_to_newo(adex),
+		};
+		return res;
+	}
+	return (ctl_caev_t){};
 }
 
 /* caev=bonu.c ends here*/

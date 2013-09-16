@@ -126,6 +126,42 @@ caev_supp_06_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 caev_supp_06_LDADD = $(cattle_LIBS)
 TESTS += caev-supp.06.clit
 
+check_PROGRAMS += caev-supp.07
+caev_supp_07_SOURCES = caev-supp.07.c
+caev_supp_07_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_supp_07_LDADD = $(cattle_LIBS)
+TESTS += caev-supp.07.clit
+
+check_PROGRAMS += caev-supp.08
+caev_supp_08_SOURCES = caev-supp.08.c
+caev_supp_08_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_supp_08_LDADD = $(cattle_LIBS)
+TESTS += caev-supp.08.clit
+
+check_PROGRAMS += caev-supp.09
+caev_supp_09_SOURCES = caev-supp.09.c
+caev_supp_09_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_supp_09_LDADD = $(cattle_LIBS)
+TESTS += caev-supp.09.clit
+
+check_PROGRAMS += caev-supp.10
+caev_supp_10_SOURCES = caev-supp.10.c
+caev_supp_10_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_supp_10_LDADD = $(cattle_LIBS)
+TESTS += caev-supp.10.clit
+
+check_PROGRAMS += caev-supp.11
+caev_supp_11_SOURCES = caev-supp.11.c
+caev_supp_11_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_supp_11_LDADD = $(cattle_LIBS)
+TESTS += caev-supp.11.clit
+
+check_PROGRAMS += caev-supp.12
+caev_supp_12_SOURCES = caev-supp.12.c
+caev_supp_12_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_supp_12_LDADD = $(cattle_LIBS)
+TESTS += caev-supp.12.clit
+
 
 ## our friendly helpers
 check_PROGRAMS += clitoris

@@ -1,4 +1,4 @@
-/*** caev=dvse.c -- stock dividends
+/*** caev-supp.c -- supported message fields and messages
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,22 +34,55 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
+#if defined HAVE_CONFIG_H
+# include "config.h"
+#endif	/* HAVE_CONFIG_H */
+#include <stdlib.h>
 #include "cattle.h"
 #include "caev.h"
 #include "caev-supp.h"
 
+
 ctl_caev_t
-make_dvse(const ctl_fld_t f[static 1], size_t nf)
+make_caev(const ctl_fld_t msg[static 1], size_t nflds)
 {
-/* return the event actor for the pro-rata assignment */
-	WITH_CTL_FLD(ctl_ratio_t adex, CTL_FLD_ADEX, f, nf, ratio) {
-		ctl_caev_t res = {
-			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
-			.outsec.r = ctl_adex_to_newo(adex),
-		};
-		return res;
+	WITH_CTL_FLD(ctl_caev_code_t caev, CTL_FLD_CAEV, msg, nflds, caev) {
+		switch (caev) {
+		case CTL_CAEV_BONU:
+			return make_bonu(msg, nflds);
+		case CTL_CAEV_CAPD:
+			break;
+		case CTL_CAEV_CAPG:
+			break;
+		case CTL_CAEV_DECR:
+			break;
+		case CTL_CAEV_DRIP:
+			return make_drip(msg, nflds);
+		case CTL_CAEV_DVCA:
+			return make_dvca(msg, nflds);
+		case CTL_CAEV_DVOP:
+			break;
+		case CTL_CAEV_DVSC:
+			break;
+		case CTL_CAEV_DVSE:
+			return make_dvse(msg, nflds);
+		case CTL_CAEV_INCR:
+			break;
+		case CTL_CAEV_LIQU:
+			break;
+		case CTL_CAEV_RHDI:
+			break;
+		case CTL_CAEV_RHTS:
+			break;
+		case CTL_CAEV_SPLF:
+			return make_splf(msg, nflds);
+		case CTL_CAEV_SPLR:
+			return make_splr(msg, nflds);
+		default:
+			break;
+		}
 	}
 	return (ctl_caev_t){};
 }
 
-/* caev=dvse.c ends here*/
+/* caev-supp.c ends here */

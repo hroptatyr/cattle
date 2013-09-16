@@ -1,11 +1,15 @@
 #include "caev-io.c"
 #include "caev-supp.h"
+#include "nifty.h"
 
 int
 main(void)
 {
 	ctl_fund_t f = {.mktprc = 17.50df, .nomval = 1.df, .outsec = 1000.df};
-	ctl_caev_t d = make_dvse((ctl_ratio_t){1, 10});
+	ctl_fld_t msg[] = {
+		MAKE_CTL_FLD(ratio, CTL_FLD_ADEX, {1, 10U}),
+	};
+	ctl_caev_t d = make_dvse(msg, countof(msg));
 	ctl_fund_t new = ctl_caev_act(d, f);
 	int res = 0;
 

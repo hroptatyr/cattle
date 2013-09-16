@@ -39,6 +39,12 @@ AC_C_BIGENDIAN
 
 AM_MISSING_PROG([HELP2MAN], [help2man], ["${missing_dir}"])
 
+AM_MISSING_PROG([GPERF], [gperf])
+AM_CONDITIONAL([HAVE_GPERF], [test -n "${GPERF}"])
+if test -n "${GPERF}"; then
+	AC_DEFINE([HAVE_GPERF], [1], [define when gperf tool is present])
+fi
+
 ## libtool goddess^Wgoodness
 ## has to be down here as we're turning -Werror'ing off
 LT_INIT

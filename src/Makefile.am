@@ -24,6 +24,8 @@ libcattle_la_SOURCES = cattle.h
 libcattle_la_SOURCES += cattle-ratio.c cattle-ratio.h
 libcattle_la_SOURCES += cattle-price.c cattle-price.h
 libcattle_la_SOURCES += cattle-quant.c cattle-quant.h
+libcattle_la_SOURCES += cattle-perio.h
+libcattle_la_SOURCES += cattle-date.h
 libcattle_la_SOURCES += caev.c caev.h
 libcattle_la_SOURCES += dt-strpf.c dt-strpf.h
 libcattle_la_SOURCES += instant.h
@@ -31,13 +33,18 @@ libcattle_la_SOURCES += wheap.c wheap.h
 libcattle_la_SOURCES += version.c version.h
 libcattle_la_SOURCES += nifty.h
 ## actual mt564 events
-libcattle_la_SOURCES += caev-supp.h
+libcattle_la_SOURCES += caev-supp.c caev-supp.h
 libcattle_la_SOURCES += caev=bonu.c
 libcattle_la_SOURCES += caev=drip.c
 libcattle_la_SOURCES += caev=dvca.c
 libcattle_la_SOURCES += caev=dvse.c
 libcattle_la_SOURCES += caev=splf.c
 libcattle_la_SOURCES += caev=splr.c
+libcattle_la_SOURCES += caev-rdr.c caev-rdr.h
+libcattle_la_SOURCES += caev-rdr-gp.erf
+libcattle_la_SOURCES += caev-fld-gp.erf
+BUILT_SOURCES += caev-rdr-gp.c
+BUILT_SOURCES += caev-fld-gp.c
 
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
@@ -51,7 +58,7 @@ version.c: version.c.in $(top_builddir)/version.mk
 	sed -e 's,[@]VERSION[@],$(VERSION),g' <$(srcdir)/$@.in >$@
 
 ## gperf rule
-%.c: %.gperf
+%.c: %.erf
 	$(AM_V_GEN) $(GPERF) -L ANSI-C $< --output-file $@
 
 ## gengetopt rule with sed hack to avoid using VERSION and config.h

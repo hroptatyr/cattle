@@ -1,4 +1,4 @@
-/*** caev=dvse.c -- stock dividends
+/*** caev-rdr.h -- reader for caev message strings
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,22 +34,15 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
+#if !defined INCLUDED_caev_rdr_h_
+#define INCLUDED_caev_rdr_h_
+
 #include "cattle.h"
-#include "caev.h"
+#include "instant.h"
 #include "caev-supp.h"
 
-ctl_caev_t
-make_dvse(const ctl_fld_t f[static 1], size_t nf)
-{
-/* return the event actor for the pro-rata assignment */
-	WITH_CTL_FLD(ctl_ratio_t adex, CTL_FLD_ADEX, f, nf, ratio) {
-		ctl_caev_t res = {
-			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
-			.outsec.r = ctl_adex_to_newo(adex),
-		};
-		return res;
-	}
-	return (ctl_caev_t){};
-}
+
+extern ctl_caev_t
+ctl_caev_rdr(struct ctl_ctx_s ctx[static 1], echs_instant_t x, const char *msg);
 
-/* caev=dvse.c ends here*/
+#endif	/* INCLUDED_caev_rdr_h_ */

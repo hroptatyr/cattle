@@ -39,13 +39,16 @@
 #include "caev-supp.h"
 
 ctl_caev_t
-make_drip(ctl_ratio_t adex)
+make_drip(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for absolute net payment */
-	ctl_caev_t res = {
-		.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
-	};
-	return res;
+	WITH_CTL_FLD(ctl_ratio_t adex, CTL_FLD_ADEX, f, nf, ratio) {
+		ctl_caev_t res = {
+			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
+		};
+		return res;
+	}
+	return (ctl_caev_t){};
 }
 
-/* caev=dvca.c ends here*/
+/* caev=drip.c ends here*/

@@ -1,4 +1,4 @@
-/*** caev=dvse.c -- stock dividends
+/*** cattle-date.h -- dates
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,22 +34,12 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#include "cattle.h"
-#include "caev.h"
-#include "caev-supp.h"
+#if !defined INCLUDED_cattle_date_h_
+#define INCLUDED_cattle_date_h_
 
-ctl_caev_t
-make_dvse(const ctl_fld_t f[static 1], size_t nf)
-{
-/* return the event actor for the pro-rata assignment */
-	WITH_CTL_FLD(ctl_ratio_t adex, CTL_FLD_ADEX, f, nf, ratio) {
-		ctl_caev_t res = {
-			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
-			.outsec.r = ctl_adex_to_newo(adex),
-		};
-		return res;
-	}
-	return (ctl_caev_t){};
-}
+/* it's just more than convenient to define dates as echs_instants */
+#include "instant.h"
 
-/* caev=dvse.c ends here*/
+typedef echs_instant_t ctl_date_t;
+
+#endif	/* INCLUDED_cattle_date_h_ */

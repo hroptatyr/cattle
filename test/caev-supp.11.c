@@ -7,9 +7,10 @@ main(void)
 {
 	ctl_fund_t f = {.mktprc = 17.50df, .nomval = 1.df, .outsec = 1000.df};
 	ctl_fld_t msg[] = {
-		MAKE_CTL_FLD(ratio, CTL_FLD_NEWO, {10, 1U}),
+		MAKE_CTL_FLD(admin, CTL_FLD_CAEV, CTL_CAEV_BONU),
+		MAKE_CTL_FLD(ratio, CTL_FLD_ADEX, {1, 10U}),
 	};
-	ctl_caev_t d = make_splf(msg, countof(msg));
+	ctl_caev_t d = make_caev(msg, countof(msg));
 	ctl_fund_t new = ctl_caev_act(d, f);
 	int res = 0;
 
@@ -20,4 +21,4 @@ main(void)
 	return res;
 }
 
-/* caev-supp.02.c ends here */
+/* caev-supp.11.c ends here */
