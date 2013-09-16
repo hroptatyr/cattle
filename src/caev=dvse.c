@@ -42,7 +42,7 @@ ctl_caev_t
 make_dvse(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for the pro-rata assignment */
-	WITH_CTL_FLD(ctl_ratio_t adex, CTL_FLD_ADEX, f, nf, /*slot*/r) {
+	WITH_CTL_FLD(ctl_ratio_t adex, CTL_FLD_ADEX, f, nf, ratio) {
 		ctl_caev_t res = {
 			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
 			.outsec.r = ctl_adex_to_newo(adex),

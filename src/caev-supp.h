@@ -41,14 +41,6 @@
 #include "cattle.h"
 #include "caev.h"
 
-typedef union {
-	ctl_ratio_t r;
-	ctl_price_t p;
-	ctl_quant_t q;
-	ctl_perio_t i;
-	ctl_date_t d;
-} ctl_fld_val_t;
-
 typedef struct ctl_fld_s ctl_fld_t;
 
 /* unknown fields */
@@ -204,10 +196,10 @@ typedef enum {
 	CTL_FLD_PRICE_LAST,
 } ctl_fld_price_t;
 
-/* period fields */
+/* perio fields */
 typedef enum {
-	CTL_FLD_PERIOD_FIRST = CTL_FLD_PRICE_LAST + 1U,
-	CTL_FLD_AREV = CTL_FLD_PERIOD_FIRST,
+	CTL_FLD_PERIO_FIRST = CTL_FLD_PRICE_LAST + 1U,
+	CTL_FLD_AREV = CTL_FLD_PERIO_FIRST,
 	CTL_FLD_BLOK,
 	CTL_FLD_BOCL,
 	CTL_FLD_CLCP,
@@ -229,25 +221,44 @@ typedef enum {
 	CTL_FLD_REVO,
 	CTL_FLD_SUSP,
 	CTL_FLD_TRDP,
-	CTL_FLD_PERIOD_LAST,
-} ctl_fld_period_t;
+	CTL_FLD_PERIO_LAST,
+} ctl_fld_perio_t;
 
 typedef enum {
 	CTL_FLD_TYPE_UNK,
 	CTL_FLD_TYPE_DATE,
 	CTL_FLD_TYPE_RATIO,
 	CTL_FLD_TYPE_PRICE,
-	CTL_FLD_TYPE_PERIOD,
+	CTL_FLD_TYPE_PERIO,
 } ctl_fld_type_t;
 
 typedef union __attribute__((transparent_union)) {
-	unsigned int i;
 	ctl_fld_unk_t unk;
 	ctl_fld_ratio_t ratio;
 	ctl_fld_price_t price;
-	ctl_fld_period_t period;
+	ctl_fld_perio_t perio;
 	ctl_fld_date_t date;
+	/* just to be transparent */
+	unsigned int u;
+	int i;
 } ctl_fld_key_t;
+
+typedef union {
+	/* adminstritative value */
+	unsigned int admin;
+	/* ratio value */
+	ctl_ratio_t ratio;
+	/* price value */
+	ctl_price_t price;
+	/* quantity value */
+	ctl_quant_t quant;
+	/* interval value */
+	ctl_perio_t perio;
+	/* date value */
+	ctl_date_t date;
+	/* caev value */
+	ctl_caev_code_t caev;
+} ctl_fld_val_t;
 
 struct ctl_fld_s {
 	ctl_fld_key_t code;
@@ -303,8 +314,8 @@ ctl_fld_type(ctl_fld_key_t code)
 		return CTL_FLD_TYPE_RATIO;
 	case CTL_FLD_PRICE_FIRST ... CTL_FLD_PRICE_LAST:
 		return CTL_FLD_TYPE_PRICE;
-	case CTL_FLD_PERIOD_FIRST ... CTL_FLD_PERIOD_LAST:
-		return CTL_FLD_TYPE_PERIOD;
+	case CTL_FLD_PERIO_FIRST ... CTL_FLD_PERIO_LAST:
+		return CTL_FLD_TYPE_PERIO;
 	default:
 		break;
 	}
@@ -315,7 +326,7 @@ static inline __attribute__((pure)) ctl_fld_t
 ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_key_t fld)
 {
 	for (size_t i = 0; i < n; i++) {
-		if (f[i].code.i == fld.i) {
+		if (f[i].code.u == fld.u) {
 			return f[i];
 		}
 	}
@@ -324,7 +335,7 @@ ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_key_t fld)
 
 #define WITH_CTL_FLD(x, fcod, flds, nflds, slot)			\
 	for (ctl_fld_t fld = ctl_find_fld(flds, nflds, fcod);		\
-	     fld.code == fcod; fld.code = CTL_FLD_UNK)			\
+	     fld.code.unk == fcod; fld.code.unk = CTL_FLD_UNK)		\
 		for (x = fld.beef.slot, *p = (void*)1; p; p = NULL)
 
 #endif	/* INCLUDED_caev_supp_h_ */

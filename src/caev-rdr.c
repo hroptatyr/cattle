@@ -87,7 +87,7 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 			break;
 		}
 		/* otherwise ass */
-		res.r = (ctl_ratio_t){p, q};
+		res.ratio = (ctl_ratio_t){p, q};
 		break;
 	}
 	case CTL_FLD_TYPE_PRICE: {
@@ -98,10 +98,10 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		if (*pp != '"' && *pp != '\'') {
 			break;
 		}
-		res.p = (ctl_price_t)p;
+		res.price = (ctl_price_t)p;
 		break;
 	}
-	case CTL_FLD_TYPE_PERIOD:
+	case CTL_FLD_TYPE_PERIO:
 		;
 		break;
 
@@ -152,13 +152,13 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 		memset(flds + nflds, 0, (nu - nflds) * sizeof(*flds));	\
 		nflds = nu;						\
 	}
-#define MAKE_FLD(x, y)	(ctl_fld_t){(x), {y}}
+#define MAKE_FLD(slot, x, y)	(ctl_fld_t){{.slot = x}, {.slot = y}}
 
 	/* reset field counter */
 	fldi = 0U;
 	/* add the instant passed onto us as ex-date */
 	CHECK_FLDS;
-	flds[fldi++] = MAKE_FLD(CTL_FLD_XDTE, .d = (ctl_date_t)t);
+	flds[fldi++] = MAKE_FLD(date, CTL_FLD_XDTE, t);
 	/* now look for .XXXX= or .XXXX/ */
 	for (const char *sp = s; (sp = strchr(sp, '.')) != NULL; sp++) {
 		switch (sp[5U]) {
