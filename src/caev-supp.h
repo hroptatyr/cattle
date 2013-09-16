@@ -1,4 +1,4 @@
-/*** caev=splf.c -- forward split
+/*** caev-supp.h -- supported message fields and messages
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
