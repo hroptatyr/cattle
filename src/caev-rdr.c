@@ -56,7 +56,7 @@
 
 
 static ctl_fld_val_t
-snarf_fv(ctl_fld_unk_t fc, const char *s)
+snarf_fv(ctl_fld_key_t fc, const char *s)
 {
 	ctl_fld_val_t res = {};
 	const char *vp = *s == '=' ? s : strchr(s, '=');
