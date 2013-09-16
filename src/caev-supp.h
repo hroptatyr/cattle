@@ -315,6 +315,10 @@ extern ctl_caev_t make_splf(const ctl_fld_t f[static 1], size_t n);
  * Return reverse split event based on new-for-old ratio. */
 extern ctl_caev_t make_splr(const ctl_fld_t f[static 1], size_t n);
 
+/**
+ * Catch-all constructor, the CAEV=* key/val must be part of MSG. */
+extern ctl_caev_t make_caev(const ctl_fld_t msg[static 1], size_t nflds);
+
 
 /* helpers */
 static inline __attribute__((pure, const)) ctl_fld_type_t

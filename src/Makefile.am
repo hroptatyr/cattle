@@ -33,7 +33,7 @@ libcattle_la_SOURCES += wheap.c wheap.h
 libcattle_la_SOURCES += version.c version.h
 libcattle_la_SOURCES += nifty.h
 ## actual mt564 events
-libcattle_la_SOURCES += caev-supp.h
+libcattle_la_SOURCES += caev-supp.c caev-supp.h
 libcattle_la_SOURCES += caev=bonu.c
 libcattle_la_SOURCES += caev=drip.c
 libcattle_la_SOURCES += caev=dvca.c
