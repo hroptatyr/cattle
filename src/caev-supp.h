@@ -57,11 +57,6 @@ typedef enum {
 	CTL_FLD_UNK_LAST,
 } ctl_fld_unk_t;
 
-struct ctl_fld_s {
-	ctl_fld_unk_t code;
-	ctl_fld_val_t beef;
-};
-
 typedef enum {
 	CTL_CAEV_UNK,
 	CTL_CAEV_BONU,
@@ -245,6 +240,20 @@ typedef enum {
 	CTL_FLD_TYPE_PERIOD,
 } ctl_fld_type_t;
 
+typedef union __attribute__((transparent_union)) {
+	unsigned int i;
+	ctl_fld_unk_t unk;
+	ctl_fld_ratio_t ratio;
+	ctl_fld_price_t price;
+	ctl_fld_period_t period;
+	ctl_fld_date_t date;
+} ctl_fld_key_t;
+
+struct ctl_fld_s {
+	ctl_fld_key_t code;
+	ctl_fld_val_t beef;
+};
+
 
 /* the following use SMPG_CA_Global_Market_Practice_Part_2_SR2013_v_1_2
  * grid values as their parameters. */
@@ -285,9 +294,9 @@ extern ctl_caev_t make_splr(const ctl_fld_t f[static 1], size_t n);
 
 /* helpers */
 static inline __attribute__((pure, const)) ctl_fld_type_t
-ctl_fld_type(ctl_fld_unk_t code)
+ctl_fld_type(ctl_fld_key_t code)
 {
-	switch (code) {
+	switch (code.unk) {
 	case CTL_FLD_DATE_FIRST ... CTL_FLD_DATE_LAST:
 		return CTL_FLD_TYPE_DATE;
 	case CTL_FLD_RATIO_FIRST ... CTL_FLD_RATIO_LAST:;
@@ -303,10 +312,10 @@ ctl_fld_type(ctl_fld_unk_t code)
 }
 
 static inline __attribute__((pure)) ctl_fld_t
-ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_unk_t fld)
+ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_key_t fld)
 {
 	for (size_t i = 0; i < n; i++) {
-		if (f[i].code == fld) {
+		if (f[i].code.i == fld.i) {
 			return f[i];
 		}
 	}
@@ -314,7 +323,7 @@ ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_unk_t fld)
 }
 
 #define WITH_CTL_FLD(x, fcod, flds, nflds, slot)			\
-	for (ctl_fld_t fld = ctl_find_fld(flds, nflds, (ctl_fld_unk_t)fcod); \
+	for (ctl_fld_t fld = ctl_find_fld(flds, nflds, fcod);		\
 	     fld.code == fcod; fld.code = CTL_FLD_UNK)			\
 		for (x = fld.beef.slot, *p = (void*)1; p; p = NULL)
 
