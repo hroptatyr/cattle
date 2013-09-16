@@ -1,11 +1,16 @@
 #include "caev-io.c"
 #include "caev-supp.h"
+#include "nifty.h"
 
 int
 main(void)
 {
 	ctl_fund_t f = {.mktprc = 17.50df, .nomval = 1.df, .outsec = 1000.df};
-	ctl_caev_t d = make_splr((ctl_ratio_t){1, 10});
+	ctl_fld_t msg[] = {{
+			.code = CTL_FLD_NEWO,
+			.beef.r = {1, 10U},
+		}};
+	ctl_caev_t d = make_splr(msg, countof(msg));
 	ctl_fund_t new = ctl_caev_act(d, f);
 	int res = 0;
 
