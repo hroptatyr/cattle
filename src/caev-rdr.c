@@ -152,7 +152,7 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 		memset(flds + nflds, 0, (nu - nflds) * sizeof(*flds));	\
 		nflds = nu;						\
 	}
-#define MAKE_FLD(x, y)	(ctl_fld_t){(ctl_fld_unk_t)(x), {y}}
+#define MAKE_FLD(x, y)	(ctl_fld_t){(x), {y}}
 
 	/* reset field counter */
 	fldi = 0U;
