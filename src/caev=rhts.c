@@ -1,4 +1,4 @@
-/*** caev-supp.c -- supported message fields and messages
+/*** caev=rhts.c -- rights distribution
  *
  * Copyright (C) 2013 Sebastian Freundt
  *
@@ -34,55 +34,26 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if defined HAVE_CONFIG_H
-# include "config.h"
-#endif	/* HAVE_CONFIG_H */
-#include <stdlib.h>
 #include "cattle.h"
 #include "caev.h"
 #include "caev-supp.h"
 
-
 ctl_caev_t
-make_caev(const ctl_fld_t msg[static 1], size_t nflds)
+make_rhts(const ctl_fld_t f[static 1], size_t nf)
 {
-	WITH_CTL_FLD(ctl_caev_code_t caev, CTL_FLD_CAEV, msg, nflds, caev) {
-		switch (caev) {
-		case CTL_CAEV_BONU:
-			return make_bonu(msg, nflds);
-		case CTL_CAEV_CAPD:
-			break;
-		case CTL_CAEV_CAPG:
-			break;
-		case CTL_CAEV_DECR:
-			break;
-		case CTL_CAEV_DRIP:
-			return make_drip(msg, nflds);
-		case CTL_CAEV_DVCA:
-			return make_dvca(msg, nflds);
-		case CTL_CAEV_DVOP:
-			break;
-		case CTL_CAEV_DVSC:
-			break;
-		case CTL_CAEV_DVSE:
-			return make_dvse(msg, nflds);
-		case CTL_CAEV_INCR:
-			break;
-		case CTL_CAEV_LIQU:
-			break;
-		case CTL_CAEV_RHDI:
-			break;
-		case CTL_CAEV_RHTS:
-			return make_rhts(msg, nflds);
-		case CTL_CAEV_SPLF:
-			return make_splf(msg, nflds);
-		case CTL_CAEV_SPLR:
-			return make_splr(msg, nflds);
-		default:
-			break;
+/* return the event actor for rtun (rights-to-undly ratio) */
+	ctl_caev_t res = {};
+
+	WITH_CTL_FLD(ctl_ratio_t rtun, CTL_FLD_RTUN, f, nf, ratio) {
+		res.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(rtun));
+		res.outsec.r = ctl_adex_to_newo(rtun);
+		res.nomval.r = ctl_ratio_recipr(ctl_adex_to_newo(rtun));
+
+		WITH_CTL_FLD(ctl_price_t prpp, CTL_FLD_PRPP, f, nf, price) {
+			res.mktprc.a = prpp * rtun.p / (rtun.p + rtun.q);
 		}
 	}
-	return (ctl_caev_t){};
+	return res;
 }
 
-/* caev-supp.c ends here */
+/* caev=rhts.c ends here*/

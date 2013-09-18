@@ -308,6 +308,10 @@ extern ctl_caev_t make_dvca(const ctl_fld_t f[static 1], size_t n);
 extern ctl_caev_t make_dvse(const ctl_fld_t f[static 1], size_t n);
 
 /**
+ * Return adjustment after rights distribution, RTUN for PRPP. */
+extern ctl_caev_t make_rhts(const ctl_fld_t msg[static 1], size_t nflds);
+
+/**
  * Return forward split event based on new-for-old ratio. */
 extern ctl_caev_t make_splf(const ctl_fld_t f[static 1], size_t n);
 
