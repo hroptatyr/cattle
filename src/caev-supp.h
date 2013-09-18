@@ -355,9 +355,17 @@ ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_key_t fld)
 #define MAKE_CTL_FLD(slot, x, y...)		\
 	(ctl_fld_t){{.slot = x}, {.slot = y}}
 
+#if !defined paste
+# define _paste(x, y)	x ## y
+# define paste(x, y)	_paste(x, y)
+#endif	/* !paste */
+
 #define WITH_CTL_FLD(x, fcod, flds, nflds, slot)			\
-	for (ctl_fld_t fld = ctl_find_fld(flds, nflds, fcod);		\
-	     fld.code.unk == fcod; fld.code.unk = CTL_FLD_UNK)		\
-		for (x = fld.beef.slot, *p = (void*)1; p; p = NULL)
+	for (ctl_fld_t paste(fld, __LINE__) = ctl_find_fld(flds, nflds, fcod); \
+	     paste(fld, __LINE__).code.unk == fcod;			\
+	     paste(fld, __LINE__).code.unk = CTL_FLD_UNK)		\
+		for (x = paste(fld, __LINE__).beef.slot,		\
+			     *paste(p, __LINE__) = (void*)1;		\
+		     paste(p, __LINE__); paste(p, __LINE__) = NULL)
 
 #endif	/* INCLUDED_caev_supp_h_ */
