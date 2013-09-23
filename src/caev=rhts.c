@@ -49,8 +49,12 @@ make_rhts(const ctl_fld_t f[static 1], size_t nf)
 		res.outsec.r = ctl_adex_to_newo(rtun);
 		res.nomval.r = ctl_ratio_recipr(ctl_adex_to_newo(rtun));
 
+		/* we later compute p/q (x + r) so we have to stretch
+		 * the absolute value by q/p, as the RHTS formula really
+		 * wants p/q x + r
+		 * i.e. this is q / p * r */
 		WITH_CTL_FLD(ctl_price_t prpp, CTL_FLD_PRPP, f, nf, price) {
-			res.mktprc.a = prpp * rtun.p / (rtun.p + rtun.q);
+			res.mktprc.a = prpp * rtun.p / rtun.q;
 		}
 	}
 	return res;
