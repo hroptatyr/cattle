@@ -1,6 +1,9 @@
-args "--unamed-opts=DATE"
+args "--unamed-opts --no-handle-error --long-help -a ctl_args_info -f ctl_parser"
 package "cattle"
-usage "cattle [OPTIONS...] DATEs...
-   or: cattle [OPTIONS...] --series FILE"
-description "Tool to apply corporate actions to time series."
+usage "cattle [OPTIONS...] COMMAND [ARGs...]"
+description "Tool to apply corporate actions to time series.
+
+COMMAND may be one of:
+  print Print resulting actors of caev echse messages.
+"
 

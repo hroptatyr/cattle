@@ -164,18 +164,20 @@ ctl_close_caev_file(ctl_ctx_t x)
 
 #include "../test/caev-io.c"
 
-int
-main(int argc, char *argv[])
+static int
+cmd_print(struct ctl_args_info argi[static 1U])
 {
-	struct gengetopt_args_info argi[1];
+	static const char usg[] = "Usage: cattle print FILEs...\n";
 	ctl_ctx_t ctx;
 	int res = 0;
 
-	if (cmdline_parser(argc, argv, argi)) {
+	if (argi->inputs_num < 2U) {
+		fputs(usg, stderr);
+		res = 1;
 		goto out;
 	}
 
-	with (const char *fn = argi->inputs[0]) {
+	with (const char *fn = argi->inputs[1U]) {
 		if (UNLIKELY((ctx = ctl_open_caev_file(fn)) == NULL)) {
 			error("cannot open file `%s'", fn);
 			goto out;
@@ -188,8 +190,9 @@ main(int argc, char *argv[])
 		char *bp = buf;
 
 		bp += dt_strf(buf, sizeof(buf), t);
+		*bp++ = '\t';
 		*bp++ = '\0';
-		puts(buf);
+		fputs(buf, stdout);
 		with (ctl_caev_t c = *(ctl_caev_t*)x) {
 			ctl_caev_pr(c);
 		}
@@ -197,11 +200,36 @@ main(int argc, char *argv[])
 
 	/* and out again */
 	ctl_close_caev_file(ctx);
+out:
+	return res;
+}
+
+int
+main(int argc, char *argv[])
+{
+	struct ctl_args_info argi[1];
+	int res = 0;
+
+	if (ctl_parser(argc, argv, argi)) {
+		res = 1;
+		goto out;
+	} else if (argi->inputs_num < 1) {
+		ctl_parser_print_help();
+		res = 1;
+		goto out;
+	}
+
+	/* check the command */
+	with (const char *cmd = argi->inputs[0U]) {
+		if (!strcmp(cmd, "print")) {
+			res = cmd_print(argi);
+		}
+	}
 
 out:
 	/* just to make sure */
 	fflush(stdout);
-	cmdline_parser_free(argi);
+	ctl_parser_free(argi);
 	return res;
 }
 #endif	/* STANDALONE */
