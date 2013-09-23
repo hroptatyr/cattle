@@ -66,6 +66,30 @@ caev_06_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 caev_06_LDADD = $(cattle_LIBS)
 TESTS += caev.06.clit
 
+check_PROGRAMS += caev.07
+caev_07_SOURCES = caev.07.c
+caev_07_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_07_LDADD = $(cattle_LIBS)
+TESTS += caev.07.clit
+
+check_PROGRAMS += caev.08
+caev_08_SOURCES = caev.08.c
+caev_08_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_08_LDADD = $(cattle_LIBS)
+TESTS += caev.08.clit
+
+check_PROGRAMS += caev.09
+caev_09_SOURCES = caev.09.c
+caev_09_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_09_LDADD = $(cattle_LIBS)
+TESTS += caev.09.clit
+
+check_PROGRAMS += caev.10
+caev_10_SOURCES = caev.10.c
+caev_10_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+caev_10_LDADD = $(cattle_LIBS)
+TESTS += caev.10.clit
+
 check_PROGRAMS += caev_pact.01
 caev_pact_01_SOURCES = caev_pact.01.c
 caev_pact_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
