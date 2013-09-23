@@ -49,8 +49,11 @@
 #include <sys/wait.h>
 #include <sys/epoll.h>
 #include <string.h>
+#include <ctype.h>
 #include <errno.h>
 #include <pty.h>
+/* check for me */
+#include <wordexp.h>
 
 #if !defined LIKELY
 # define LIKELY(_x)	__builtin_expect((_x), 1)
@@ -87,14 +90,8 @@ struct clit_buf_s {
  * A clit bit can be an ordinary memory buffer (z > 0 && d),
  * a file descriptor (fd != 0 && d == NULL), or a file name (z == -1UL && fn) */
 struct clit_bit_s {
-	union {
-		size_t z;
-		int fd;
-	};
-	union {
-		const char *d;
-		const char *fn;
-	};
+	size_t z;
+	const char *d;
 };
 
 struct clit_chld_s {
@@ -106,6 +103,7 @@ struct clit_chld_s {
 
 	unsigned int verbosep:1;
 	unsigned int ptyp:1;
+	unsigned int keep_going_p:1;
 
 	unsigned int timeo;
 };
@@ -116,6 +114,21 @@ struct clit_tst_s {
 	clit_bit_t out;
 	clit_bit_t err;
 	clit_bit_t rest;
+
+	/* specific per-test flags */
+	/** don't fail when the actual output differs from th expected output */
+	unsigned int ign_out:1;
+	/** don't fail when the command returns non-SUCCESS */
+	unsigned int ign_ret:1;
+
+	/** don't pass the output on to external differ */
+	unsigned int supp_diff:1;
+
+	/* padding */
+	unsigned int:5;
+
+	/** expect this return code, or any but 0 if all bits are set */
+	unsigned int exp_ret:8;
 };
 
 
@@ -124,17 +137,17 @@ static sigset_t empty_signal_set[1];
 
 
 static void
-__attribute__((format(printf, 2, 3)))
-error(int eno, const char *fmt, ...)
+__attribute__((format(printf, 1, 2)))
+error(const char *fmt, ...)
 {
 	va_list vap;
 	va_start(vap, fmt);
 	vfprintf(stderr, fmt, vap);
 	va_end(vap);
-	if (eno || errno) {
+	if (errno) {
 		fputc(':', stderr);
 		fputc(' ', stderr);
-		fputs(strerror(eno ?: errno), stderr);
+		fputs(strerror(errno), stderr);
 	}
 	fputc('\n', stderr);
 	return;
@@ -162,13 +175,59 @@ clit_bit_fn_p(clit_bit_t x)
 static inline clit_bit_t
 clit_make_fd(int fd)
 {
-	return (clit_bit_t){.fd = fd};
+	return (clit_bit_t){.z = fd};
 }
 
 static inline clit_bit_t
 clit_make_fn(const char *fn)
 {
-	return (clit_bit_t){.z = -1UL, .fn = fn};
+	return (clit_bit_t){.z = -1UL, .d = fn};
+}
+
+static const char*
+bufexp(const char src[static 1], size_t ssz)
+{
+	static char *buf;
+	static size_t bsz;
+	wordexp_t xp[1];
+
+	if (UNLIKELY(ssz == 0)) {
+		return NULL;
+	}
+
+#define CHKBSZ(x)				\
+	if ((x) > bsz) {			\
+		bsz = ((x) / 256U + 1U) * 256U;	\
+		buf = realloc(buf, bsz);	\
+	}
+
+	/* get our own copy for deep vein massages */
+	CHKBSZ(ssz);
+	memcpy(buf, src, ssz);
+	buf[ssz] = '\0';
+
+	switch (wordexp(buf, xp, WRDE_UNDEF)) {
+	case 0:
+		if (xp->we_wordc > 0) {
+			/* everything's fine */
+			break;
+		}
+	case WRDE_NOSPACE:
+		wordfree(xp);
+	default:
+		return NULL;
+	}
+
+	/* copy the first `argument', back into BUF,
+	 * which is hopefully big enough */
+	with (size_t wz = strlen(xp->we_wordv[0])) {
+		CHKBSZ(wz);
+		memcpy(buf, xp->we_wordv[0], wz);
+		buf[wz] = '\0';
+	}
+
+	wordfree(xp);
+	return buf;
 }
 
 
@@ -302,6 +361,99 @@ eof:
 }
 
 static int
+find_ignore(struct clit_tst_s tst[static 1])
+{
+	with (const char *cmd = tst->cmd.d, *const ec = cmd + tst->cmd.z) {
+		static char tok_ign[] = "ignore";
+		static char tok_out[] = "output";
+		static char tok_ret[] = "return";
+
+		if (strncmp(cmd, tok_ign, sizeof(tok_ign) - 1U)) {
+			/* don't bother */
+			break;
+		}
+		/* fast-forward a little */
+		cmd += sizeof(tok_ign) - 1U;
+
+		if (isspace(*cmd)) {
+			/* it's our famous ignore token it seems */
+			tst->ign_out = tst->ign_ret = 1U;
+		} else if (*cmd++ != '-') {
+			/* unknown token then */
+			break;
+		} else if (!strncmp(cmd, tok_out, sizeof(tok_out) - 1U)) {
+			/* ignore-output it is */
+			tst->ign_out = 1U;
+			cmd += sizeof(tok_out) - 1U;
+		} else if (!strncmp(cmd, tok_ret, sizeof(tok_ret) - 1U)) {
+			/* ignore-return it is */
+			tst->ign_ret = 1U;
+			cmd += sizeof(tok_ret) - 1U;
+		} else {
+			/* don't know what's going on */
+			break;
+		}
+
+		/* now, fast-forward to the actual command, and reass */
+		while (++cmd < ec && isspace(*cmd));
+		tst->cmd.z -= (cmd - tst->cmd.d);
+		tst->cmd.d = cmd;
+	}
+	return 0;
+}
+
+static int
+find_negexp(struct clit_tst_s tst[static 1])
+{
+	with (const char *cmd = tst->cmd.d, *const ec = cmd + tst->cmd.z) {
+		unsigned int exp = 0U;
+
+		switch (*cmd) {
+		case '!'/*NEG*/:
+			exp = 255U;
+			break;
+		case '?'/*EXP*/:;
+			char *p;
+			exp = strtoul(cmd + 1U, &p, 10);
+			cmd = cmd + (p - cmd);
+			if (isspace(*cmd)) {
+				break;
+			}
+		default:
+			return 0;
+		}
+
+		/* now, fast-forward to the actual command, and reass */
+		while (++cmd < ec && isspace(*cmd));
+		tst->cmd.z -= (cmd - tst->cmd.d);
+		tst->cmd.d = cmd;
+		tst->exp_ret = exp;
+	}
+	return 0;
+}
+
+static int
+find_suppdiff(struct clit_tst_s tst[static 1])
+{
+	with (const char *cmd = tst->cmd.d, *const ec = cmd + tst->cmd.z) {
+		switch (*cmd) {
+		case '@':
+			break;
+		default:
+			return 0;
+		}
+
+		/* now, fast-forward to the actual command, and reass */
+		while (++cmd < ec && isspace(*cmd));
+		tst->cmd.z -= (cmd - tst->cmd.d);
+		tst->cmd.d = cmd;
+		tst->supp_diff = 1U;
+		tst->ign_out = 1U;
+	}
+	return 0;
+}
+
+static int
 find_tst(struct clit_tst_s tst[static 1], const char *bp, size_t bz)
 {
 	if (UNLIKELY(!(tst->cmd = find_cmd(bp, bz)).z)) {
@@ -320,20 +472,29 @@ find_tst(struct clit_tst_s tst[static 1], const char *bp, size_t bz)
 	with (size_t outz = tst->rest.d - bp) {
 		if (outz &&
 		    /* prefixed '< '? */
-		    UNLIKELY(bp[0] == '<' && bp[1] == ' ') &&
-		    /* not too long */
-		    outz < 256U &&
-		    /* only one line? */
-		    memchr(bp + 2, '\n', outz - 2U - 1U) == NULL) {
+		    UNLIKELY(bp[0] == '<' && bp[1] == ' ')) {
 			/* it's a < FILE comparison */
-			static char fn[256U];
+			const char *fn;
 
-			memcpy(fn, bp + 2, outz - 2U - 1U);
-			tst->out = clit_make_fn(fn);
+			if ((fn = bufexp(bp + 2, outz - 2U - 1U)) != NULL) {
+				tst->out = clit_make_fn(fn);
+			} else {
+				tst->out = (clit_bit_t){0U};
+			}
 		} else {
 			tst->out = (clit_bit_t){.z = outz, bp};
 		}
 	}
+
+	/* oh let's see if we should ignore things */
+	find_ignore(tst);
+
+	/* check for suppress diff */
+	find_suppdiff(tst);
+
+	/* check for expect and negate operators */
+	find_negexp(tst);
+
 	tst->err = (clit_bit_t){0U};
 	return 0;
 fail:
@@ -380,6 +541,8 @@ find_opt(struct clit_chld_s ctx[static 1], const char *bp, size_t bz)
 			if ((timeo = strtoul(arg, &p, 0), *p == '\n')) {
 				ctx->timeo = (unsigned int)timeo;
 			}
+		} else if (CMP(mp, "keep-going\n") == 0) {
+			ctx->keep_going_p = opt;
 		}
 #undef CMP
 	}
@@ -427,7 +590,7 @@ pipe_bits(int p[static 2], clit_bit_t b)
 	if (clit_bit_buf_p(b) && UNLIKELY(pipe(p)) < 0) {
 		return -1;
 	} else if (clit_bit_fd_p(b)) {
-		p[0] = b.fd;
+		p[0] = (int)b.z;
 		p[1] = -1;
 	} else if (clit_bit_fn_p(b)) {
 		p[0] = -1;
@@ -478,16 +641,16 @@ diff_bits(clit_bit_t exp, clit_bit_t is)
 		if (!clit_bit_fn_p(exp)) {
 			snprintf(fa, sizeof(fa), "/dev/fd/%d", *pin_a);
 		} else {
-			snprintf(fa, sizeof(fa), "%s", exp.fn);
+			snprintf(fa, sizeof(fa), "%s", exp.d);
 		}
 		if (!clit_bit_fn_p(is)) {
 			snprintf(fb, sizeof(fb), "/dev/fd/%d", *pin_b);
 		} else {
-			snprintf(fb, sizeof(fb), "%s", is.fn);
+			snprintf(fb, sizeof(fb), "%s", is.d);
 		}
 
 		execvp("diff", diff_opt);
-		error(0, "execlp failed");
+		error("execlp failed");
 		_exit(EXIT_FAILURE);
 
 	default:;
@@ -520,7 +683,7 @@ diff_out(struct clit_chld_s ctx[static 1], clit_bit_t exp)
 }
 
 static int
-init_tst(struct clit_chld_s ctx[static 1])
+init_tst(struct clit_chld_s ctx[static 1], struct clit_tst_s tst[static 1])
 {
 /* set up a connection with /bin/sh to pipe to and read from */
 	int pty;
@@ -559,7 +722,10 @@ init_tst(struct clit_chld_s ctx[static 1])
 		/* read from pin and write to pou */
 		if (LIKELY(!ctx->ptyp)) {
 			close(STDIN_FILENO);
-			close(STDOUT_FILENO);
+			if (!tst->supp_diff) {
+				/* only if we want the output differ */
+				close(STDOUT_FILENO);
+			}
 			/* pin[0] ->stdin */
 			dup2(pin[0], STDIN_FILENO);
 		} else {
@@ -572,11 +738,13 @@ init_tst(struct clit_chld_s ctx[static 1])
 		close(pin[1]);
 
 		/* stdout -> pou[1] */
-		dup2(pou[1], STDOUT_FILENO);
+		if (!tst->supp_diff) {
+			dup2(pou[1], STDOUT_FILENO);
+		}
 		close(pou[0]);
 		close(pou[1]);
 		execl("/bin/sh", "sh", NULL);
-		error(0, "execl failed");
+		error("execl failed");
 		_exit(EXIT_FAILURE);
 
 	default:
@@ -596,7 +764,11 @@ init_tst(struct clit_chld_s ctx[static 1])
 			close(per[1]);
 		}
 		/* ... and read end of pou */
-		ctx->pou = pou[0];
+		if (!tst->supp_diff) {
+			ctx->pou = pou[0];
+		} else {
+			ctx->pou = -1;
+		}
 
 		if (LIKELY(ctx->pll >= 0)) {
 			static struct epoll_event ev = {
@@ -615,7 +787,7 @@ run_tst(struct clit_chld_s ctx[static 1], struct clit_tst_s tst[static 1])
 	int st;
 	int rc;
 
-	if (UNLIKELY(init_tst(ctx) < 0)) {
+	if (UNLIKELY(init_tst(ctx, tst) < 0)) {
 		return -1;
 	}
 	write(ctx->pin, tst->cmd.d, tst->cmd.z);
@@ -629,13 +801,34 @@ run_tst(struct clit_chld_s ctx[static 1], struct clit_tst_s tst[static 1])
 		write(ctx->pin, "exit $?\n", 8U);
 	}
 
-	rc = diff_out(ctx, tst->out);
+	if (!tst->supp_diff) {
+		rc = diff_out(ctx, tst->out);
+		if (tst->ign_out) {
+			rc = 0;
+		}
+	} else {
+		rc = 0;
+	}
 
 	while (waitpid(ctx->chld, &st, 0) != ctx->chld);
 	if (LIKELY(WIFEXITED(st))) {
-		rc = rc ?: WEXITSTATUS(st);
+		int tst_rc = WEXITSTATUS(st);
+
+		if (tst->exp_ret == tst_rc) {
+			tst_rc = 0;
+		} else if (tst->exp_ret == 255U && tst_rc) {
+			tst_rc = 0;
+		} else {
+			tst_rc = 1;
+		}
+
+		/* now assign */
+		rc = rc ?: tst_rc;
 	} else {
 		rc = 1;
+	}
+	if (tst->ign_ret) {
+		rc = 0;
 	}
 
 	if (UNLIKELY(ctx->ptyp)) {
@@ -669,9 +862,62 @@ set_timeout(unsigned int tdiff)
 	return;
 }
 
+static void
+prepend_path(const char *p)
+{
+#define free_path()	prepend_path(NULL);
+	static char *paths;
+	static size_t pathz;
+	static char *pp;
+	size_t pz;
+
+	if (UNLIKELY(p == NULL)) {
+		/* freeing */
+		if (paths == NULL) {
+			free(paths);
+			paths = pp = NULL;
+		}
+		return;
+	}
+	/* otherwise it'd be safe to compute the strlen() methinks */
+	pz = strlen(p);
+
+	if (UNLIKELY(paths == NULL)) {
+		char *envp = getenv("PATH");
+		size_t envz = strlen(envp);
+
+		/* get us a nice big cushion */
+		pathz = ((envz + pz + 1U) / 256U + 1) * 256U;
+		paths = malloc(pathz);
+		/* glue the current path at the end of the array */
+		pp = (paths + pathz) - (envz + 1U);
+		memcpy(pp, envp, envz + 1U);
+	}
+
+	/* calc prepension pointer */
+	pp -= pz + 1U/*:*/;
+
+	if (UNLIKELY(pp < paths)) {
+		/* awww, not enough space, is there */
+		off_t ppoff = paths + pathz - pp;
+
+		pathz = ((pathz + pz + 1U) / 256U + 1) * 256U;
+		paths = realloc(paths, pathz);
+		/* recalc paths pointer */
+		pp = paths + ppoff;
+	}
+
+	/* actually prepend now */
+	memcpy(pp, p, pz);
+	pp[pz] = ':';
+	setenv("PATH", pp, 1);
+	return;
+}
+
 
 static int verbosep;
 static int ptyp;
+static int keep_going_p;
 static unsigned int timeo;
 
 static int
@@ -694,6 +940,9 @@ test_f(clitf_t tf)
 	if (ptyp) {
 		ctx->ptyp = 1U;
 	}
+	if (keep_going_p) {
+		ctx->keep_going_p = 1U;
+	}
 	ctx->timeo = timeo;
 
 	/* find options in the test script */
@@ -708,10 +957,13 @@ test_f(clitf_t tf)
 			fputs("$ ", stderr);
 			fwrite(tst->cmd.d, sizeof(char), tst->cmd.z, stderr);
 		}
-		if ((rc = run_tst(ctx, tst))) {
+		with (int tst_rc = run_tst(ctx, tst)) {
 			if (ctx->verbosep) {
-				fprintf(stderr, "$? %d\n", rc);
+				fprintf(stderr, "$? %d\n", tst_rc);
 			}
+			rc = rc ?: tst_rc;
+		}
+		if (rc && !ctx->keep_going_p) {
 			break;
 		}
 	}
@@ -730,12 +982,13 @@ test(const char *testfile)
 	int rc = -1;
 
 	if ((fd = open(testfile, O_RDONLY)) < 0) {
-		error(0, "Error: cannot open file `%s'", testfile);
+		error("Error: cannot open file `%s'", testfile);
+		goto out;
 	} else if (fstat(fd, &st) < 0) {
-		error(0, "Error: cannot stat file `%s'", testfile);
+		error("Error: cannot stat file `%s'", testfile);
 		goto clo;
 	} else if ((tf = mmap_fd(fd, st.st_size)).d == NULL) {
-		error(0, "Error: cannot map file `%s'", testfile);
+		error("Error: cannot map file `%s'", testfile);
 		goto clo;
 	}
 	/* yaay, perform the test */
@@ -745,6 +998,7 @@ test(const char *testfile)
 	munmap_fd(tf);
 clo:
 	close(fd);
+out:
 	return rc;
 }
 
@@ -794,23 +1048,26 @@ main(int argc, char *argv[])
 	if (argi->timeout_given) {
 		timeo = argi->timeout_arg;
 	}
+	if (argi->keep_going_given) {
+		keep_going_p = 1;
+	}
 
-	/* also bang builddir to path */
-	with (char *blddir = getenv("builddir")) {
-		if (blddir != NULL) {
-			size_t blddiz = strlen(blddir);
-			char *path = getenv("PATH");
-			size_t patz = strlen(path);
-			char *newp;
-
-			newp = malloc(patz + blddiz + 1U/*:*/ + 1U/*\nul*/);
-			memcpy(newp, blddir, blddiz);
-			newp[blddiz] = ':';
-			memcpy(newp + blddiz + 1U, path, patz + 1U);
-			setenv("PATH", newp, 1);
-			free(newp);
+	/* prepend our current directory and our argv[0] directory */
+	with (char *arg0 = argv[0]) {
+		char *dir0;
+		if ((dir0 = strrchr(arg0, '/')) != NULL) {
+			*dir0 = '\0';
+			prepend_path(arg0);
 		}
 	}
+	prepend_path(".");
+	/* also bang builddir to path */
+	with (char *blddir = getenv("builddir")) {
+		if (LIKELY(blddir != NULL)) {
+			prepend_path(blddir);
+		}
+	}
+
 	/* just to be clear about this */
 #if defined WORDS_BIGENDIAN
 	setenv("endian", "big", 1);
@@ -822,9 +1079,10 @@ main(int argc, char *argv[])
 		rc = 99;
 	}
 
+	/* resource freeing */
+	free_path();
 out:
 	cmdline_parser_free(argi);
-	/* never succeed */
 	return rc;
 }
 
