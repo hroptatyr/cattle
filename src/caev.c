@@ -64,6 +64,11 @@ quant_add(ctl_quant_t x, ctl_quant_t y)
 static __attribute__((const, pure)) ctl_ratio_t
 ratio_add(ctl_ratio_t x, ctl_ratio_t y)
 {
+	if (x.p == 0 && x.q == 0U) {
+		return y;
+	} else if (y.p == 0 && y.q == 0U) {
+		return x;
+	}
 	return ctl_ratio_compos(x, y);
 }
 
