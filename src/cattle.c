@@ -77,8 +77,8 @@ error(const char *fmt, ...)
 
 
 /* public api, might go to libcattle one day */
-ctl_ctx_t
-ctl_open_caev_file(const char *fn)
+static int
+ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn */
 	static ctl_caev_t *caevs;
@@ -86,15 +86,12 @@ ctl_open_caev_file(const char *fn)
 	char *line = NULL;
 	size_t llen = 0UL;
 	ssize_t nrd;
-	struct ctl_ctx_s *ctx; 
 	FILE *f;
 	size_t caevi = 0U;
+	int res = 0;
 
 	if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
-		goto nul;
-	} else if (UNLIKELY((ctx = calloc(1, sizeof(*ctx))) == NULL)) {
-		goto nul;
-	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+		res = -1;
 		goto nul;
 	}
 
@@ -138,17 +135,7 @@ nul:
 	if (line != NULL) {
 		free(line);
 	}
-	return ctx;
-}
-
-void
-ctl_close_caev_file(ctl_ctx_t x)
-{
-	if (LIKELY(x->q != NULL)) {
-		free_ctl_wheap(x->q);
-	}
-	free(x);
-	return;
+	return res;
 }
 
 
@@ -168,18 +155,24 @@ static int
 cmd_print(struct ctl_args_info argi[static 1U])
 {
 	static const char usg[] = "Usage: cattle print FILEs...\n";
-	ctl_ctx_t ctx;
+	static struct ctl_ctx_s ctx[1];
 	int res = 0;
 
 	if (argi->inputs_num < 2U) {
 		fputs(usg, stderr);
 		res = 1;
 		goto out;
+	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+		res = 1;
+		goto out;
 	}
 
-	with (const char *fn = argi->inputs[1U]) {
-		if (UNLIKELY((ctx = ctl_open_caev_file(fn)) == NULL)) {
+	for (unsigned int i = 1U; i < argi->inputs_num; i++) {
+		const char *fn = argi->inputs[i];
+
+		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
 			error("cannot open file `%s'", fn);
+			res = 1;
 			goto out;
 		}
 	}
@@ -198,9 +191,10 @@ cmd_print(struct ctl_args_info argi[static 1U])
 		}
 	}
 
-	/* and out again */
-	ctl_close_caev_file(ctx);
 out:
+	if (LIKELY(ctx->q != NULL)) {
+		free_ctl_wheap(ctx->q);
+	}
 	return res;
 }
 
