@@ -4,6 +4,7 @@ usage "cattle [OPTIONS...] COMMAND [ARGs...]"
 description "Tool to apply corporate actions to time series.
 
 COMMAND may be one of:
-  print Print resulting actors of caev echse messages.
+  apply  Apply a series of corporate action events to price time series.
+  print  Print resulting actors of caev echse messages.
 "
 
