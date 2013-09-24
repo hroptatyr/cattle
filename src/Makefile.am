@@ -47,6 +47,19 @@ libcattle_la_SOURCES += caev-fld-gp.erf
 BUILT_SOURCES += caev-rdr-gp.c
 BUILT_SOURCES += caev-fld-gp.c
 
+noinst_LTLIBRARIES += libcoru.la
+libcoru_la_SOURCES =
+EXTRA_libcoru_la_SOURCES =
+libcoru_la_SOURCES += coru/cocore.c coru/cocore.h
+libcoru_la_SOURCES += coru/switch.c coru/switch.h
+libcoru_la_SOURCES += coru/platform.h
+libcoru_la_SOURCES += coru/valgrind.h
+libcoru_la_SOURCES += coru/memcheck.h
+EXTRA_libcoru_la_SOURCES += coru/switch-arm.c
+EXTRA_libcoru_la_SOURCES += coru/switch-ppc_osx.c
+EXTRA_libcoru_la_SOURCES += coru/switch-x86.c
+EXTRA_libcoru_la_SOURCES += coru/switch-x86_64.c
+
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
