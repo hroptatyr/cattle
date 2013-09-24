@@ -45,17 +45,21 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <dfp754.h>
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
 #include "nifty.h"
 #include "dt-strpf.h"
 #include "wheap.h"
+#include "coru.h"
 
 struct ctl_ctx_s {
 	ctl_wheap_t q;
 	ctl_caev_t sum;
 };
+
+#include "../test/caev-io.c"
 
 
 static void
@@ -76,6 +80,81 @@ error(const char *fmt, ...)
 }
 
 
+/* coroutines */
+struct tser_ln_s {
+	echs_instant_t t;
+	const char *ln;
+	size_t lz;
+};
+
+struct echs_msg_s {
+	echs_instant_t t;
+	const void *msg;
+	size_t msz;
+};
+
+DEFCORU(co_appl_rdr, {
+		FILE *f;
+	}, void *UNUSED(arg))
+{
+/* coroutine for the reader of the tseries */
+	char *line = NULL;
+	size_t llen = 0UL;
+	ssize_t nrd;
+
+	while ((nrd = getline(&line, &llen, CORU_CLOSUR(f))) > 0) {
+		static struct tser_ln_s ln[1];
+		char *p;
+
+		if (*line == '#') {
+			continue;
+		} else if ((p = strchr(line, '\t')) == NULL) {
+			break;
+		} else if (__inst_0_p(ln->t = dt_strp(line))) {
+			break;
+		}
+		/* pack the result structure */
+		ln->ln = p + 1U;
+		ln->lz = nrd - (p + 1U - line);
+		YIELD(ln);
+	}
+
+	free(line);
+	line = NULL;
+	llen = 0U;
+	return 0;
+}
+
+DEFCORU(co_appl_pop, {
+		ctl_wheap_t q;
+	}, void *UNUSED(arg))
+{
+	static struct echs_msg_s ev[1];
+	ctl_wheap_t q = CORU_CLOSUR(q);
+
+	while (!__inst_0_p(ev->t = ctl_wheap_top_rank(q))) {
+		/* assume it's a ctl-caev_t */
+		ev->msg = (const ctl_caev_t*)ctl_wheap_pop(q);
+		ev->msz = sizeof(ctl_caev_t);
+		YIELD(ev);
+	}
+	return 0;
+}
+
+static void
+__appl_pr(echs_instant_t t, ctl_price_t p)
+{
+	char buf[256U];
+	char *bp = buf;
+
+	bp += dt_strf(bp, sizeof(buf) - (bp - buf), t);
+	*bp++ = '\t';
+	snprintf(bp, sizeof(buf) - (bp - buf), "%f", (float)p);
+	puts(buf);
+	return;
+}
+
+
 /* public api, might go to libcattle one day */
 static int
 ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
@@ -83,59 +162,96 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 /* wants a const char *fn */
 	static ctl_caev_t *caevs;
 	static size_t ncaevs;
-	char *line = NULL;
-	size_t llen = 0UL;
-	ssize_t nrd;
-	FILE *f;
 	size_t caevi = 0U;
-	int res = 0;
+	struct cocore *rdr;
+	struct cocore *me;
+	FILE *f;
 
 	if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
-		res = -1;
-		goto nul;
+		return -1;
 	}
 
-	while ((nrd = getline(&line, &llen, f)) > 0) {
-		char *p;
-		echs_instant_t t;
+	me = PREP();
+	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 
-		if (*line == '#') {
-			continue;
-		} else if ((p = strchr(line, '\t')) == NULL) {
-			break;
-		} else if (__inst_0_p(t = dt_strp(line))) {
-			break;
+	for (const struct tser_ln_s *ln; (ln = NEXT(rdr));) {
+		/* try to read the whole shebang */
+		ctl_caev_t c = ctl_caev_rdr(ctx, ln->t, ln->ln);
+		uintptr_t qmsg;
+
+		/* resize check */
+		if (caevi >= ncaevs) {
+			size_t nu = ncaevs + 64U;
+			caevs = realloc(caevs, nu * sizeof(*caevs));
+			ncaevs = nu;
 		}
-		/* otherwise try to read the whole shebang */
-		with (ctl_caev_t c = ctl_caev_rdr(ctx, t, p + 1U)) {
-			uintptr_t qmsg;
 
-			/* resize check */
-			if (caevi >= ncaevs) {
-				size_t nu = ncaevs + 64U;
-				caevs = realloc(caevs, nu * sizeof(*caevs));
-				ncaevs = nu;
-			}
-
-			/* `clone' C */
-			qmsg = (uintptr_t)(caevs + caevi);
-			caevs[caevi++] = c;
-			/* insert to heap */
-			ctl_wheap_add_deferred(ctx->q, t, qmsg);
-			/* also sum them up */
-			ctx->sum = ctl_caev_add(ctx->sum, c);
-		}
+		/* `clone' C */
+		qmsg = (uintptr_t)(caevs + caevi);
+		caevs[caevi++] = c;
+		/* insert to heap */
+		ctl_wheap_add_deferred(ctx->q, ln->t, qmsg);
+		/* also sum them up */
+		ctx->sum = ctl_caev_add(ctx->sum, c);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
-nul:
-	if (f != NULL) {
-		fclose(f);
+	fclose(f);
+	UNPREP();
+	return 0;
+}
+
+static int
+ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
+{
+/* wants a const char *fn, the time series
+ * format in there is first column is a date, the rest is prices */
+	struct cocore *rdr;
+	struct cocore *pop;
+	struct cocore *me;
+	const struct echs_msg_s *ev;
+	const struct tser_ln_s *ln;
+	FILE *f;
+
+	if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+		return -1;
 	}
-	if (line != NULL) {
-		free(line);
+
+	me = PREP();
+	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+
+	ev = NEXT(pop);
+	while (ev && (ln = NEXT(rdr))) {
+		ctl_fund_t p;
+
+		/* otherwise check that T is older than the top of the wheap */
+		while (UNLIKELY(!__inst_lt_p(ln->t, ev->t))) {
+			/* compute the new sum */
+			ctl_caev_t caev = *(const ctl_caev_t*)ev->msg;
+			ctx->sum = ctl_caev_sub(ctx->sum, caev);
+			if (!(ev = NEXT(pop))) {
+				goto raw;
+			}
+		}
+		/* otherwise apply */
+		p.mktprc = strtod32(ln->ln, NULL);
+		p = ctl_caev_act(ctx->sum, p);
+
+		__appl_pr(ln->t, p.mktprc);
 	}
-	return res;
+	while ((ln = NEXT(rdr))) {
+		ctl_price_t p;
+
+	raw:
+		p = strtod32(ln->ln, NULL);
+		__appl_pr(ln->t, p);
+	}
+
+	UNPREP();
+
+	fclose(f);
+	return 0;
 }
 
 
@@ -148,8 +264,6 @@ nul:
 #if defined __INTEL_COMPILER
 # pragma warning (default:593)
 #endif	/* __INTEL_COMPILER */
-
-#include "../test/caev-io.c"
 
 static int
 cmd_print(struct ctl_args_info argi[static 1U])
@@ -198,6 +312,47 @@ out:
 	return res;
 }
 
+static int
+cmd_apply(struct ctl_args_info argi[static 1U])
+{
+	static const char usg[] = "Usage: cattle apply PRICES CAEV\n";
+	static struct ctl_ctx_s ctx[1];
+	int res = 0;
+
+	if (argi->inputs_num < 3U) {
+		fputs(usg, stderr);
+		res = 1;
+		goto out;
+	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+		res = 1;
+		goto out;
+	}
+
+	/* open caev file and read */
+	with (const char *caev_fn = argi->inputs[2U]) {
+		if (UNLIKELY(ctl_read_caev_file(ctx, caev_fn) < 0)) {
+			error("cannot open caev file `%s'", caev_fn);
+			res = 1;
+			goto out;
+		}
+	}
+
+	/* open time series file */
+	with (const char *tser_fn = argi->inputs[1U]) {
+		if (UNLIKELY(ctl_appl_caev_file(ctx, tser_fn) < 0)) {
+			error("cannot open series file `%s'", tser_fn);
+			res = 1;
+			goto out;
+		}
+	}
+
+out:
+	if (LIKELY(ctx->q != NULL)) {
+		free_ctl_wheap(ctx->q);
+	}
+	return res;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -213,9 +368,14 @@ main(int argc, char *argv[])
 		goto out;
 	}
 
+	/* get the coroutines going */
+	initialise_cocore();
+
 	/* check the command */
 	with (const char *cmd = argi->inputs[0U]) {
-		if (!strcmp(cmd, "print")) {
+		if (!strcmp(cmd, "apply")) {
+			res = cmd_apply(argi);
+		} else if (!strcmp(cmd, "print")) {
 			res = cmd_print(argi);
 		}
 	}
