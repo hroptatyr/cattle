@@ -105,7 +105,7 @@ __wheap_cell_rneg(ctl_wheap_t h, size_t i)
 {
 	size_t cidx = i / RBITS_WIDTH, bidx = i % RBITS_WIDTH;
 
-	return h->rbits[cidx] ^= 1U << bidx;
+	return h->rbits[cidx] ^= (1ULL << bidx);
 }
 
 static inline void
@@ -113,7 +113,7 @@ __wheap_void_rbit(ctl_wheap_t h, size_t i)
 {
 	size_t cidx = i / RBITS_WIDTH, bidx = i % RBITS_WIDTH;
 
-	h->rbits[cidx] &= ~(1U << bidx);
+	h->rbits[cidx] &= ~(1ULL << bidx);
 	return;
 }
 
