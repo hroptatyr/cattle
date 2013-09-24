@@ -213,6 +213,14 @@ TESTS += wheap_08.clit
 check_PROGRAMS += wheap_09
 wheap_09_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 wheap_09_LDADD = $(cattle_LIBS)
+TESTS += wheap_09.clit
+TESTS += wheap_10.clit
+TESTS += wheap_11.clit
+TESTS += wheap_12.clit
+TESTS += wheap_13.clit
+TESTS += wheap_14.clit
+TESTS += wheap_15.clit
+TESTS += wheap_16.clit
 
 
 ## our friendly helpers

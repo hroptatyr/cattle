@@ -45,8 +45,13 @@ main(int argc, char *argv[])
 		}
 	}
 
-	for (size_t j = 0U, i = 0U; j < niter; j++, i = (i + 1U) % nmodu) {
-		ctl_wheap_add(x, v[i], 0U);
+	for (size_t j = 0U, i = 0U; j < niter; j++) {
+		ctl_wheap_add_deferred(x, v[i], 0U);
+
+		if (i = (i + 1U) >= nmodu) {
+			ctl_wheap_fix_deferred(x);
+			i = 0;
+		}
 	}
 
 	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(x));) {
@@ -54,5 +59,7 @@ main(int argc, char *argv[])
 
 		pr(t);
 	}
+
+	free_ctl_wheap(x);
 	return 0;
 }
