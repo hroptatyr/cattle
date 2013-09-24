@@ -409,6 +409,16 @@ wheap_sort(ctl_wheap_t h)
 	return;
 }
 
+static __attribute__((unused)) void
+wheap_constr(ctl_wheap_t h)
+{
+	memset(h->rbits, 0, h->z / RBITS_WIDTH);
+	for (size_t j = __wheap_cell_dad(h, h->n) - 1U; j < h->n; j--) {
+		__wheapify_sift_down(h, j);
+	}
+	return;
+}
+
 
 ctl_wheap_t
 make_ctl_wheap(void)
