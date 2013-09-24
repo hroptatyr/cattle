@@ -50,18 +50,22 @@
 #include "wheap.h"
 #include "nifty.h"
 
+typedef uint_fast32_t rbitset_t;
+
 struct ctl_wheap_s {
+	/** number of cells on the heap */
+	size_t n;
+	/** the cells themselves, with < defined by __inst_lt_p() */
 	echs_instant_t *cells;
 	uintptr_t *colours;
-	uint_fast32_t *rbits;
+	rbitset_t *rbits;
+#define RBITS_WIDTH	(sizeof(rbitset_t) * 8U)
 
 	/** number of recent bulk inserts (deferred adds)
 	 * also used as an indicator for the heap property, 0 means yes. */
 	size_t ndfr;
 	/** allocated size */
 	size_t z;
-	/** number of cells on the heap */
-	size_t n;
 };
 
 
@@ -78,11 +82,11 @@ struct ctl_wheap_s {
 static void
 __wheap_resz(ctl_wheap_t h, size_t nu_z)
 {
-	/* round nu_z to multiple of 8 */
-	nu_z = ((nu_z - 1U) / 8U + 1U) * 8U;
+	/* round nu_z to multiple of wid */
+	nu_z = ((nu_z - 1U) / RBITS_WIDTH + 1U) * RBITS_WIDTH;
 	h->cells = recalloc(h->cells, h->z, nu_z);
 	h->colours = recalloc(h->colours, h->z, nu_z);
-	h->rbits = recalloc(h->rbits, h->z / 8U, nu_z / 8U);
+	h->rbits = recalloc(h->rbits, h->z / RBITS_WIDTH, nu_z / RBITS_WIDTH);
 	h->z = nu_z;
 	return;
 }
@@ -91,8 +95,7 @@ __wheap_resz(ctl_wheap_t h, size_t nu_z)
 static inline unsigned int
 __wheap_cell_rbit(ctl_wheap_t h, size_t i)
 {
-	const size_t wid = sizeof(*h->rbits) * 8U;
-	size_t cidx = i / wid, bidx = i % wid;
+	size_t cidx = i / RBITS_WIDTH, bidx = i % RBITS_WIDTH;
 
 	return (h->rbits[cidx] >> bidx) & 1U;
 }
@@ -100,8 +103,7 @@ __wheap_cell_rbit(ctl_wheap_t h, size_t i)
 static inline unsigned int
 __wheap_cell_rneg(ctl_wheap_t h, size_t i)
 {
-	const size_t wid = sizeof(*h->rbits) * 8U;
-	size_t cidx = i / wid, bidx = i % wid;
+	size_t cidx = i / RBITS_WIDTH, bidx = i % RBITS_WIDTH;
 
 	return h->rbits[cidx] ^= 1U << bidx;
 }
@@ -109,10 +111,9 @@ __wheap_cell_rneg(ctl_wheap_t h, size_t i)
 static inline void
 __wheap_void_rbit(ctl_wheap_t h, size_t i)
 {
-	const size_t wid = sizeof(*h->rbits) * 8U;
-	size_t cidx = i / wid, bidx = i % wid;
+	size_t cidx = i / RBITS_WIDTH, bidx = i % RBITS_WIDTH;
 
-	h->rbits[cidx] &= ~(1 << bidx);
+	h->rbits[cidx] &= ~(1U << bidx);
 	return;
 }
 
