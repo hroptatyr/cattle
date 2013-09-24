@@ -50,6 +50,7 @@ BUILT_SOURCES += caev-fld-gp.c
 noinst_LTLIBRARIES += libcoru.la
 libcoru_la_SOURCES =
 EXTRA_libcoru_la_SOURCES =
+libcoru_la_SOURCES += coru.h
 libcoru_la_SOURCES += coru/cocore.c coru/cocore.h
 libcoru_la_SOURCES += coru/switch.c coru/switch.h
 libcoru_la_SOURCES += coru/platform.h
@@ -65,6 +66,7 @@ cattle_SOURCES = cattle.c
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
 cattle_CPPFLAGS += -DSTANDALONE
 cattle_LDADD = libcattle.la
+cattle_LDADD += libcoru.la
 BUILT_SOURCES += cattle.x cattle.xh
 
 
