@@ -224,9 +224,10 @@ __wheapify_sift_down(ctl_wheap_t h, size_t j)
 /* aka sift-down(j) in Edelkamp's improved paper */
 	size_t k;
 
-	if ((k = __wheap_cell_sis(h, j)) >= h->n) {
+	if (UNLIKELY((k = __wheap_cell_sis(h, j)) >= h->n)) {
 		return;
 	}
+
 	for (size_t nu; (nu = __wheap_cell_bro(h, k)) < h->n; k = nu);
 	for (; k != j; k = __wheap_cell_dad(h, k)) {
 		__wheapify_mrg(h, j, k);
@@ -308,7 +309,7 @@ wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 	}
 #endif	/* AUTO_FIXUP_BULK_OPS */
 	/* check for resize */
-	if (UNLIKELY((idx = h->n) + 1U >= h->z)) {
+	if (UNLIKELY((idx = h->n) >= h->z)) {
 		__wheap_resz(h, h->z * 2U);
 	}
 
@@ -316,7 +317,7 @@ wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 	h->colours[idx] = msg;
 	__wheap_void_rbit(h, idx);
 
-	if (!(idx & 0x1U)) {
+	if (idx & 0x1U) {
 		__wheap_void_dad(h, idx);
 	}
 
@@ -350,7 +351,7 @@ wheap_pop(ctl_wheap_t h)
 	h->colours[0U] = h->colours[end_idx];
 	h->colours[end_idx] = (uintptr_t)NULL;
 
-	if (end_idx > 1) {
+	if (LIKELY(end_idx > 1)) {
 		__wheapify_sift_down(h, 0U);
 	}
 	return res;
