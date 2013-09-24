@@ -162,53 +162,43 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 /* wants a const char *fn */
 	static ctl_caev_t *caevs;
 	static size_t ncaevs;
-	char *line = NULL;
-	size_t llen = 0UL;
-	ssize_t nrd;
-	FILE *f;
 	size_t caevi = 0U;
-	int res = 0;
+	struct cocore *rdr;
+	struct cocore *me;
+	FILE *f;
 
 	if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
 	}
 
-	while ((nrd = getline(&line, &llen, f)) > 0) {
-		char *p;
-		echs_instant_t t;
+	me = PREP();
+	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 
-		if (*line == '#') {
-			continue;
-		} else if ((p = strchr(line, '\t')) == NULL) {
-			break;
-		} else if (__inst_0_p(t = dt_strp(line))) {
-			break;
+	for (const struct tser_ln_s *ln; (ln = NEXT(rdr));) {
+		/* try to read the whole shebang */
+		ctl_caev_t c = ctl_caev_rdr(ctx, ln->t, ln->ln);
+		uintptr_t qmsg;
+
+		/* resize check */
+		if (caevi >= ncaevs) {
+			size_t nu = ncaevs + 64U;
+			caevs = realloc(caevs, nu * sizeof(*caevs));
+			ncaevs = nu;
 		}
-		/* otherwise try to read the whole shebang */
-		with (ctl_caev_t c = ctl_caev_rdr(ctx, t, p + 1U)) {
-			uintptr_t qmsg;
 
-			/* resize check */
-			if (caevi >= ncaevs) {
-				size_t nu = ncaevs + 64U;
-				caevs = realloc(caevs, nu * sizeof(*caevs));
-				ncaevs = nu;
-			}
-
-			/* `clone' C */
-			qmsg = (uintptr_t)(caevs + caevi);
-			caevs[caevi++] = c;
-			/* insert to heap */
-			ctl_wheap_add_deferred(ctx->q, t, qmsg);
-			/* also sum them up */
-			ctx->sum = ctl_caev_add(ctx->sum, c);
-		}
+		/* `clone' C */
+		qmsg = (uintptr_t)(caevs + caevi);
+		caevs[caevi++] = c;
+		/* insert to heap */
+		ctl_wheap_add_deferred(ctx->q, ln->t, qmsg);
+		/* also sum them up */
+		ctx->sum = ctl_caev_add(ctx->sum, c);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
 	fclose(f);
-	free(line);
-	return res;
+	UNPREP();
+	return 0;
 }
 
 static int
@@ -338,9 +328,6 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 		goto out;
 	}
 
-	/* get the coroutines going */
-	initialise_cocore();
-
 	/* open caev file and read */
 	with (const char *caev_fn = argi->inputs[2U]) {
 		if (UNLIKELY(ctl_read_caev_file(ctx, caev_fn) < 0)) {
@@ -380,6 +367,9 @@ main(int argc, char *argv[])
 		res = 1;
 		goto out;
 	}
+
+	/* get the coroutines going */
+	initialise_cocore();
 
 	/* check the command */
 	with (const char *cmd = argi->inputs[0U]) {
