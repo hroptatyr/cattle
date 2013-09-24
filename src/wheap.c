@@ -50,18 +50,22 @@
 #include "wheap.h"
 #include "nifty.h"
 
+typedef uint_fast32_t rbitset_t;
+
 struct ctl_wheap_s {
+	/** number of cells on the heap */
+	size_t n;
+	/** the cells themselves, with < defined by __inst_lt_p() */
 	echs_instant_t *cells;
 	uintptr_t *colours;
-	uint_fast32_t *rbits;
+	rbitset_t *rbits;
+#define RBITS_WIDTH	(sizeof(rbitset_t) * 8U)
 
 	/** number of recent bulk inserts (deferred adds)
 	 * also used as an indicator for the heap property, 0 means yes. */
 	size_t ndfr;
 	/** allocated size */
 	size_t z;
-	/** number of cells on the heap */
-	size_t n;
 };
 
 
@@ -78,11 +82,11 @@ struct ctl_wheap_s {
 static void
 __wheap_resz(ctl_wheap_t h, size_t nu_z)
 {
-	/* round nu_z to multiple of 8 */
-	nu_z = ((nu_z - 1U) / 8U + 1U) * 8U;
+	/* round nu_z to multiple of wid */
+	nu_z = ((nu_z - 1U) / RBITS_WIDTH + 1U) * RBITS_WIDTH;
 	h->cells = recalloc(h->cells, h->z, nu_z);
 	h->colours = recalloc(h->colours, h->z, nu_z);
-	h->rbits = recalloc(h->rbits, h->z / 8U, nu_z / 8U);
+	h->rbits = recalloc(h->rbits, h->z / RBITS_WIDTH, nu_z / RBITS_WIDTH);
 	h->z = nu_z;
 	return;
 }
@@ -91,8 +95,7 @@ __wheap_resz(ctl_wheap_t h, size_t nu_z)
 static inline unsigned int
 __wheap_cell_rbit(ctl_wheap_t h, size_t i)
 {
-	const size_t wid = sizeof(*h->rbits) * 8U;
-	size_t cidx = i / wid, bidx = i % wid;
+	size_t cidx = i / RBITS_WIDTH, bidx = i % RBITS_WIDTH;
 
 	return (h->rbits[cidx] >> bidx) & 1U;
 }
@@ -100,19 +103,17 @@ __wheap_cell_rbit(ctl_wheap_t h, size_t i)
 static inline unsigned int
 __wheap_cell_rneg(ctl_wheap_t h, size_t i)
 {
-	const size_t wid = sizeof(*h->rbits) * 8U;
-	size_t cidx = i / wid, bidx = i % wid;
+	size_t cidx = i / RBITS_WIDTH, bidx = i % RBITS_WIDTH;
 
-	return h->rbits[cidx] ^= 1U << bidx;
+	return h->rbits[cidx] ^= (1ULL << bidx);
 }
 
 static inline void
 __wheap_void_rbit(ctl_wheap_t h, size_t i)
 {
-	const size_t wid = sizeof(*h->rbits) * 8U;
-	size_t cidx = i / wid, bidx = i % wid;
+	size_t cidx = i / RBITS_WIDTH, bidx = i % RBITS_WIDTH;
 
-	h->rbits[cidx] &= ~(1 << bidx);
+	h->rbits[cidx] &= ~(1ULL << bidx);
 	return;
 }
 
@@ -223,9 +224,10 @@ __wheapify_sift_down(ctl_wheap_t h, size_t j)
 /* aka sift-down(j) in Edelkamp's improved paper */
 	size_t k;
 
-	if ((k = __wheap_cell_sis(h, j)) >= h->n) {
+	if (UNLIKELY((k = __wheap_cell_sis(h, j)) >= h->n)) {
 		return;
 	}
+
 	for (size_t nu; (nu = __wheap_cell_bro(h, k)) < h->n; k = nu);
 	for (; k != j; k = __wheap_cell_dad(h, k)) {
 		__wheapify_mrg(h, j, k);
@@ -307,7 +309,7 @@ wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 	}
 #endif	/* AUTO_FIXUP_BULK_OPS */
 	/* check for resize */
-	if (UNLIKELY((idx = h->n) + 1U >= h->z)) {
+	if (UNLIKELY((idx = h->n) >= h->z)) {
 		__wheap_resz(h, h->z * 2U);
 	}
 
@@ -315,7 +317,7 @@ wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 	h->colours[idx] = msg;
 	__wheap_void_rbit(h, idx);
 
-	if (!(idx & 0x1U)) {
+	if (idx & 0x1U) {
 		__wheap_void_dad(h, idx);
 	}
 
@@ -349,7 +351,7 @@ wheap_pop(ctl_wheap_t h)
 	h->colours[0U] = h->colours[end_idx];
 	h->colours[end_idx] = (uintptr_t)NULL;
 
-	if (end_idx > 1) {
+	if (LIKELY(end_idx > 1)) {
 		__wheapify_sift_down(h, 0U);
 	}
 	return res;
@@ -404,6 +406,16 @@ wheap_sort(ctl_wheap_t h)
 		}
 	}
 	h->ndfr = 0U;
+	return;
+}
+
+static __attribute__((unused)) void
+wheap_constr(ctl_wheap_t h)
+{
+	memset(h->rbits, 0, h->z / RBITS_WIDTH);
+	for (size_t j = __wheap_cell_dad(h, h->n) - 1U; j < h->n; j--) {
+		__wheapify_sift_down(h, j);
+	}
 	return;
 }
 

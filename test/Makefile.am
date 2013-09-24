@@ -198,6 +198,30 @@ caev_supp_14_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 caev_supp_14_LDADD = $(cattle_LIBS)
 TESTS += caev-supp.14.clit
 
+check_PROGRAMS += wheap_01
+wheap_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+wheap_01_LDADD = $(cattle_LIBS)
+TESTS += wheap_01.clit
+TESTS += wheap_02.clit
+TESTS += wheap_03.clit
+TESTS += wheap_04.clit
+TESTS += wheap_05.clit
+TESTS += wheap_06.clit
+TESTS += wheap_07.clit
+TESTS += wheap_08.clit
+
+check_PROGRAMS += wheap_09
+wheap_09_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+wheap_09_LDADD = $(cattle_LIBS)
+TESTS += wheap_09.clit
+TESTS += wheap_10.clit
+TESTS += wheap_11.clit
+TESTS += wheap_12.clit
+TESTS += wheap_13.clit
+TESTS += wheap_14.clit
+TESTS += wheap_15.clit
+TESTS += wheap_16.clit
+
 
 ## our friendly helpers
 check_PROGRAMS += clitoris

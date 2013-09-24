@@ -1,0 +1,8 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ wheap_01 16 | sort > "wheap_02.ref"
+$ wheap_01 16 && rm -- "wheap_02.ref"
+< "wheap_02.ref"
+$
+
+## wheap_02.clit ends here
