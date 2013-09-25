@@ -295,11 +295,11 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 static int
 cmd_print(struct ctl_args_info argi[static 1U])
 {
-	static const char usg[] = "Usage: cattle print FILEs...\n";
+	static const char usg[] = "Usage: cattle print [CAEVs...]\n";
 	static struct ctl_ctx_s ctx[1];
 	int res = 0;
 
-	if (argi->inputs_num < 2U) {
+	if (argi->inputs_num < 1U) {
 		fputs(usg, stderr);
 		res = 1;
 		goto out;
@@ -342,11 +342,11 @@ out:
 static int
 cmd_apply(struct ctl_args_info argi[static 1U])
 {
-	static const char usg[] = "Usage: cattle apply PRICES CAEV\n";
+	static const char usg[] = "Usage: cattle apply PRICES [CAEV]\n";
 	static struct ctl_ctx_s ctx[1];
 	int res = 0;
 
-	if (argi->inputs_num < 3U) {
+	if (argi->inputs_num < 2U) {
 		fputs(usg, stderr);
 		res = 1;
 		goto out;
