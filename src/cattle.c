@@ -158,6 +158,22 @@ __appl_pr(echs_instant_t t, ctl_price_t p)
 	return;
 }
 
+static _Decimal32
+strtokd32(const char *ln, char **on)
+{
+	const char *p;
+
+	if (*on == NULL) {
+		p = ln;
+	} else if (**on != '\t') {
+		*on = NULL;
+		return 0.df;
+	} else {
+		p = *on + 1U;
+	}
+	return strtod32(p, on);
+}
+
 
 /* public api, might go to libcattle one day */
 static int
@@ -248,6 +264,9 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		break;
 	case LN_ACT:
 		while ((ln = NEXT(rdr)) != NULL) {
+			char *on = NULL;
+			ctl_fund_t p;
+
 			/* otherwise check that T is older than top of wheap */
 			while (UNLIKELY(!__inst_lt_p(ln->t, ev->t))) {
 				/* compute the new sum */
@@ -260,21 +279,22 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			/* otherwise apply */
-			with (ctl_fund_t p) {
-				p.mktprc = strtod32(ln->ln, NULL);
+			while ((p.mktprc = strtokd32(ln->ln, &on), on)) {
 				p = ctl_caev_act(ctx->sum, p);
-
 				__appl_pr(ln->t, p.mktprc);
 			}
 		}
 		break;
 	case LN_LIT:
 		while ((ln = NEXT(rdr)) != NULL) {
+			char *on;
 			ctl_price_t p;
 
 		raw:
-			p = strtod32(ln->ln, NULL);
-			__appl_pr(ln->t, p);
+			on = NULL;
+			while ((p = strtokd32(ln->ln, &on), on)) {
+				__appl_pr(ln->t, p);
+			}
 		}
 		break;
 	}
