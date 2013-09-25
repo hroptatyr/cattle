@@ -38,6 +38,7 @@ AC_CHECK_TOOLS([AR], [xiar ar], [false])
 AC_C_BIGENDIAN
 
 AC_CHECK_HEADERS([dfp754.h])
+AM_CONDITIONAL([HAVE_DFP754], [test "${ac_cv_header_dfp754_h}" = "yes"])
 
 AM_MISSING_PROG([HELP2MAN], [help2man], ["${missing_dir}"])
 
