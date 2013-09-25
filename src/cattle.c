@@ -61,6 +61,8 @@
 struct ctl_ctx_s {
 	ctl_wheap_t q;
 	ctl_caev_t sum;
+
+	unsigned int rev:1;
 };
 
 #include "../test/caev-io.c"
@@ -239,6 +241,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		/* we've only got lines from the rdr coru */
 		LN_LIT,
 	} state = UNK;
+	ctl_caev_t sum;
 	FILE *f;
 
 	if (fn == NULL) {
@@ -251,6 +254,11 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
 
+	if (!ctx->rev) {
+		sum = ctx->sum;
+	} else {
+		sum = ctl_caev_rev(ctx->sum);
+	}
 
 	if ((ev = NEXT(pop)) != NULL) {
 		state = LN_ACT;
@@ -271,7 +279,12 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			while (UNLIKELY(!__inst_lt_p(ln->t, ev->t))) {
 				/* compute the new sum */
 				ctl_caev_t caev = *(const ctl_caev_t*)ev->msg;
-				ctx->sum = ctl_caev_sub(ctx->sum, caev);
+
+				if (!ctx->rev) {
+					sum = ctl_caev_sub(sum, caev);
+				} else {
+					sum = ctl_caev_add(sum, caev);
+				}
 				if ((ev = NEXT(pop)) == NULL) {
 					state = LN_LIT;
 					goto raw;
@@ -282,7 +295,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			pr_ei(ln->t);
 			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
 				fputc('\t', stdout);
-				p = ctl_caev_act(ctx->sum, p);
+				p = ctl_caev_act(sum, p);
 				pr_d32(p.mktprc);
 			} while ((p.mktprc = strtokd32(ln->ln, &on), on));
 			fputc('\n', stdout);
@@ -383,6 +396,10 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
 		res = 1;
 		goto out;
+	}
+
+	if (argi->reverse_given) {
+		ctx->rev = 1U;
 	}
 
 	/* open caev file and read */
