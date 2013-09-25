@@ -7,4 +7,9 @@ COMMAND may be one of:
   apply  Apply a series of corporate action events to price time series.
   print  Print resulting actors of caev echse messages.
 "
+text "
+Options affecting the apply command:"
 
+option "reverse" R
+	"Consider time-series file to be backadjusted, produce raw form."
+	optional
