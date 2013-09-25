@@ -45,7 +45,11 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
-#include <dfp754.h>
+#if defined HAVE_DFP754_H
+# include <dfp754.h>
+#elif defined HAVE_DFP_STDLIB_H
+# include <dfp/stdlib.h>
+#endif	/* HAVE_DFP754_H */
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
