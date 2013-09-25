@@ -39,7 +39,11 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <string.h>
-#include <dfp754.h>
+#if defined HAVE_DFP754_H
+# include <dfp754.h>
+#elif defined HAVE_DFP_STDLIB_H
+# include <dfp/stdlib.h>
+#endif	/* HAVE_DFP754_H */
 #include "caev-supp.h"
 #include "caev-rdr.h"
 #include "nifty.h"
