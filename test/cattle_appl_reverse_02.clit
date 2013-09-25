@@ -1,0 +1,12 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle apply "${srcdir}/cattle_03.tser" "${srcdir}/cattle_01.echs" > "foo_02"
+$ cattle apply -R "foo_02" "${srcdir}/cattle_01.echs"
+2006-01-01	19.980000	20.020000
+2007-01-01	21.980000	22.010000
+2008-01-01	2.390000	2.400000	2.400000
+2009-01-01	2.600000	2.610000	2.600000
+$ rm -- "foo_02"
+$
+
+## cattle_appl_reverse_01.clit ends here
