@@ -1,7 +1,11 @@
 /* just some routines for caev_t printing */
 #include <stdint.h>
 #include <stdio.h>
-#include "cattle.h"
+#include "cattle-ratio.h"
+#include "cattle-price.h"
+#include "cattle-quant.h"
+#include "cattle-perio.h"
+#include "cattle-date.h"
 #include "caev.h"
 
 static inline void
