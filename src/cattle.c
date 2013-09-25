@@ -145,17 +145,33 @@ DEFCORU(co_appl_pop, {
 	return 0;
 }
 
-static void
-__appl_pr(echs_instant_t t, ctl_price_t p)
+static int
+pr_ei(echs_instant_t t)
 {
-	char buf[256U];
-	char *bp = buf;
+	char buf[32U];
+	return fwrite(buf, sizeof(*buf), dt_strf(buf, sizeof(buf), t), stdout);
+}
 
-	bp += dt_strf(bp, sizeof(buf) - (bp - buf), t);
-	*bp++ = '\t';
-	snprintf(bp, sizeof(buf) - (bp - buf), "%f", (float)p);
-	puts(buf);
-	return;
+static int
+pr_d32(_Decimal32 x)
+{
+	return fprintf(stdout, "%f", (float)x);
+}
+
+static _Decimal32
+strtokd32(const char *ln, char **on)
+{
+	const char *p;
+
+	if (*on == NULL) {
+		p = ln;
+	} else if (**on != '\t') {
+		*on = NULL;
+		return 0.df;
+	} else {
+		p = *on + 1U;
+	}
+	return strtod32(p, on);
 }
 
 
@@ -248,6 +264,9 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		break;
 	case LN_ACT:
 		while ((ln = NEXT(rdr)) != NULL) {
+			char *on = NULL;
+			ctl_fund_t p;
+
 			/* otherwise check that T is older than top of wheap */
 			while (UNLIKELY(!__inst_lt_p(ln->t, ev->t))) {
 				/* compute the new sum */
@@ -260,21 +279,28 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			/* otherwise apply */
-			with (ctl_fund_t p) {
-				p.mktprc = strtod32(ln->ln, NULL);
+			pr_ei(ln->t);
+			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
+				fputc('\t', stdout);
 				p = ctl_caev_act(ctx->sum, p);
-
-				__appl_pr(ln->t, p.mktprc);
-			}
+				pr_d32(p.mktprc);
+			} while ((p.mktprc = strtokd32(ln->ln, &on), on));
+			fputc('\n', stdout);
 		}
 		break;
 	case LN_LIT:
 		while ((ln = NEXT(rdr)) != NULL) {
+			char *on;
 			ctl_price_t p;
 
 		raw:
-			p = strtod32(ln->ln, NULL);
-			__appl_pr(ln->t, p);
+			on = NULL;
+			pr_ei(ln->t);
+			for (; (p = strtokd32(ln->ln, &on), on);) {
+				fputc('\t', stdout);
+				pr_d32(p);
+			} while ((p = strtokd32(ln->ln, &on), on));
+			fputc('\n', stdout);
 		}
 		break;
 	}

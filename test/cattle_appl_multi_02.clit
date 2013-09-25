@@ -1,0 +1,10 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ head -n 1 "${srcdir}/cattle_01.echs" | cattle apply "${srcdir}/cattle_03.tser"
+2006-01-01	1.998000	2.002000
+2007-01-01	2.198000	2.201000
+2008-01-01	2.390000	2.400000	2.400000
+2009-01-01	2.600000	2.610000	2.600000
+$
+
+## cattle_appl_multi_02.clit ends here
