@@ -229,6 +229,10 @@ TESTS += cattle_04.clit
 EXTRA_DIST += cattle_01.tser
 EXTRA_DIST += cattle_01.echs
 
+TESTS += cattle_appl_multi_01.clit
+TESTS += cattle_appl_multi_02.clit
+EXTRA_DIST += cattle_02.tser
+
 
 ## our friendly helpers
 check_PROGRAMS += clitoris
