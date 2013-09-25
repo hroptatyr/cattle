@@ -167,7 +167,9 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	struct cocore *me;
 	FILE *f;
 
-	if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+	if (fn == NULL) {
+		f = stdin;
+	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
 	}
 
@@ -210,10 +212,18 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	struct cocore *pop;
 	struct cocore *me;
 	const struct echs_msg_s *ev;
-	const struct tser_ln_s *ln;
+	enum {
+		UNK,
+		/* we've got lines from the rdr coru and events from pop */
+		LN_ACT,
+		/* we've only got lines from the rdr coru */
+		LN_LIT,
+	} state = UNK;
 	FILE *f;
 
-	if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+	if (fn == NULL) {
+		f = stdin;
+	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
 	}
 
@@ -221,31 +231,48 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
 
-	ev = NEXT(pop);
-	while (ev && (ln = NEXT(rdr))) {
-		ctl_fund_t p;
 
-		/* otherwise check that T is older than the top of the wheap */
-		while (UNLIKELY(!__inst_lt_p(ln->t, ev->t))) {
-			/* compute the new sum */
-			ctl_caev_t caev = *(const ctl_caev_t*)ev->msg;
-			ctx->sum = ctl_caev_sub(ctx->sum, caev);
-			if (!(ev = NEXT(pop))) {
-				goto raw;
+	if ((ev = NEXT(pop)) != NULL) {
+		state = LN_ACT;
+	} else {
+		state = LN_LIT;
+	}
+	switch (state) {
+		const struct tser_ln_s *ln;
+	default:
+	case UNK:
+		break;
+	case LN_ACT:
+		while ((ln = NEXT(rdr)) != NULL) {
+			/* otherwise check that T is older than top of wheap */
+			while (UNLIKELY(!__inst_lt_p(ln->t, ev->t))) {
+				/* compute the new sum */
+				ctl_caev_t caev = *(const ctl_caev_t*)ev->msg;
+				ctx->sum = ctl_caev_sub(ctx->sum, caev);
+				if ((ev = NEXT(pop)) == NULL) {
+					state = LN_LIT;
+					goto raw;
+				}
+			}
+
+			/* otherwise apply */
+			with (ctl_fund_t p) {
+				p.mktprc = strtod32(ln->ln, NULL);
+				p = ctl_caev_act(ctx->sum, p);
+
+				__appl_pr(ln->t, p.mktprc);
 			}
 		}
-		/* otherwise apply */
-		p.mktprc = strtod32(ln->ln, NULL);
-		p = ctl_caev_act(ctx->sum, p);
+		break;
+	case LN_LIT:
+		while ((ln = NEXT(rdr)) != NULL) {
+			ctl_price_t p;
 
-		__appl_pr(ln->t, p.mktprc);
-	}
-	while ((ln = NEXT(rdr))) {
-		ctl_price_t p;
-
-	raw:
-		p = strtod32(ln->ln, NULL);
-		__appl_pr(ln->t, p);
+		raw:
+			p = strtod32(ln->ln, NULL);
+			__appl_pr(ln->t, p);
+		}
+		break;
 	}
 
 	UNPREP();
@@ -268,11 +295,11 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 static int
 cmd_print(struct ctl_args_info argi[static 1U])
 {
-	static const char usg[] = "Usage: cattle print FILEs...\n";
+	static const char usg[] = "Usage: cattle print [CAEVs...]\n";
 	static struct ctl_ctx_s ctx[1];
 	int res = 0;
 
-	if (argi->inputs_num < 2U) {
+	if (argi->inputs_num < 1U) {
 		fputs(usg, stderr);
 		res = 1;
 		goto out;
@@ -315,11 +342,11 @@ out:
 static int
 cmd_apply(struct ctl_args_info argi[static 1U])
 {
-	static const char usg[] = "Usage: cattle apply PRICES CAEV\n";
+	static const char usg[] = "Usage: cattle apply PRICES [CAEV]\n";
 	static struct ctl_ctx_s ctx[1];
 	int res = 0;
 
-	if (argi->inputs_num < 3U) {
+	if (argi->inputs_num < 2U) {
 		fputs(usg, stderr);
 		res = 1;
 		goto out;

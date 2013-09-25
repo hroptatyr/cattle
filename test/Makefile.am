@@ -23,7 +23,7 @@ CLEANFILES = $(check_PROGRAMS)
 TEST_EXTENSIONS += .clit
 TESTS_ENVIRONMENT = root=$(top_srcdir)
 CLIT_LOG_COMPILER = $(builddir)/clitoris
-AM_CLIT_LOG_FLAGS = -v --builddir $(builddir)
+AM_CLIT_LOG_FLAGS = -v --builddir $(top_builddir)/src
 AM_LOG_COMPILER = false
 
 EXTRA_DIST += caev-io.c
@@ -221,6 +221,13 @@ TESTS += wheap_13.clit
 TESTS += wheap_14.clit
 TESTS += wheap_15.clit
 TESTS += wheap_16.clit
+
+TESTS += cattle_01.clit
+TESTS += cattle_02.clit
+TESTS += cattle_03.clit
+TESTS += cattle_04.clit
+EXTRA_DIST += cattle_01.tser
+EXTRA_DIST += cattle_01.echs
 
 
 ## our friendly helpers
