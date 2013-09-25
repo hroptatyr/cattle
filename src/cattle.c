@@ -145,17 +145,17 @@ DEFCORU(co_appl_pop, {
 	return 0;
 }
 
-static void
-__appl_pr(echs_instant_t t, ctl_price_t p)
+static int
+pr_ei(echs_instant_t t)
 {
-	char buf[256U];
-	char *bp = buf;
+	char buf[32U];
+	return fwrite(buf, sizeof(*buf), dt_strf(buf, sizeof(buf), t), stdout);
+}
 
-	bp += dt_strf(bp, sizeof(buf) - (bp - buf), t);
-	*bp++ = '\t';
-	snprintf(bp, sizeof(buf) - (bp - buf), "%f", (float)p);
-	puts(buf);
-	return;
+static int
+pr_d32(_Decimal32 x)
+{
+	return fprintf(stdout, "%f", (float)x);
 }
 
 static _Decimal32
@@ -279,10 +279,13 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			/* otherwise apply */
-			while ((p.mktprc = strtokd32(ln->ln, &on), on)) {
+			pr_ei(ln->t);
+			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
+				fputc('\t', stdout);
 				p = ctl_caev_act(ctx->sum, p);
-				__appl_pr(ln->t, p.mktprc);
-			}
+				pr_d32(p.mktprc);
+			} while ((p.mktprc = strtokd32(ln->ln, &on), on));
+			fputc('\n', stdout);
 		}
 		break;
 	case LN_LIT:
@@ -292,9 +295,12 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		raw:
 			on = NULL;
-			while ((p = strtokd32(ln->ln, &on), on)) {
-				__appl_pr(ln->t, p);
-			}
+			pr_ei(ln->t);
+			for (; (p = strtokd32(ln->ln, &on), on);) {
+				fputc('\t', stdout);
+				pr_d32(p);
+			} while ((p = strtokd32(ln->ln, &on), on));
+			fputc('\n', stdout);
 		}
 		break;
 	}
