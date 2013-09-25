@@ -167,7 +167,9 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	struct cocore *me;
 	FILE *f;
 
-	if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+	if (fn == NULL) {
+		f = stdin;
+	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
 	}
 
@@ -219,7 +221,9 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	} state = UNK;
 	FILE *f;
 
-	if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+	if (fn == NULL) {
+		f = stdin;
+	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
 	}
 
