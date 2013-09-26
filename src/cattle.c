@@ -45,14 +45,10 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
-#if defined HAVE_DFP754_H
-# include <dfp754.h>
-#elif defined HAVE_DFP_STDLIB_H
-# include <dfp/stdlib.h>
-#endif	/* HAVE_DFP754_H */
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
+#include "ctl-dfp754.h"
 #include "nifty.h"
 #include "dt-strpf.h"
 #include "wheap.h"
@@ -173,7 +169,7 @@ strtokd32(const char *ln, char **on)
 	} else {
 		p = *on + 1U;
 	}
-	return strtod32(p, on);
+	return strtobid32(p, on);
 }
 
 
