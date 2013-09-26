@@ -39,13 +39,9 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <string.h>
-#if defined HAVE_DFP754_H
-# include <dfp754.h>
-#elif defined HAVE_DFP_STDLIB_H
-# include <dfp/stdlib.h>
-#endif	/* HAVE_DFP754_H */
 #include "caev-supp.h"
 #include "caev-rdr.h"
+#include "ctl-dfp754.h"
 #include "nifty.h"
 
 /* gperf gen'd goodness */
@@ -102,7 +98,7 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		char *pp;
 		_Decimal32 p;
 
-		p = strtod32(vp, &pp);
+		p = strtobid32(vp, &pp);
 		if (*pp != '"' && *pp != '\'') {
 			break;
 		}
