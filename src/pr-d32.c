@@ -48,7 +48,7 @@
 #include "nifty.h"
 
 static inline __attribute__((pure, const)) int
-expo(_Decimal32 x)
+expo_bid(_Decimal32 x)
 {
 	uint32_t b = bits(x);
 	register int tmp;
@@ -63,14 +63,37 @@ expo(_Decimal32 x)
 }
 
 static inline __attribute__((pure, const)) int
-sign(_Decimal32 x)
+expo_dpd(_Decimal32 x)
+{
+	uint32_t b = bits(x);
+	register int tmp;
+
+	b >>= 20U;
+	if (UNLIKELY((b & 0b11000000000U) == 0b11000000000U)) {
+		/* exponent starts 2 bits to the left */
+		tmp = ((b & 0b00110000000U) >> 1U) | (b & 0b111111U);
+	} else {
+		tmp = ((b & 0b11000000000U) >> 3U) | (b & 0b111111U);
+	}
+	return tmp - 101;
+}
+
+static inline __attribute__((pure, const)) int
+sign_bid(_Decimal32 x)
+{
+	uint32_t b = bits(x);
+	return (int32_t)b >> 31;
+}
+
+static inline __attribute__((pure, const)) int
+sign_dpd(_Decimal32 x)
 {
 	uint32_t b = bits(x);
 	return (int32_t)b >> 31;
 }
 
 static inline __attribute__((pure, const)) uint_least32_t
-mant(_Decimal32 x)
+mant_bid(_Decimal32 x)
 {
 	uint32_t b = bits(x);
 	register uint_least32_t res;
@@ -82,6 +105,96 @@ mant(_Decimal32 x)
 	} else {
 		/* mantissa is full */
 		res = b & 0x7fffffU;
+	}
+	return res;
+}
+
+static inline __attribute__((pure, const)) uint_least32_t
+mant_dpd(_Decimal32 x)
+{
+	uint32_t b = bits(x);
+	register uint_least32_t res;
+
+	/* at least the last 20 bits aye */
+	res = b & 0xfffffU;
+	b >>= 26U;
+	if (UNLIKELY((b & 0b11000U) == 0b11000U)) {
+		/* exponent is two more bits, then the high bit */
+		res |= (b & 0b00001U | 0b1000U) << 20U;
+	} else {
+		res |= (b & 0b00111U) << 20U;
+	}
+	return res;
+}
+
+static unsigned int
+unpack_declet(unsigned int x)
+{
+/* go from dpd to bcd, here's the dpd box again: 
+ * abc def 0ghi
+ * abc def 100i
+ * abc ghf 101i
+ * ghc def 110i
+ * abc 10f 111i
+ * dec 01f 111i
+ * ghc 00f 111i
+ * ??c 11f 111i
+ */
+	unsigned int res = 0U;
+
+	/* check for the easiest case first */
+	if (!(x & 0b1000U)) {
+		goto trivial;
+	} else {
+		switch ((x & 0b1110U) >> 1U) {
+		case 0b100U:
+		trivial:
+			res |= x & 0b1111U;
+			res |= (x & 0b1110000U);
+			res |= (x & 0b1110000000U) << 1U;
+			break;
+		case 0b101U:
+			/* ghf -> 100f ghi */
+			res |= (x & 0b1110000000U) << 1U;
+			res |= (0b1000U << 4U) | (x & 0b0010000U);
+			res |= ((x & 0b1100000U) >> 4U) | (x & 0b1U);
+			break;
+		case 0b110U:
+			/* ghc -> 100c ghi */
+			res |= (0b1000U << 8U) | ((x & 0b0010000000U) << 1U);
+			res |= (x & 0b1110000U);
+			res |= ((x & 0b1100000000U) >> 7U) | (x & 0b1U);
+			break;
+		case 0b111U:
+			/* grrr */
+			switch ((x & 0b1100000U) >> 5U) {
+			case 0b10U:
+				res |= (0b1110000000U << 1U);
+				res |= (0b1000U << 4U) | (x & 0b0000010000U);
+				res |= (0b1000U << 0U) | (x & 0b0000000001U);
+				break;
+			case 0b01U:
+				res |= (0b1000U << 8U) |
+					((x & 0b0010000000U) << 1U);
+				res |= ((x & 0b1100000000U) >> 3U) |
+					(x & 0b0000010000U);
+				res |= (0b1000U << 0U) | (x & 0b0000000001U);
+				break;
+			case 0b00U:
+				res |= (0b1000U << 8U) |
+					((x & 0b0010000000U) << 1U);
+				res |= (0b1000U << 4U) | (x & 0b0000010000U);
+				res |= ((x & 0b1100000000U) >> 7U) | (x & 0b1U);
+				break;
+			case 0b11U:
+				res |= (0b1000U << 8U) |
+					((x & 0b0010000000U) << 1U);
+				res |= (0b1000U << 4U) | (x & 0b0000010000U);
+				res |= (0b1000U << 0U) | (x & 0b0000000001U);
+				break;
+			}
+			break;
+		}
 	}
 	return res;
 }
@@ -103,14 +216,14 @@ bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 	char *restrict bp = buf;
 	char *restrict pp;
 
-	if (UNLIKELY((e = -expo(x)) < 0 || e >= 8)) {
+	if (UNLIKELY((e = -expo_bid(x)) < 0 || e >= 8)) {
 		return 0;
 	}
-	if (!(m = mant(x))) {
+	if (!(m = mant_bid(x))) {
 		/* we don't want no stinking signed 0s so branch here and
 		 * skip the next one */
 		;
-	} else if (sign(x)) {
+	} else if (sign_bid(x)) {
 		*bp++ = '-';
 	}
 	/* decompose into left-of-point and right-of-point halves */
@@ -137,6 +250,103 @@ bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 	}
 	*pp = '\0';
 	return pp - buf;
+}
+
+int
+dpd32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
+{
+/* d32s look like s??eeeeee mm..23..mm
+ * and the decimal is (-1 * s) * m * 10^(e - 101),
+ * this implementation is very minimal serving only the cattle use cases */
+#define C(x)	(char)((x) + '0')
+	int e;
+	int nd = 1;
+	uint_least32_t m;
+	uint_least32_t suf;
+	/* point pointer */
+	char *restrict bp = buf;
+
+	if (UNLIKELY((e = -expo_dpd(x)) < 0 || e >= 8)) {
+		return 0;
+	}
+	if (!(m = mant_dpd(x))) {
+		/* we don't want no stinking signed 0s so branch here and
+		 * skip the next one */
+		;
+	} else {
+		uint_least32_t l3;
+		uint_least32_t h3;
+
+		if (sign_dpd(x)) {
+			*bp++ = '-';
+		}
+		/* get us a proper bcd version of M */
+		l3 = unpack_declet(m & 0b1111111111U);
+		m >>= 10U;
+		h3 = unpack_declet(m & 0b1111111111U);
+		m >>= 10U;
+		m <<= 24U;
+		m |= h3 << 12U;
+		m |= l3 << 0U;
+	}
+	/* get the number of digits */
+	for (register uint_least32_t c = m >> 4U; c; c >>= 4U, nd++);
+	suf = m & ((1U << (4U * e)) - 1U);
+	m >>= 4U * e;
+	if (nd < e) {
+		nd = e;
+	}
+	/* just print the numbers, nd - e digits left, e digits right */
+	switch (nd - e) {
+	default:
+		return 0;
+	case 7U:
+		bp[6] = C(m & 0b1111U), m >>= 4U;
+	case 6U:
+		bp[5] = C(m & 0b1111U), m >>= 4U;
+	case 5U:
+		bp[4] = C(m & 0b1111U), m >>= 4U;
+	case 4U:
+		bp[3] = C(m & 0b1111U), m >>= 4U;
+	case 3U:
+		bp[2] = C(m & 0b1111U), m >>= 4U;
+	case 2U:
+		bp[1] = C(m & 0b1111U), m >>= 4U;
+	case 1U:
+		bp[0] = C(m & 0b1111U);
+		bp += nd - e;
+		break;
+	case 0U:
+		*bp++ = '0';
+		break;
+	}
+	if (e) {
+		*bp++ = '.';
+		switch (e) {
+		default:
+			return 0;
+		case 7U:
+			bp[6] = C(suf & 0b1111U), suf >>= 4U;
+		case 6U:
+			bp[5] = C(suf & 0b1111U), suf >>= 4U;
+		case 5U:
+			bp[4] = C(suf & 0b1111U), suf >>= 4U;
+		case 4U:
+			bp[3] = C(suf & 0b1111U), suf >>= 4U;
+		case 3U:
+			bp[2] = C(suf & 0b1111U), suf >>= 4U;
+		case 2U:
+			bp[1] = C(suf & 0b1111U), suf >>= 4U;
+		case 1U:
+			bp[0] = C(suf & 0b1111U);
+			bp += e;
+			break;
+		}
+	}
+	/* finalise and that's it */
+	*bp = '\0';
+	return bp - buf;
+#undef C
 }
 
 int
