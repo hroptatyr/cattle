@@ -222,6 +222,19 @@ TESTS += wheap_14.clit
 TESTS += wheap_15.clit
 TESTS += wheap_16.clit
 
+check_PROGRAMS += pr-d32_01
+pr_d32_01_SOURCES = pr-d32_01.c
+pr_d32_01_SOURCES += $(top_srcdir)/src/pr-d32.c $(top_srcdir)/src/ctl-dfp754.h
+pr_d32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+TESTS += pr-d32_01
+
+check_PROGRAMS += rd-d32_01
+rd_d32_01_SOURCES = rd-d32_01.c
+rd_d32_01_SOURCES += $(top_srcdir)/src/rd-d32.c $(top_srcdir)/src/ctl-dfp754.h
+rd_d32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+TESTS += rd-d32_01
+
+
 TESTS += cattle_01.clit
 TESTS += cattle_02.clit
 TESTS += cattle_03.clit
