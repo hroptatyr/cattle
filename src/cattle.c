@@ -153,7 +153,8 @@ pr_ei(echs_instant_t t)
 static int
 pr_d32(_Decimal32 x)
 {
-	return fprintf(stdout, "%f", (float)x);
+	char bf[32U];
+	return fwrite(bf, sizeof(*bf), bid32tostr(bf, sizeof(bf), x), stdout);
 }
 
 static _Decimal32

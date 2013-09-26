@@ -7,22 +7,33 @@
 #include "cattle-perio.h"
 #include "cattle-date.h"
 #include "caev.h"
+#include "ctl-dfp754.h"
 
 static inline void
 ctl_caev_pr(ctl_caev_t e)
 {
-	printf("m: %d<-%u + %f  ", e.mktprc.r.p, e.mktprc.r.q, (float)e.mktprc.a);
-	printf("n: %d<-%u + %f  ", e.nomval.r.p, e.nomval.r.q, (float)e.nomval.a);
-	printf("o: %d<-%u + %f\n", e.outsec.r.p, e.outsec.r.q, (float)e.outsec.a);
+	char buf[32U];
+
+	bid32tostr(buf, sizeof(buf), e.mktprc.a);
+	printf("m: %d<-%u + %s  ", e.mktprc.r.p, e.mktprc.r.q, buf);
+	bid32tostr(buf, sizeof(buf), e.nomval.a);
+	printf("n: %d<-%u + %s  ", e.nomval.r.p, e.nomval.r.q, buf);
+	bid32tostr(buf, sizeof(buf), e.outsec.a);
+	printf("o: %d<-%u + %s\n", e.outsec.r.p, e.outsec.r.q, buf);
 	return;
 }
 
 static inline void
 ctl_fund_pr(ctl_fund_t f)
 {
-	printf("m: %f  ", (float)f.mktprc);
-	printf("n: %f  ", (float)f.nomval);
-	printf("o: %f\n", (float)f.outsec);
+	char buf[32U];
+
+	bid32tostr(buf, sizeof(buf), f.mktprc);
+	printf("m: %s  ", buf);
+	bid32tostr(buf, sizeof(buf), f.nomval);
+	printf("n: %s  ", buf);
+	bid32tostr(buf, sizeof(buf), f.outsec);
+	printf("o: %s\n", buf);
 	return;
 }
 
