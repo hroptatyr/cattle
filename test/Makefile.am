@@ -244,13 +244,14 @@ clitoris_CPPFLAGS = $(AM_CPPFLAGS)
 clitoris_CPPFLAGS += -D_GNU_SOURCE
 clitoris_LDFLAGS = $(AM_LDFLAGS) -static
 clitoris_LDADD = -lutil
-BUILT_SOURCES += clitoris.x clitoris.h
+BUILT_SOURCES += clitoris.x clitoris.xh
 
 
 ## ggo rule
-%.x %.h: %.ggo
-	$(AM_V_GEN) gengetopt -F $* -c x -i $<
+%.x %.xh: %.ggo
+	$(AM_V_GEN) gengetopt -F $* -c x -H xh -i $<
 	@sed -e 's,_PARSER_VERSION VERSION,_PARSER_VERSION "$(VERSION)",g' \
-	     $*.h > $*.h-t \
-	&& mv $*.h-t $*.h
+	     $*.xh > $*.xh-t \
+	&& mv $*.xh-t $*.xh
+
 ## Makefile.am ends here
