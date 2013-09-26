@@ -37,7 +37,23 @@
 #if !defined INCLUDED_ctl_dfp754_h_
 #define INCLUDED_ctl_dfp754_h_
 
+#include <stdlib.h>
+#include <stdint.h>
+
 extern int d32tostr(char *restrict buf, size_t bsz, _Decimal32);
 extern _Decimal32 strtod32(const char*, char**);
+
+
+static inline __attribute__((pure, const)) uint32_t
+bits(_Decimal32 x)
+{
+	return (union {_Decimal32 x; uint32_t u;}){x}.u;
+}
+
+static inline __attribute__((pure, const)) _Decimal32
+bobs(uint32_t u)
+{
+	return (union {uint32_t u; _Decimal32 x;}){u}.x;
+}
 
 #endif	/* INCLUDED_ctl_dfp754_h_ */

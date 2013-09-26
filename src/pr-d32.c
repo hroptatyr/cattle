@@ -42,26 +42,6 @@
 #include "ctl-dfp754.h"
 #include "nifty.h"
 
-typedef struct _d32_bid_s _d32_bid_t;
-
-struct _d32_bid_s {
-#if defined WORDS_BIGENDIAN
-	int s:1;
-	unsigned int e:8;
-	unsigned int m:23;
-#else  /* !WORDS_BIGENDIAN */
-	unsigned int m:23;
-	unsigned int e:8;
-	int s:1;
-#endif	/* WORDS_BIGENDIAN */
-};
-
-static inline __attribute__((pure, const)) uint32_t
-bits(_Decimal32 x)
-{
-	return (union {_Decimal32 x; uint32_t u;}){x}.u;
-}
-
 static inline __attribute__((pure, const)) int
 expo(_Decimal32 x)
 {
