@@ -9,6 +9,7 @@ LC_ALL = C
 AM_CFLAGS = $(EXTRA_CFLAGS)
 AM_CPPFLAGS = -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=600 -D_BSD_SOURCE
 AM_CPPFLAGS += -DTEST
+AM_CPPFLAGS += -D__STDC_WANT_DEC_FP__
 
 EXTRA_DIST = $(BUILT_SOURCES) $(TESTS)
 TESTS =
@@ -228,11 +229,23 @@ pr_d32_01_SOURCES += $(top_srcdir)/src/pr-d32.c $(top_srcdir)/src/ctl-dfp754.h
 pr_d32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 TESTS += pr-d32_01
 
+check_PROGRAMS += pr-d32_02
+pr_d32_02_SOURCES = pr-d32_02.c
+pr_d32_02_SOURCES += $(top_srcdir)/src/pr-d32.c $(top_srcdir)/src/ctl-dfp754.h
+pr_d32_02_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+TESTS += pr-d32_02
+
 check_PROGRAMS += rd-d32_01
 rd_d32_01_SOURCES = rd-d32_01.c
 rd_d32_01_SOURCES += $(top_srcdir)/src/rd-d32.c $(top_srcdir)/src/ctl-dfp754.h
 rd_d32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 TESTS += rd-d32_01
+
+check_PROGRAMS += rd-d32_02
+rd_d32_02_SOURCES = rd-d32_02.c
+rd_d32_02_SOURCES += $(top_srcdir)/src/rd-d32.c $(top_srcdir)/src/ctl-dfp754.h
+rd_d32_02_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+TESTS += rd-d32_02
 
 
 TESTS += cattle_01.clit
