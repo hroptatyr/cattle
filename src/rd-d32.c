@@ -241,7 +241,7 @@ strtodpd32(const char *src, char **on)
 
 #if !defined HAVE_DFP754_H && !defined HAVE_DFP_STDLIB_H
 _Decimal32
-strtobid32(const char *src, char **on)
+strtod32(const char *src, char **on)
 {
 	return strtobid32(src, on);
 }
