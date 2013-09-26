@@ -43,6 +43,12 @@
 extern int d32tostr(char *restrict buf, size_t bsz, _Decimal32);
 extern _Decimal32 strtod32(const char*, char**);
 
+extern int bid32tostr(char *restrict buf, size_t bsz, _Decimal32);
+extern _Decimal32 strtobid32(const char*, char**);
+
+extern int dpd32tostr(char *restrict buf, size_t bsz, _Decimal32);
+extern _Decimal32 strtodpd32(const char*, char**);
+
 
 static inline __attribute__((pure, const)) uint32_t
 bits(_Decimal32 x)

@@ -39,12 +39,17 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <stdint.h>
+#if defined HAVE_DFP754_H
+# include <dfp754.h>
+#elif defined HAVE_DFP_STDLIB_H
+# include <dfp/stdlib.h>
+#endif	/* HAVE_DFP754_H */
 #include "ctl-dfp754.h"
 #include "nifty.h"
 
 
 _Decimal32
-strtod32(const char *src, char **on)
+strtobid32(const char *src, char **on)
 {
 /* d32s look like s??eeeeee mm..23..mm
  * and the decimal is (-1 * s) * m * 10^(e - 101),
@@ -98,5 +103,13 @@ strtod32(const char *src, char **on)
 	}
 	return res;
 }
+
+#if !defined HAVE_DFP754_H && !defined HAVE_DFP_STDLIB_H
+_Decimal32
+strtobid32(const char *src, char **on)
+{
+	return strtobid32(src, on);
+}
+#endif	/* !HAVE_DFP754_H && !HAVE_DFP_STDLIB_H */
 
 /* rd-d32.c ends here */

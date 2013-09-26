@@ -39,6 +39,11 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <stdint.h>
+#if defined HAVE_DFP754_H
+# include <dfp754.h>
+#elif defined HAVE_DFP_STDLIB_H
+# include <dfp/stdlib.h>
+#endif	/* HAVE_DFP754_H */
 #include "ctl-dfp754.h"
 #include "nifty.h"
 
@@ -83,7 +88,7 @@ mant(_Decimal32 x)
 
 
 int
-d32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
+bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 {
 /* d32s look like s??eeeeee mm..23..mm
  * and the decimal is (-1 * s) * m * 10^(e - 101),
@@ -132,6 +137,12 @@ d32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 	}
 	*pp = '\0';
 	return pp - buf;
+}
+
+int
+d32tostr(char *restrict buf, size_t bsz, _Decimal32 x)
+{
+	return bid32tostr(buf, bsz, x);
 }
 
 /* pr-d32.c ends here */
