@@ -82,14 +82,14 @@ static inline __attribute__((pure, const)) int
 sign_bid(_Decimal32 x)
 {
 	uint32_t b = bits(x);
-	return (int32_t)b >> 31;
+	return (int32_t)b >> 31U;
 }
 
 static inline __attribute__((pure, const)) int
 sign_dpd(_Decimal32 x)
 {
 	uint32_t b = bits(x);
-	return (int32_t)b >> 31;
+	return (int32_t)b >> 31U;
 }
 
 static inline __attribute__((pure, const)) uint_least32_t
@@ -239,8 +239,8 @@ bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 		m /= 10U;
 	}
 	/* write the left portion */
-	for (size_t i = pp - buf; i > 0U; i--) {
-		buf[i - 1U] = (char)((pre % 10U) + '0');
+	for (size_t i = pp - bp; i > 0U; i--) {
+		bp[i - 1U] = (char)((pre % 10U) + '0');
 		pre /= 10U;
 	}
 	/* write the point, and move pp */
