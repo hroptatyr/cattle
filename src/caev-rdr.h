@@ -43,6 +43,6 @@
 
 
 extern ctl_caev_t
-ctl_caev_rdr(struct ctl_ctx_s ctx[static 1], echs_instant_t x, const char *msg);
+ctl_caev_rdr(struct ctl_ctx_s *ctx, echs_instant_t x, const char *msg);
 
 #endif	/* INCLUDED_caev_rdr_h_ */
