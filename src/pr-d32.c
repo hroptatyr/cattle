@@ -216,7 +216,11 @@ bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 	char *restrict bp = buf;
 	char *restrict pp;
 
-	if (UNLIKELY((e = -expo_bid(x)) < 0 || e >= 8)) {
+	if (!bits(x)) {
+		/* special case, 0 * 10^-95 */
+		e = 0;
+	} else if (UNLIKELY((e = -expo_bid(x)) < 0 || e >= 8)) {
+		*buf = '\0';
 		return 0;
 	}
 	if (!(m = mant_bid(x))) {
