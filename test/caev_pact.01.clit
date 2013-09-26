@@ -1,9 +1,9 @@
 #!/usr/bin/clitoris ## -*- shell-script -*-
 
 $ caev_pact.01
-m: 17.500000  n: 0.000000  o: 0.000000
-m: 15.500000  n: 0.000000  o: 0.000000
-m: 14.000000  n: 0.000000  o: 0.000000
+m: 17.50  n: 0  o: 0
+m: 15.50  n: 0  o: 0
+m: 14.00  n: 0  o: 0
 $
 
 ## caev_pact.01.clit ends here
