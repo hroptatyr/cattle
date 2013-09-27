@@ -46,6 +46,9 @@ make_dvse(const ctl_fld_t f[static 1], size_t nf)
 		ctl_caev_t res = {
 			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
 			.outsec.r = ctl_adex_to_newo(adex),
+			.mktprc.a = 0.df,
+			.nomval.a = 0.df,
+			.outsec.a = 0.df,
 		};
 		return res;
 	}

@@ -55,6 +55,8 @@ make_rhts(const ctl_fld_t f[static 1], size_t nf)
 		 * i.e. this is q / p * r */
 		WITH_CTL_FLD(ctl_price_t prpp, CTL_FLD_PRPP, f, nf, price) {
 			res.mktprc.a = prpp * rtun.p / rtun.q;
+			res.nomval.a = 0.df;
+			res.outsec.a = 0.df;
 		}
 	}
 	return res;
