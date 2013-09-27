@@ -186,7 +186,8 @@ strtobid32(const char *src, char **on)
 	b.mant = (b.mant & 0xffff0000U) >> 16U | (b.mant & 0x0000ffffU) << 16U;
 	b.mant = (b.mant & 0xff00ff00U) >> 8U | (b.mant & 0x00ff00ffU) << 8U;
 	b.mant = (b.mant & 0xf0f0f0f0U) >> 4U | (b.mant & 0x0f0f0f0fU) << 4U;
-	for (b.mant >>= 4U; b.mant; b.mant >>= 4U) {
+	b.mant >>= 4U;
+	for (size_t i = 7U; i > 0U; b.mant >>= 4U, i--) {
 		mant *= 10U;
 		mant += b.mant & 0b1111U;
 	}
