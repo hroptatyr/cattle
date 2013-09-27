@@ -8,6 +8,7 @@ before_install:
 
 install:
   - sudo apt-get install -qq gengetopt
+  - sudo apt-get install -qq gperf
 
 before_script:
   - autoreconf -vfi
