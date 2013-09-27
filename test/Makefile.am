@@ -247,6 +247,20 @@ rd_d32_02_SOURCES += $(top_srcdir)/src/rd-d32.c $(top_srcdir)/src/ctl-dfp754.h
 rd_d32_02_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 TESTS += rd-d32_02
 
+check_PROGRAMS += rp-bid32_01
+rp_bid32_01_SOURCES = rp-bid32_01.c
+rp_bid32_01_SOURCES += $(top_srcdir)/src/ctl-dfp754.h
+rp_bid32_01_SOURCES += $(top_srcdir)/src/rd-d32.c
+rp_bid32_01_SOURCES += $(top_srcdir)/src/pr-d32.c
+rp_bid32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+
+check_PROGRAMS += rp-dpd32_01
+rp_dpd32_01_SOURCES = rp-dpd32_01.c
+rp_dpd32_01_SOURCES += $(top_srcdir)/src/ctl-dfp754.h
+rp_dpd32_01_SOURCES += $(top_srcdir)/src/rd-d32.c
+rp_dpd32_01_SOURCES += $(top_srcdir)/src/pr-d32.c
+rp_dpd32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+
 
 TESTS += cattle_01.clit
 TESTS += cattle_02.clit
