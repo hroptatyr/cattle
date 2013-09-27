@@ -8,7 +8,7 @@ main(int argc, char *argv[])
 {
 /* simple read-print util */
 
-	for (char *const *p = argv; *p; p++) {
+	for (char *const *p = argv + 1U; *p; p++) {
 		char *on;
 		_Decimal32 x = strtodpd32(*p, &on);
 
