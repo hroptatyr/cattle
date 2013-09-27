@@ -144,7 +144,7 @@ strtobcd32(const char *src, char **on)
 	/* skip leading zeros innit? */
 	for (; *sp == '0'; sp++);
 	/* pick up some digits, not more than 7 though */
-	for (nd = 7; *sp >= '0' && *sp <= '9' && nd > 0; sp++, nd--) {
+	for (nd = 7U; *sp >= '0' && *sp <= '9' && nd > 0; sp++, nd--) {
 		mant <<= 4U;
 		mant |= U(*sp);
 	}
