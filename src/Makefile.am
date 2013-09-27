@@ -74,6 +74,8 @@ cattle_LDADD += libcoru.la
 BUILT_SOURCES += cattle.x cattle.xh
 
 
+analysis: $(libcattle_la_SOURCES:%.c=%.sa)
+
 version.c: version.c.in $(top_builddir)/version.mk
 	sed -e 's,[@]VERSION[@],$(VERSION),g' <$(srcdir)/$@.in >$@
 
@@ -104,3 +106,7 @@ dist-hook: $(bin_PROGRAMS)
 ## Create assembler output (debugging purposes only)
 .c.s:
 	$(COMPILE) -S -c $(AM_CFLAGS) $<
+
+## create static analysis
+%.sa: %.c
+	$(AM_V_GEN) clang -std=gnu99 --analyze $< -o $@
