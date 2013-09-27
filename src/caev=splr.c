@@ -47,6 +47,9 @@ make_splr(const ctl_fld_t f[static 1], size_t nf)
 			.mktprc.r = ctl_ratio_recipr(newo),
 			.nomval.r = ctl_ratio_recipr(newo),
 			.outsec.r = newo,
+			.mktprc.a = 0.df,
+			.nomval.a = 0.df,
+			.outsec.a = 0.df,
 		};
 		return res;
 	}

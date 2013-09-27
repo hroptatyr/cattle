@@ -45,6 +45,8 @@ make_dvca(const ctl_fld_t f[static 1], size_t nf)
 	WITH_CTL_FLD(ctl_price_t nett, CTL_FLD_NETT, f, nf, price) {
 		ctl_caev_t res = {
 			.mktprc.a = -nett,
+			.nomval.a = 0.df,
+			.outsec.a = 0.df,
 		};
 		return res;
 	}

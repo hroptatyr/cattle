@@ -47,6 +47,9 @@
 #include "ctl-dfp754.h"
 #include "nifty.h"
 
+#define C(x)	(char)((x) + '0')
+
+
 static inline __attribute__((pure, const)) int
 expo_bid(_Decimal32 x)
 {
@@ -199,6 +202,48 @@ unpack_declet(unsigned int x)
 	return res;
 }
 
+static size_t
+bcd32tostr(char *restrict buf, size_t bsz, uint_least32_t mant, int e, int s)
+{
+	char *restrict bp = buf;
+	const char *const ep = buf + bsz;
+
+	/* write the right-of-point side first */
+	for (; e < 0 && bp < ep; e++, mant >>= 4U) {
+		*bp++ = C(mant & 0b1111U);
+	}
+	/* write point now */
+	if (bp > buf && bp < ep) {
+		*bp++ = '.';
+	}
+	/* write trailing 0s for left-of-point side */
+	for (; e > 0 && bp < ep; e--) {
+		*bp++ = '0';
+	}
+	/* now write the rest of the mantissa */
+	if (LIKELY(mant)) {
+		for (; mant && bp < ep; mant >>= 4U) {
+			*bp++ = C(mant & 0b1111U);
+		}
+	} else if (bp < ep) {
+		/* put a leading 0 */
+		*bp++ = '0';
+	}
+	if (s && bp < ep) {
+		*bp++ = '-';
+	}
+	if (bp < ep) {
+		*bp = '\0';
+	}
+	/* reverse the string */
+	for (char *ip = buf, *jp = bp - 1; ip < jp; ip++, jp--) {
+		char tmp = *ip;
+		*ip = *jp;
+		*jp = tmp;
+	}
+	return bp - buf;
+}
+
 
 int
 bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
@@ -206,54 +251,26 @@ bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 /* d32s look like s??eeeeee mm..23..mm
  * and the decimal is (-1 * s) * m * 10^(e - 101),
  * this implementation is very minimal serving only the cattle use cases */
-	static unsigned int d[] = {
-		1U, 10U, 100U, 1000U, 10000U, 100000U, 1000000U, 10000000U,
-	};
 	int e;
+	int s;
 	uint_least32_t m;
-	uint_least32_t pre;
-	/* point pointer */
-	char *restrict bp = buf;
-	char *restrict pp;
 
-	if (!bits(x)) {
-		/* special case, 0 * 10^-95 */
-		e = 0;
-	} else if (UNLIKELY((e = -expo_bid(x)) < 0 || e >= 8)) {
-		*buf = '\0';
-		return 0;
-	}
-	if (!(m = mant_bid(x))) {
-		/* we don't want no stinking signed 0s so branch here and
-		 * skip the next one */
-		;
-	} else if (sign_bid(x)) {
-		*bp++ = '-';
-	}
-	/* decompose into left-of-point and right-of-point halves */
-	pre = m / d[e], m %= d[e];
-	/* default point point */
-	pp = bp + 1U;
-	/* find the right spot though */
-	for (size_t i = 1U; i < countof(d) && pre >= d[i]; i++, pp++);
+	/* get the exponent, sign and mantissa */
+	e = LIKELY(bits(x)) ? expo_bid(x) : 0;
+	m = mant_bid(x);
+	s = m ? sign_bid(x) : 0/*no stinking signed naughts*/;
 
-	/* write digits right of the point */
-	for (size_t i = e; i > 0U; i--) {
-		pp[i] = (char)((m % 10U) + '0');
-		m /= 10U;
+	/* reencode m as bcd */
+	with (uint_least32_t bcdm = 0U) {
+		for (size_t i = 0; i < 7U; i++, bcdm >>= 4U) {
+			uint_least32_t digit;
+
+			digit = m % 10U, m /= 10U;
+			bcdm |= digit << 28U;
+		}
+		m = bcdm;
 	}
-	/* write the left portion */
-	for (size_t i = pp - bp; i > 0U; i--) {
-		bp[i - 1U] = (char)((pre % 10U) + '0');
-		pre /= 10U;
-	}
-	/* write the point, and move pp */
-	if (LIKELY(e > 0)) {
-		*pp = '.';
-		pp += e + 1U;
-	}
-	*pp = '\0';
-	return pp - buf;
+	return (int)bcd32tostr(buf, bsz, m, e, s);
 }
 
 int
@@ -262,28 +279,17 @@ dpd32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 /* d32s look like s??eeeeee mm..23..mm
  * and the decimal is (-1 * s) * m * 10^(e - 101),
  * this implementation is very minimal serving only the cattle use cases */
-#define C(x)	(char)((x) + '0')
 	int e;
-	int nd = 1;
+	int s;
 	uint_least32_t m;
-	uint_least32_t suf;
-	/* point pointer */
-	char *restrict bp = buf;
 
-	if (UNLIKELY((e = -expo_dpd(x)) < 0 || e >= 8)) {
-		return 0;
-	}
-	if (!(m = mant_dpd(x))) {
-		/* we don't want no stinking signed 0s so branch here and
-		 * skip the next one */
-		;
-	} else {
+	/* get the exponent, sign and mantissa */
+	e = LIKELY(bits(x)) ? expo_dpd(x) : 0;
+	if (LIKELY((m = mant_dpd(x)))) {
 		uint_least32_t l3;
 		uint_least32_t h3;
 
-		if (sign_dpd(x)) {
-			*bp++ = '-';
-		}
+		s = sign_dpd(x);
 		/* get us a proper bcd version of M */
 		l3 = unpack_declet(m & 0b1111111111U);
 		m >>= 10U;
@@ -292,65 +298,11 @@ dpd32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 		m <<= 24U;
 		m |= h3 << 12U;
 		m |= l3 << 0U;
+	} else {
+		/* no stinking signed 0s and m is in bcd form already */
+		s = 0;
 	}
-	/* get the number of digits */
-	for (register uint_least32_t c = m >> 4U; c; c >>= 4U, nd++);
-	suf = m & ((1U << (4U * e)) - 1U);
-	m >>= 4U * e;
-	if (nd < e) {
-		nd = e;
-	}
-	/* just print the numbers, nd - e digits left, e digits right */
-	switch (nd - e) {
-	default:
-		return 0;
-	case 7U:
-		bp[6] = C(m & 0b1111U), m >>= 4U;
-	case 6U:
-		bp[5] = C(m & 0b1111U), m >>= 4U;
-	case 5U:
-		bp[4] = C(m & 0b1111U), m >>= 4U;
-	case 4U:
-		bp[3] = C(m & 0b1111U), m >>= 4U;
-	case 3U:
-		bp[2] = C(m & 0b1111U), m >>= 4U;
-	case 2U:
-		bp[1] = C(m & 0b1111U), m >>= 4U;
-	case 1U:
-		bp[0] = C(m & 0b1111U);
-		bp += nd - e;
-		break;
-	case 0U:
-		*bp++ = '0';
-		break;
-	}
-	if (e) {
-		*bp++ = '.';
-		switch (e) {
-		default:
-			return 0;
-		case 7U:
-			bp[6] = C(suf & 0b1111U), suf >>= 4U;
-		case 6U:
-			bp[5] = C(suf & 0b1111U), suf >>= 4U;
-		case 5U:
-			bp[4] = C(suf & 0b1111U), suf >>= 4U;
-		case 4U:
-			bp[3] = C(suf & 0b1111U), suf >>= 4U;
-		case 3U:
-			bp[2] = C(suf & 0b1111U), suf >>= 4U;
-		case 2U:
-			bp[1] = C(suf & 0b1111U), suf >>= 4U;
-		case 1U:
-			bp[0] = C(suf & 0b1111U);
-			bp += e;
-			break;
-		}
-	}
-	/* finalise and that's it */
-	*bp = '\0';
-	return bp - buf;
-#undef C
+	return bcd32tostr(buf, bsz, m, e, s);
 }
 
 int

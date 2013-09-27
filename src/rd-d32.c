@@ -47,6 +47,17 @@
 #include "ctl-dfp754.h"
 #include "nifty.h"
 
+#define U(x)	(uint_least8_t)((x) - '0')
+
+typedef struct bcd32_s bcd32_t;
+
+struct bcd32_s {
+	uint_least32_t mant;
+	int expo;
+	int sign;
+};
+
+
 static unsigned int
 pack_declet(unsigned int x)
 {
@@ -117,6 +128,48 @@ pack_declet(unsigned int x)
 	return res;
 }
 
+static bcd32_t
+strtobcd32(const char *src, char **on)
+{
+	const char *sp = src;
+	uint_least32_t mant = 0;
+	int expo = 0;
+	int sign = 0;
+	unsigned int nd;
+
+	if (UNLIKELY(*sp == '-')) {
+		sign = 1;
+		sp++;
+	}
+	/* skip leading zeros innit? */
+	for (; *sp == '0'; sp++);
+	/* pick up some digits, not more than 7 though */
+	for (nd = 7U; *sp >= '0' && *sp <= '9' && nd > 0; sp++, nd--) {
+		mant <<= 4U;
+		mant |= U(*sp);
+	}
+	/* just pick up digits, don't fiddle with the mantissa though */
+	for (; *sp >= '0' && *sp <= '9'; sp++, expo++);
+	if (*sp == '.' && nd > 0) {
+		/* less than 7 digits, read more from the right side */
+		for (sp++;
+		     *sp >= '0' && *sp <= '9' && nd > 0; sp++, expo--, nd--) {
+			mant <<= 4U;
+			mant |= U(*sp);
+		}
+		/* pick up trailing digits for the word */
+		for (; *sp >= '0' && *sp <= '9'; sp++);
+	} else if (*sp == '.') {
+		/* more than 7 digits already, just consume */
+		for (sp++; *sp >= '0' && *sp <= '9'; sp++);
+	}
+
+	if (LIKELY(on != NULL)) {
+		*on = deconst(sp);
+	}
+	return (bcd32_t){mant, expo, sign};
+}
+
 
 _Decimal32
 strtobid32(const char *src, char **on)
@@ -124,47 +177,33 @@ strtobid32(const char *src, char **on)
 /* d32s look like s??eeeeee mm..23..mm
  * and the decimal is (-1 * s) * m * 10^(e - 101),
  * this implementation is very minimal serving only the cattle use cases */
+	bcd32_t b = strtobcd32(src, on);
 	uint_least32_t mant = 0U;
-	int sign = 0U;
-	int expo = 0U;
-	const char *sp = src;
 	_Decimal32 res;
 
-	if (UNLIKELY(*sp == '-')) {
-		sign = 1;
-		sp++;
-	}
-	for (; *sp >= '0' && *sp <= '9'; sp++) {
+	/* massage the mantissa, first mirror it, so the most significant
+	 * nibble is the lowest */
+	b.mant = (b.mant & 0xffff0000U) >> 16U | (b.mant & 0x0000ffffU) << 16U;
+	b.mant = (b.mant & 0xff00ff00U) >> 8U | (b.mant & 0x00ff00ffU) << 8U;
+	b.mant = (b.mant & 0xf0f0f0f0U) >> 4U | (b.mant & 0x0f0f0f0fU) << 4U;
+	b.mant >>= 4U;
+	for (size_t i = 7U; i > 0U; b.mant >>= 4U, i--) {
 		mant *= 10U;
-		mant += *sp - '0';
-	}
-	switch (*sp) {
-	case '.':
-		expo = 0;
-		for (sp++; *sp >= '0' && *sp <= '9'; sp++, expo--) {
-			mant *= 10U;
-			mant += *sp - '0';
-		}
-		break;
-	default:
-		break;
-	}
-
-	if (LIKELY(on != NULL)) {
-		*on = deconst(sp);
+		mant += b.mant & 0b1111U;
 	}
 
 	/* assemble the d32 */
 	with (uint32_t u) {
-		u = sign << 31U;
+		u = b.sign << 31U;
+
 		/* check if 24th bit of mantissa is set */
 		if (UNLIKELY(mant & (1U << 23U))) {
 			u |= 0b11U << 29U;
-			u |= (unsigned int)(expo + 101) << 21U;
+			u |= (unsigned int)(b.expo + 101) << 21U;
 			/* just use 21 bits of the mantissa */
 			mant &= 0x1fffffU;
 		} else {
-			u |= (unsigned int)(expo + 101) << 23U;
+			u |= (unsigned int)(b.expo + 101) << 23U;
 			/* use all 23 bits */
 			mant &= 0x7fffffU;
 		}
@@ -180,47 +219,19 @@ strtodpd32(const char *src, char **on)
 /* d32s look like s??eeeeee mm..23..mm
  * and the decimal is (-1 * s) * m * 10^(e - 101),
  * this implementation is very minimal serving only the cattle use cases */
-	uint_least32_t mant = 0U;
-	int sign = 0U;
-	int expo = 0U;
-	const char *sp = src;
+	bcd32_t b = strtobcd32(src, on);
 	_Decimal32 res;
 
-	if (UNLIKELY(*sp == '-')) {
-		sign = 1;
-		sp++;
-	}
-	for (; *sp >= '0' && *sp <= '9'; sp++) {
-		mant <<= 4U;
-		mant |= (*sp - '0');
-	}
-	switch (*sp) {
-	case '.':
-		expo = 0;
-		for (sp++; *sp >= '0' && *sp <= '9'; sp++, expo--) {
-			mant <<= 4U;
-			mant |= (*sp - '0');
-		}
-		break;
-	default:
-		break;
-	}
-
-	if (LIKELY(on != NULL)) {
-		*on = deconst(sp);
-	}
-
 	/* pack the mantissa */
-	{
+	with (uint32_t u) {
 		/* lower 3 digits */
-		uint_least32_t l3 = pack_declet(mant & 0xfffU);
-		uint_least32_t u3 = pack_declet((mant & 0xfff000U) >> 12U);
-		uint_least32_t u7 = (mant >> 24U) & 0xfU;
-		unsigned int rexp = expo + 101;
-		uint32_t u;
+		uint_least32_t l3 = pack_declet(b.mant & 0xfffU);
+		uint_least32_t u3 = pack_declet((b.mant & 0xfff000U) >> 12U);
+		uint_least32_t u7 = (b.mant >> 24U) & 0xfU;
+		unsigned int rexp = b.expo + 101;
 
 		/* assemble the d32 */
-		u = sign << 31U;
+		u = b.sign << 31U;
 		/* check if bits 24-27 (d7) is small or large */
 		if (UNLIKELY(u7 >= 8U)) {
 			u |= 0b11U << 29U;
