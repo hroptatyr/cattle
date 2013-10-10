@@ -125,6 +125,9 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 	ctl_caev_t res = {};
 	size_t fldi;
 
+	if (*s == '.') {
+		s++;
+	}
 	with (ctl_fld_rdr_t f) {
 		if ((f = __ctl_fldify(s, 4U)) == NULL) {
 			/* not a caev message */
