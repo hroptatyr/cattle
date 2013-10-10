@@ -125,12 +125,22 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 	ctl_caev_t res = {};
 	size_t fldi;
 
-	if (strncmp(s, "caev=", sizeof("caev=") - 1U)) {
-		/* not a caev message */
-		goto out;
+	if (*s == '.') {
+		s++;
+	}
+	with (ctl_fld_rdr_t f) {
+		if ((f = __ctl_fldify(s, 4U)) == NULL) {
+			/* not a caev message */
+			goto out;
+		} else if ((ctl_fld_admin_t)f->fc != CTL_FLD_CAEV) {
+			/* a field but not a caev message */
+			goto out;
+		}
+		/* fast forward s then */
+		s += 4U/*CAEV*/ + 1U/*=*/;
 	}
 	/* otherwise try and read the code */
-	switch (*(s += sizeof("caev=") - 1U)) {
+	switch (*s) {
 	case '"':
 	case '\'':
 		s++;
