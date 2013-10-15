@@ -269,6 +269,13 @@ TESTS += cattle_04.clit
 EXTRA_DIST += cattle_01.tser
 EXTRA_DIST += cattle_01.echs
 
+TESTS += cattle_05.clit
+EXTRA_DIST += cattle_05.tser
+EXTRA_DIST += cattle_05.echs
+TESTS += cattle_06.clit
+EXTRA_DIST += cattle_06.tser
+EXTRA_DIST += cattle_06.echs
+
 TESTS += cattle_appl_multi_01.clit
 TESTS += cattle_appl_multi_02.clit
 EXTRA_DIST += cattle_02.tser
