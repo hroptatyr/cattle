@@ -60,4 +60,10 @@ ctl_price_compos(ctl_price_t x, ctl_price_t y)
 	return x + y;
 }
 
+static __inline __attribute__((const, pure)) ctl_price_t
+ctl_zero_price(void)
+{
+	return 0.df;
+}
+
 #endif	/* INCLUDED_cattle_price_h_ */

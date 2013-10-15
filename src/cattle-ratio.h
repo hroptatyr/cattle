@@ -96,4 +96,10 @@ ctl_newo_to_adex(ctl_ratio_t newo)
 	return newo;
 }
 
+static __inline __attribute__((const, pure)) ctl_ratio_t
+ctl_zero_ratio(void)
+{
+	return (ctl_ratio_t){0, 0U};
+}
+
 #endif	/* INCLUDED_cattle_ratio_h_ */

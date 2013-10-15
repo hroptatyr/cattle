@@ -56,12 +56,22 @@ typedef struct ctl_caev_s ctl_caev_t;
 /**
  * An actor is a parametrisation of what it takes for a corporate action
  * event to change (act on) the fundamentals. */
-#define DEFACTOR(x)				\
-	typedef struct ctl_##x##_actor_s ctl_##x##_actor_t;	\
-	struct ctl_##x##_actor_s {				\
-		ctl_ratio_t r;					\
-		ctl_##x##_t a;					\
-	}
+#define DEFACTOR(x)							\
+	typedef struct ctl_##x##_actor_s ctl_##x##_actor_t;		\
+	struct ctl_##x##_actor_s {					\
+		ctl_ratio_t r;						\
+		ctl_##x##_t a;						\
+	};								\
+	static inline __attribute__((pure, const)) ctl_##x##_actor_t	\
+	ctl_zero_##x##_actor(void)					\
+	{								\
+		return (ctl_##x##_actor_t){				\
+			ctl_zero_ratio(),				\
+			ctl_zero_##x(),					\
+		};							\
+	}								\
+	/* just to shut the compiler up */				\
+	struct ctl_##x##_actor_s
 #define ACTOR(x)	ctl_##x##_actor_t
 
 /* actual layouts */
@@ -71,7 +81,9 @@ struct ctl_fund_s {
 	ctl_quant_t outsec;
 };
 
+/* defines type ctl_price_actor_t */
 DEFACTOR(price);
+/* defines type ctl_quant_actor_t */
 DEFACTOR(quant);
 
 struct ctl_caev_s {
@@ -101,5 +113,16 @@ extern ctl_caev_t ctl_caev_rev(ctl_caev_t x);
  * For prices it is assumed that currencies match, for quanities it is
  * assumed that the quantified objects match. */
 extern ctl_fund_t ctl_caev_act(ctl_caev_t, ctl_fund_t x);
+
+
+static inline __attribute__((const, pure)) ctl_caev_t
+ctl_zero_caev(void)
+{
+	return (ctl_caev_t){
+		ctl_zero_price_actor(),
+		ctl_zero_price_actor(),
+		ctl_zero_quant_actor(),
+	};
+}
 
 #endif	/* INCLUDED_caev_h_ */
