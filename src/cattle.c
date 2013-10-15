@@ -233,18 +233,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	struct cocore *rdr;
 	struct cocore *pop;
 	struct cocore *me;
-	const struct echs_msg_s *ev;
-	enum {
-		UNK,
-		/* we've got lines from the rdr coru and events from pop */
-		LN_ACT,
-		/* we've only got lines from the rdr coru */
-		LN_LIT,
-		/* like LIT but we have to apply the sum so far */
-		LN_NOE,
-		/* like LIT before the first event kicks in */
-		LN_PRE,
-	} state = UNK;
 	ctl_caev_t sum;
 	FILE *f;
 
@@ -266,97 +254,31 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		sum = ctl_caev_rev(ctx->sum);
 	}
 
-	if ((ev = NEXT(pop)) != NULL && ctx->tr) {
-		state = LN_PRE;
-	} else if (ev != NULL) {
-		state = LN_ACT;
-	} else {
-		state = LN_LIT;
-	}
-	switch (state) {
-		const struct tser_ln_s *ln;
-	default:
-	case UNK:
-		break;
+	const struct echs_msg_s *ev;
+	const struct tser_ln_s *ln;
+	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
 
-	case LN_PRE:
-		while ((ln = NEXT(rdr)) != NULL && __inst_lt_p(ln->t, ev->t)) {
-			char *on;
-			ctl_price_t p;
+		/* sum up caevs in between price lines */
+		for (;
+		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
+		     ev = NEXT(pop)) {
+			ctl_caev_t caev;
 
-			on = NULL;
-			pr_ei(ln->t);
-			for (; (p = strtokd32(ln->ln, &on), on);) {
-				fputc('\t', stdout);
-				pr_d32(p);
-			} while ((p = strtokd32(ln->ln, &on), on));
-			fputc('\n', stdout);
-		}
-		if (LIKELY(ln != NULL)) {
-			state = LN_ACT;
-			goto act;
-		}
-		break;
+			caev = *(const ctl_caev_t*)ev->msg;
 
-	case LN_ACT:
-		while ((ln = NEXT(rdr)) != NULL) {
-			char *on;
-			ctl_fund_t p;
-
-		act:
-			/* otherwise check that T is older than top of wheap */
-			while (UNLIKELY(!__inst_lt_p(ln->t, ev->t))) {
-				/* compute the new sum */
-				ctl_caev_t caev = *(const ctl_caev_t*)ev->msg;
-
-				if (!ctx->rev || ctx->tr) {
-					sum = ctl_caev_sub(sum, caev);
-				} else {
-					sum = ctl_caev_add(sum, caev);
-				}
-				if ((ev = NEXT(pop)) == NULL && ctx->tr) {
-					state = LN_NOE;
-					goto noe;
-				} else if (ev == NULL) {
-					state = LN_LIT;
-					goto lit;
-				}
+			/* compute the new sum */
+			if (!ctx->rev || ctx->tr) {
+				sum = ctl_caev_sub(sum, caev);
+			} else {
+				sum = ctl_caev_add(sum, caev);
 			}
-
-			/* otherwise apply */
-			on = NULL;
-			pr_ei(ln->t);
-			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
-				fputc('\t', stdout);
-				p = ctl_caev_act(sum, p);
-				pr_d32(p.mktprc);
-			} while ((p.mktprc = strtokd32(ln->ln, &on), on));
-			fputc('\n', stdout);
 		}
-		break;
 
-	case LN_LIT:
-		while ((ln = NEXT(rdr)) != NULL) {
+		/* apply caev sum to price lines */
+		do {
 			char *on;
-			ctl_price_t p;
-
-		lit:
-			on = NULL;
-			pr_ei(ln->t);
-			for (; (p = strtokd32(ln->ln, &on), on);) {
-				fputc('\t', stdout);
-				pr_d32(p);
-			} while ((p = strtokd32(ln->ln, &on), on));
-			fputc('\n', stdout);
-		}
-		break;
-
-	case LN_NOE:
-		while ((ln = NEXT(rdr)) != NULL) {
-			char *on = NULL;
 			ctl_fund_t p;
 
-		noe:
 			on = NULL;
 			pr_ei(ln->t);
 			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
@@ -365,8 +287,8 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				pr_d32(p.mktprc);
 			} while ((p.mktprc = strtokd32(ln->ln, &on), on));
 			fputc('\n', stdout);
-		}
-		break;
+		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
+			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
 
 	UNPREP();
