@@ -13,3 +13,7 @@ Options affecting the apply command:"
 option "reverse" R
 	"Consider time-series file to be backadjusted, produce raw form."
 	optional
+
+option "total-return" -
+	"Reinvest any distributed capital."
+	optional

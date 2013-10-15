@@ -59,6 +59,7 @@ struct ctl_ctx_s {
 	ctl_caev_t sum;
 
 	unsigned int rev:1;
+	unsigned int tr:1;
 };
 
 #include "../test/caev-io.c"
@@ -194,6 +195,8 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	/* initialise sum to some zero */
+	ctx->sum = ctl_zero_caev();
 
 	for (const struct tser_ln_s *ln; (ln = NEXT(rdr));) {
 		/* try to read the whole shebang */
@@ -237,6 +240,10 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		LN_ACT,
 		/* we've only got lines from the rdr coru */
 		LN_LIT,
+		/* like LIT but we have to apply the sum so far */
+		LN_NOE,
+		/* like LIT before the first event kicks in */
+		LN_PRE,
 	} state = UNK;
 	ctl_caev_t sum;
 	FILE *f;
@@ -251,13 +258,17 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
 
-	if (!ctx->rev) {
+	if (ctx->tr) {
+		sum = ctl_zero_caev();
+	} else if (!ctx->rev) {
 		sum = ctx->sum;
 	} else {
 		sum = ctl_caev_rev(ctx->sum);
 	}
 
-	if ((ev = NEXT(pop)) != NULL) {
+	if ((ev = NEXT(pop)) != NULL && ctx->tr) {
+		state = LN_PRE;
+	} else if (ev != NULL) {
 		state = LN_ACT;
 	} else {
 		state = LN_LIT;
@@ -267,28 +278,53 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	default:
 	case UNK:
 		break;
+
+	case LN_PRE:
+		while ((ln = NEXT(rdr)) != NULL && __inst_lt_p(ln->t, ev->t)) {
+			char *on;
+			ctl_price_t p;
+
+			on = NULL;
+			pr_ei(ln->t);
+			for (; (p = strtokd32(ln->ln, &on), on);) {
+				fputc('\t', stdout);
+				pr_d32(p);
+			} while ((p = strtokd32(ln->ln, &on), on));
+			fputc('\n', stdout);
+		}
+		if (LIKELY(ln != NULL)) {
+			state = LN_ACT;
+			goto act;
+		}
+		break;
+
 	case LN_ACT:
 		while ((ln = NEXT(rdr)) != NULL) {
-			char *on = NULL;
+			char *on;
 			ctl_fund_t p;
 
+		act:
 			/* otherwise check that T is older than top of wheap */
 			while (UNLIKELY(!__inst_lt_p(ln->t, ev->t))) {
 				/* compute the new sum */
 				ctl_caev_t caev = *(const ctl_caev_t*)ev->msg;
 
-				if (!ctx->rev) {
+				if (!ctx->rev || ctx->tr) {
 					sum = ctl_caev_sub(sum, caev);
 				} else {
 					sum = ctl_caev_add(sum, caev);
 				}
-				if ((ev = NEXT(pop)) == NULL) {
+				if ((ev = NEXT(pop)) == NULL && ctx->tr) {
+					state = LN_NOE;
+					goto noe;
+				} else if (ev == NULL) {
 					state = LN_LIT;
-					goto raw;
+					goto lit;
 				}
 			}
 
 			/* otherwise apply */
+			on = NULL;
 			pr_ei(ln->t);
 			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
 				fputc('\t', stdout);
@@ -298,18 +334,36 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			fputc('\n', stdout);
 		}
 		break;
+
 	case LN_LIT:
 		while ((ln = NEXT(rdr)) != NULL) {
 			char *on;
 			ctl_price_t p;
 
-		raw:
+		lit:
 			on = NULL;
 			pr_ei(ln->t);
 			for (; (p = strtokd32(ln->ln, &on), on);) {
 				fputc('\t', stdout);
 				pr_d32(p);
 			} while ((p = strtokd32(ln->ln, &on), on));
+			fputc('\n', stdout);
+		}
+		break;
+
+	case LN_NOE:
+		while ((ln = NEXT(rdr)) != NULL) {
+			char *on = NULL;
+			ctl_fund_t p;
+
+		noe:
+			on = NULL;
+			pr_ei(ln->t);
+			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
+				fputc('\t', stdout);
+				p = ctl_caev_act(sum, p);
+				pr_d32(p.mktprc);
+			} while ((p.mktprc = strtokd32(ln->ln, &on), on));
 			fputc('\n', stdout);
 		}
 		break;
@@ -347,8 +401,6 @@ cmd_print(struct ctl_args_info argi[static 1U])
 		res = 1;
 		goto out;
 	}
-	/* initialise sum to some zero */
-	ctx->sum = ctl_zero_caev();
 
 	for (unsigned int i = 1U; i < argi->inputs_num; i++) {
 		const char *fn = argi->inputs[i];
@@ -399,9 +451,9 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 
 	if (argi->reverse_given) {
 		ctx->rev = 1U;
+	} else if (argi->total_return_given) {
+		ctx->tr = 1U;
 	}
-	/* initialise sum to some zero */
-	ctx->sum = ctl_zero_caev();
 
 	/* open caev file and read */
 	with (const char *caev_fn = argi->inputs[2U]) {
