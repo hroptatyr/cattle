@@ -60,6 +60,7 @@ struct ctl_ctx_s {
 
 	unsigned int rev:1;
 	unsigned int tr:1;
+	unsigned int fwd:1;
 };
 
 #include "../test/caev-io.c"
@@ -230,10 +231,17 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
  * format in there is first column is a date, the rest is prices */
+	static struct {
+		echs_instant_t dt;
+		ctl_price_t pr;
+	} *q;
+	static size_t nq;
 	struct cocore *rdr;
 	struct cocore *pop;
 	struct cocore *me;
 	ctl_caev_t sum;
+	ctl_price_t frst = 0.df;
+	ctl_price_t last = 0.df;
 	FILE *f;
 
 	if (fn == NULL) {
@@ -274,24 +282,62 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 		}
 
+		/* capture the first price */
+		if (UNLIKELY(!frst)) {
+			char *on = NULL;
+			frst = strtokd32(ln->ln, &on);
+		}
+
 		/* apply caev sum to price lines */
 		do {
 			char *on;
 			ctl_fund_t p;
 
 			on = NULL;
-			pr_ei(ln->t);
 			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
-				fputc('\t', stdout);
+				last = p.mktprc;
 				p = ctl_caev_act(sum, p);
-				pr_d32(p.mktprc);
+
+				if ((nq % 64U) == 0U) {
+					/* resize */
+					q = realloc(q, (nq + 64U) * sizeof(*q));
+				}
+
+				q[nq].dt = ln->t;
+				q[nq].pr = p.mktprc;
+				nq++;
 			} while ((p.mktprc = strtokd32(ln->ln, &on), on));
-			fputc('\n', stdout);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
 
 	UNPREP();
+
+	if (nq > 0) {
+		_Decimal32 x;
+
+		if (ctx->tr && !ctx->fwd) {
+			x = last / q[nq - 1U].pr;
+		} else if (!ctx->tr && ctx->fwd) {
+			x = frst / q[0U].pr;
+		} else {
+			x = 1.df;
+		}
+
+		for (size_t i = 0; i < nq;) {
+			echs_instant_t t;
+
+			pr_ei(t = q[i].dt);
+			do {
+				fputc('\t', stdout);
+				pr_d32(q[i].pr * x);
+			} while (++i < nq && __inst_eq_p(q[i].dt, t));
+			fputc('\n', stdout);
+		}
+		free(q);
+		q = NULL;
+		nq = 0UL;
+	}
 
 	fclose(f);
 	return 0;
@@ -375,6 +421,9 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 		ctx->rev = 1U;
 	} else if (argi->total_return_given) {
 		ctx->tr = 1U;
+	}
+	if (argi->forward_given) {
+		ctx->fwd = 1U;
 	}
 
 	/* open caev file and read */

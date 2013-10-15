@@ -11,9 +11,15 @@ text "
 Options affecting the apply command:"
 
 option "reverse" R
-	"Consider time-series file to be backadjusted, produce raw form."
+	"Consider time-series file to be adjusted, produce raw form."
+	optional
+
+option "forward" -
+	"Forward adjust the time series, i.e. current prices are \
+modified to match past prices.  Default is backward adjustment."
 	optional
 
 option "total-return" -
-	"Reinvest any distributed capital."
+	"Reinvest any distributed capital.  Default is to have capital \
+distributions paid out."
 	optional
