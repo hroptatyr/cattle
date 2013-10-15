@@ -240,10 +240,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		LN_ACT,
 		/* we've only got lines from the rdr coru */
 		LN_LIT,
-		/* like LIT but we have to apply the sum so far */
-		LN_NOE,
-		/* like LIT before the first event kicks in */
-		LN_PRE,
 	} state = UNK;
 	ctl_caev_t sum;
 	FILE *f;
@@ -266,9 +262,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		sum = ctl_caev_rev(ctx->sum);
 	}
 
-	if ((ev = NEXT(pop)) != NULL && ctx->tr) {
-		state = LN_PRE;
-	} else if (ev != NULL) {
+	if ((ev = NEXT(pop)) != NULL && !ctx->tr) {
 		state = LN_ACT;
 	} else {
 		state = LN_LIT;
@@ -277,25 +271,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		const struct tser_ln_s *ln;
 	default:
 	case UNK:
-		break;
-
-	case LN_PRE:
-		while ((ln = NEXT(rdr)) != NULL && __inst_lt_p(ln->t, ev->t)) {
-			char *on;
-			ctl_price_t p;
-
-			on = NULL;
-			pr_ei(ln->t);
-			for (; (p = strtokd32(ln->ln, &on), on);) {
-				fputc('\t', stdout);
-				pr_d32(p);
-			} while ((p = strtokd32(ln->ln, &on), on));
-			fputc('\n', stdout);
-		}
-		if (LIKELY(ln != NULL)) {
-			state = LN_ACT;
-			goto act;
-		}
 		break;
 
 	case LN_ACT:
@@ -314,10 +289,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				} else {
 					sum = ctl_caev_add(sum, caev);
 				}
-				if ((ev = NEXT(pop)) == NULL && ctx->tr) {
-					state = LN_NOE;
-					goto noe;
-				} else if (ev == NULL) {
+				if ((ev = NEXT(pop)) == NULL) {
 					state = LN_LIT;
 					goto lit;
 				}
@@ -336,27 +308,12 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		break;
 
 	case LN_LIT:
-		while ((ln = NEXT(rdr)) != NULL) {
+		while ((ln = NEXT(rdr)) != NULL &&
+		       (ev == NULL || __inst_lt_p(ln->t, ev->t))) {
 			char *on;
-			ctl_price_t p;
-
-		lit:
-			on = NULL;
-			pr_ei(ln->t);
-			for (; (p = strtokd32(ln->ln, &on), on);) {
-				fputc('\t', stdout);
-				pr_d32(p);
-			} while ((p = strtokd32(ln->ln, &on), on));
-			fputc('\n', stdout);
-		}
-		break;
-
-	case LN_NOE:
-		while ((ln = NEXT(rdr)) != NULL) {
-			char *on = NULL;
 			ctl_fund_t p;
 
-		noe:
+		lit:
 			on = NULL;
 			pr_ei(ln->t);
 			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
@@ -365,6 +322,10 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				pr_d32(p.mktprc);
 			} while ((p.mktprc = strtokd32(ln->ln, &on), on));
 			fputc('\n', stdout);
+		}
+		if (LIKELY(ln != NULL)) {
+			state = LN_ACT;
+			goto act;
 		}
 		break;
 	}
