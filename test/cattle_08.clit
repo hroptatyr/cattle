@@ -1,0 +1,11 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle apply --total-return --forward "${srcdir}/cattle_06.tser" "${srcdir}/cattle_06.echs"
+2013-10-01	12.00
+2013-10-02	11.00
+2013-10-03	10.00
+2013-10-04	9.00
+2013-10-05	10.00
+$
+
+## cattle_08.clit ends here
