@@ -448,6 +448,11 @@ main(int argc, char *argv[])
 			res = cmd_apply(argi);
 		} else if (!strcmp(cmd, "print")) {
 			res = cmd_print(argi);
+		} else {
+			error("No command specified.\n\
+See --help to obtain a list of available commands.");
+			res = 1;
+			goto out;
 		}
 	}
 
