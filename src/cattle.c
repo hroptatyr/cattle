@@ -347,6 +347,8 @@ cmd_print(struct ctl_args_info argi[static 1U])
 		res = 1;
 		goto out;
 	}
+	/* initialise sum to some zero */
+	ctx->sum = ctl_zero_caev();
 
 	for (unsigned int i = 1U; i < argi->inputs_num; i++) {
 		const char *fn = argi->inputs[i];
@@ -398,6 +400,8 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 	if (argi->reverse_given) {
 		ctx->rev = 1U;
 	}
+	/* initialise sum to some zero */
+	ctx->sum = ctl_zero_caev();
 
 	/* open caev file and read */
 	with (const char *caev_fn = argi->inputs[2U]) {
@@ -448,6 +452,11 @@ main(int argc, char *argv[])
 			res = cmd_apply(argi);
 		} else if (!strcmp(cmd, "print")) {
 			res = cmd_print(argi);
+		} else {
+			error("No command specified.\n\
+See --help to obtain a list of available commands.");
+			res = 1;
+			goto out;
 		}
 	}
 

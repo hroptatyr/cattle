@@ -60,4 +60,10 @@ ctl_quant_compos(ctl_quant_t x, ctl_quant_t y)
 	return x + y;
 }
 
+static __inline __attribute__((const, pure)) ctl_quant_t
+ctl_zero_quant(void)
+{
+	return 0.df;
+}
+
 #endif	/* INCLUDED_cattle_quant_h_ */
