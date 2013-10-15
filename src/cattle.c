@@ -194,6 +194,8 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	/* initialise sum to some zero */
+	ctx->sum = ctl_zero_caev();
 
 	for (const struct tser_ln_s *ln; (ln = NEXT(rdr));) {
 		/* try to read the whole shebang */
@@ -347,8 +349,6 @@ cmd_print(struct ctl_args_info argi[static 1U])
 		res = 1;
 		goto out;
 	}
-	/* initialise sum to some zero */
-	ctx->sum = ctl_zero_caev();
 
 	for (unsigned int i = 1U; i < argi->inputs_num; i++) {
 		const char *fn = argi->inputs[i];
@@ -400,8 +400,6 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 	if (argi->reverse_given) {
 		ctx->rev = 1U;
 	}
-	/* initialise sum to some zero */
-	ctx->sum = ctl_zero_caev();
 
 	/* open caev file and read */
 	with (const char *caev_fn = argi->inputs[2U]) {
