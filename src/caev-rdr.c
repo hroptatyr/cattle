@@ -109,6 +109,28 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		;
 		break;
 
+	case CTL_FLD_TYPE_CUSTM: {
+		char *pp;
+		_Decimal32 v;
+		signed int p;
+		unsigned int q;
+
+		v = strtobid32(vp, &pp);
+		if (*pp != '+' && *pp != '-') {
+			break;
+		}
+		p = strtol(pp, &pp, 10);
+		if (pp[0] != '<' || pp[1] != '-') {
+			break;
+		} else if (!(q = strtoul(pp + 2U, &pp, 10))) {
+			break;
+		} else if (*pp != '"' && *pp != '\'') {
+			break;
+		}
+		/* otherwise ass */
+		res.custm = (ctl_custm_t){.r = (ctl_ratio_t){p, q}, .a = v};
+		break;
+	}
 	default:
 		return res;
 	}
