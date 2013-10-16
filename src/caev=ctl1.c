@@ -43,15 +43,15 @@ make_ctl1(const ctl_fld_t f[static 1], size_t nf)
 {
 	ctl_caev_t res = ctl_zero_caev();
 
-	WITH_CTL_FLD(ctl_custm_t mkt, CTL_FLD_MKT, f, nf, custm) {
+	WITH_CTL_FLD(ctl_custm_t mkt, CTL_FLD_XMKT, f, nf, custm) {
 		res.mktprc.r = mkt.r;
 		res.mktprc.a = mkt.a;
 	}
-	WITH_CTL_FLD(ctl_custm_t nom, CTL_FLD_NOM, f, nf, custm) {
+	WITH_CTL_FLD(ctl_custm_t nom, CTL_FLD_XNOM, f, nf, custm) {
 		res.nomval.r = nom.r;
 		res.nomval.a = nom.a;
 	}
-	WITH_CTL_FLD(ctl_custm_t out, CTL_FLD_OUT, f, nf, custm) {
+	WITH_CTL_FLD(ctl_custm_t out, CTL_FLD_XOUT, f, nf, custm) {
 		res.outsec.r = out.r;
 		res.outsec.a = out.a;
 	}

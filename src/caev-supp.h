@@ -224,9 +224,9 @@ typedef enum {
 /* custom fields */
 typedef enum {
 	CTL_FLD_CUSTM_FIRST = CTL_FLD_PERIO_LAST + 1U,
-	CTL_FLD_MKT = CTL_FLD_CUSTM_FIRST,
-	CTL_FLD_NOM,
-	CTL_FLD_OUT,
+	CTL_FLD_XMKT = CTL_FLD_CUSTM_FIRST,
+	CTL_FLD_XNOM,
+	CTL_FLD_XOUT,
 	CTL_FLD_CUSTM_LAST,
 } ctl_fld_custm_t;
 

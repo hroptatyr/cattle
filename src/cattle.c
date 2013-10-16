@@ -115,9 +115,9 @@ static size_t
 ctl_caev_wr(char *restrict buf, size_t bsz, ctl_caev_t c)
 {
 	static const char caev[] = "caev=CTL1";
-	static const char mkti[] = ".mkt=";
-	static const char nomi[] = ".nom=";
-	static const char outi[] = ".out=";
+	static const char mkti[] = ".xmkt=";
+	static const char nomi[] = ".xnom=";
+	static const char outi[] = ".xout=";
 	char *restrict bp = buf;
 	const char *const ep = buf + bsz;
 
