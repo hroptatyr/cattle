@@ -341,6 +341,10 @@ extern ctl_caev_t make_splf(const ctl_fld_t f[static 1], size_t n);
 extern ctl_caev_t make_splr(const ctl_fld_t f[static 1], size_t n);
 
 /**
+ * Return ca event in canonical notation. */
+extern ctl_caev_t make_ctl1(const ctl_fld_t f[static 1], size_t n);
+
+/**
  * Catch-all constructor, the CAEV=* key/val must be part of MSG. */
 extern ctl_caev_t make_caev(const ctl_fld_t msg[static 1], size_t nflds);
 
@@ -360,6 +364,8 @@ ctl_fld_type(ctl_fld_key_t code)
 		return CTL_FLD_TYPE_PRICE;
 	case CTL_FLD_PERIO_FIRST ... CTL_FLD_PERIO_LAST:
 		return CTL_FLD_TYPE_PERIO;
+	case CTL_FLD_CUSTM_FIRST ... CTL_FLD_CUSTM_LAST:
+		return CTL_FLD_TYPE_CUSTM;
 	default:
 		break;
 	}
