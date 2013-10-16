@@ -83,6 +83,36 @@ error(const char *fmt, ...)
 	return;
 }
 
+static int
+pr_ei(echs_instant_t t)
+{
+	char buf[32U];
+	return fwrite(buf, sizeof(*buf), dt_strf(buf, sizeof(buf), t), stdout);
+}
+
+static int
+pr_d32(_Decimal32 x)
+{
+	char bf[32U];
+	return fwrite(bf, sizeof(*bf), bid32tostr(bf, sizeof(bf), x), stdout);
+}
+
+static _Decimal32
+strtokd32(const char *ln, char **on)
+{
+	const char *p;
+
+	if (*on == NULL) {
+		p = ln;
+	} else if (**on != '\t') {
+		*on = NULL;
+		return 0.df;
+	} else {
+		p = *on + 1U;
+	}
+	return strtobid32(p, on);
+}
+
 
 /* coroutines */
 struct tser_ln_s {
@@ -95,6 +125,12 @@ struct echs_msg_s {
 	echs_instant_t t;
 	const void *msg;
 	size_t msz;
+};
+
+struct tser_row_s {
+	echs_instant_t d;
+	_Decimal32 prc;
+	_Decimal32 adj;
 };
 
 DEFCORU(co_appl_rdr, {
@@ -145,34 +181,72 @@ DEFCORU(co_appl_pop, {
 	return 0;
 }
 
-static int
-pr_ei(echs_instant_t t)
+DEFCORU(co_appl_bang, {
+		bool tr;
+		bool fwd;
+	}, void *arg)
 {
-	char buf[32U];
-	return fwrite(buf, sizeof(*buf), dt_strf(buf, sizeof(buf), t), stdout);
-}
+	static struct tser_row_s *q;
+	static size_t nq;
+	bool tr = CORU_CLOSUR(tr);
+	bool fwd = CORU_CLOSUR(fwd);
+	_Decimal32 x;
 
-static int
-pr_d32(_Decimal32 x)
-{
-	char bf[32U];
-	return fwrite(bf, sizeof(*bf), bid32tostr(bf, sizeof(bf), x), stdout);
-}
-
-static _Decimal32
-strtokd32(const char *ln, char **on)
-{
-	const char *p;
-
-	if (*on == NULL) {
-		p = ln;
-	} else if (**on != '\t') {
-		*on = NULL;
-		return 0.df;
-	} else {
-		p = *on + 1U;
+	/* total returns naturally adjust forwards
+	 * and total payouts naturally adjust backwards */
+	if (!(tr ^ fwd)) {
+		/* straight printing, i.e. no capturing prices in an array */
+		goto pr_straight;
 	}
-	return strtobid32(p, on);
+
+	/* we need adjustment factors, so capture everything */
+	for (; arg != NULL; arg = YIELD(nq++)) {
+		if ((nq % 64U) == 0U) {
+			/* resize */
+			q = realloc(q, (nq + 64U) * sizeof(*q));
+		}
+
+		with (const struct tser_row_s *trow = arg) {
+			q[nq] = *trow;
+		}
+	}
+
+pr_straight:
+	/* straight printing, i.e. no capturing prices in an array */
+	for (; arg != NULL; arg = YIELD(0)) {
+		const struct tser_row_s *trow = arg;
+
+		pr_ei(trow->d);
+		fputc('\t', stdout);
+		pr_d32(trow->adj);
+		fputc('\n', stdout);
+	}
+
+	/* we finished banging, time to print */
+	if (!nq) {
+		/* nothing to print */
+		return 0;
+	}
+
+	if (tr && !fwd) {
+		x = q[nq - 1U].prc / q[nq - 1U].adj;
+	} else if (!tr && fwd) {
+		x = q[0U].prc / q[0U].adj;
+	} else {
+		/* shouldn't happen */
+		x = 0.df;
+	}
+
+	for (size_t i = 0; i < nq; i++) {
+		pr_ei(q[i].d);
+		fputc('\t', stdout);
+		pr_d32(q[i].adj * x);
+		fputc('\n', stdout);
+	}
+	free(q);
+	q = NULL;
+	nq = 0UL;
+	return 0;
 }
 
 
@@ -231,17 +305,11 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
  * format in there is first column is a date, the rest is prices */
-	static struct {
-		echs_instant_t dt;
-		ctl_price_t pr;
-	} *q;
-	static size_t nq;
 	struct cocore *rdr;
 	struct cocore *pop;
+	struct cocore *bang;
 	struct cocore *me;
 	ctl_caev_t sum;
-	ctl_price_t frst = 0.df;
-	ctl_price_t last = 0.df;
 	FILE *f;
 
 	if (fn == NULL) {
@@ -253,6 +321,8 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	bang = START_PACK(
+		co_appl_bang, .tr = ctx->tr, .fwd = ctx->fwd, .next = me);
 
 	if (ctx->tr) {
 		sum = ctl_zero_caev();
@@ -282,62 +352,26 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 		}
 
-		/* capture the first price */
-		if (UNLIKELY(!frst)) {
-			char *on = NULL;
-			frst = strtokd32(ln->ln, &on);
-		}
-
 		/* apply caev sum to price lines */
 		do {
 			char *on;
 			ctl_fund_t p;
+			ctl_price_t prc;
 
+#define TSER_ROW(args...)	&(struct tser_row_s){args}
 			on = NULL;
-			for (; (p.mktprc = strtokd32(ln->ln, &on), on);) {
-				last = p.mktprc;
-				p = ctl_caev_act(sum, p);
-
-				if ((nq % 64U) == 0U) {
-					/* resize */
-					q = realloc(q, (nq + 64U) * sizeof(*q));
-				}
-
-				q[nq].dt = ln->t;
-				q[nq].pr = p.mktprc;
-				nq++;
-			} while ((p.mktprc = strtokd32(ln->ln, &on), on));
+			p.mktprc = prc = strtokd32(ln->ln, &on);
+			p = ctl_caev_act(sum, p);
+			NEXT1(bang, TSER_ROW(ln->t, prc, p.mktprc));
+#undef TSER_ROW
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
 
+	/* print our results */
+	NEXT(bang);
+
 	UNPREP();
-
-	if (nq > 0) {
-		_Decimal32 x;
-
-		if (ctx->tr && !ctx->fwd) {
-			x = last / q[nq - 1U].pr;
-		} else if (!ctx->tr && ctx->fwd) {
-			x = frst / q[0U].pr;
-		} else {
-			x = 1.df;
-		}
-
-		for (size_t i = 0; i < nq;) {
-			echs_instant_t t;
-
-			pr_ei(t = q[i].dt);
-			do {
-				fputc('\t', stdout);
-				pr_d32(q[i].pr * x);
-			} while (++i < nq && __inst_eq_p(q[i].dt, t));
-			fputc('\n', stdout);
-		}
-		free(q);
-		q = NULL;
-		nq = 0UL;
-	}
 
 	fclose(f);
 	return 0;

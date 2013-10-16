@@ -278,13 +278,9 @@ EXTRA_DIST += cattle_06.echs
 TESTS += cattle_07.clit
 TESTS += cattle_08.clit
 
-TESTS += cattle_appl_multi_01.clit
-TESTS += cattle_appl_multi_02.clit
-EXTRA_DIST += cattle_02.tser
-EXTRA_DIST += cattle_03.tser
-
 TESTS += cattle_appl_reverse_01.clit
 TESTS += cattle_appl_reverse_02.clit
+EXTRA_DIST += cattle_03.tser
 
 
 ## our friendly helpers
