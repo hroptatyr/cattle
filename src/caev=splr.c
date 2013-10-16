@@ -42,18 +42,14 @@ ctl_caev_t
 make_splr(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for the new-for-old ratio */
+	ctl_caev_t res = ctl_zero_caev();
+
 	WITH_CTL_FLD(ctl_ratio_t newo, CTL_FLD_NEWO, f, nf, ratio) {
-		ctl_caev_t res = {
-			.mktprc.r = ctl_ratio_recipr(newo),
-			.nomval.r = ctl_ratio_recipr(newo),
-			.outsec.r = newo,
-			.mktprc.a = 0.df,
-			.nomval.a = 0.df,
-			.outsec.a = 0.df,
-		};
-		return res;
+		res.mktprc.r = ctl_ratio_recipr(newo);
+		res.nomval.r = ctl_ratio_recipr(newo);
+		res.outsec.r = newo;
 	}
-	return (ctl_caev_t){};
+	return res;
 }
 
 /* caev=splr.c ends here*/

@@ -42,15 +42,12 @@ ctl_caev_t
 make_dvca(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for absolute net payment */
+	ctl_caev_t res = ctl_zero_caev();
+
 	WITH_CTL_FLD(ctl_price_t nett, CTL_FLD_NETT, f, nf, price) {
-		ctl_caev_t res = {
-			.mktprc.a = -nett,
-			.nomval.a = 0.df,
-			.outsec.a = 0.df,
-		};
-		return res;
+		res.mktprc.a = -nett;
 	}
-	return (ctl_caev_t){};
+	return res;
 }
 
 /* caev=dvca.c ends here*/
