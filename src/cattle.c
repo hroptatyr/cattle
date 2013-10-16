@@ -63,8 +63,6 @@ struct ctl_ctx_s {
 	unsigned int fwd:1;
 };
 
-#include "../test/caev-io.c"
-
 
 static void
 __attribute__((format(printf, 1, 2)))
@@ -111,6 +109,50 @@ strtokd32(const char *ln, char **on)
 		p = *on + 1U;
 	}
 	return strtobid32(p, on);
+}
+
+static size_t
+ctl_caev_wr(char *restrict buf, size_t bsz, ctl_caev_t c)
+{
+	static const char caev[] = "caev=CTL1";
+	static const char mkti[] = ".mkt=";
+	static const char nomi[] = ".nom=";
+	static const char outi[] = ".out=";
+	char *restrict bp = buf;
+	const char *const ep = buf + bsz;
+
+#define BANG_LIT(p, ep, x)					\
+	({							\
+		size_t z = sizeof(x) - 1;			\
+		(p + z < ep)					\
+			? (memcpy(p, (x), z), z)		\
+			: 0UL					\
+			;					\
+	})
+
+	bp += BANG_LIT(bp, ep, caev);
+	*bp++ = ' ';
+	*bp++ = '{';
+	bp += BANG_LIT(bp, ep, mkti);
+	*bp++ = '"';
+	bp += bid32tostr(bp, ep - bp, c.mktprc.a);
+	bp += snprintf(bp, ep - bp, "%+d<-%u", c.mktprc.r.p, c.mktprc.r.q);
+	*bp++ = '"';
+	*bp++ = ' ';
+	bp += BANG_LIT(bp, ep, nomi);
+	*bp++ = '"';
+	bp += bid32tostr(bp, ep - bp, c.nomval.a);
+	bp += snprintf(bp, ep - bp, "%+d<-%u", c.nomval.r.p, c.nomval.r.q);
+	*bp++ = '"';
+	*bp++ = ' ';
+	bp += BANG_LIT(bp, ep, outi);
+	*bp++ = '"';
+	bp += bid32tostr(bp, ep - bp, c.outsec.a);
+	bp += snprintf(bp, ep - bp, "%+d<-%u", c.outsec.r.p, c.outsec.r.q);
+	*bp++ = '"';
+	*bp++ = '}';
+	*bp = '\0';
+	return bp - buf;
 }
 
 
@@ -418,14 +460,16 @@ cmd_print(struct ctl_args_info argi[static 1U])
 		uintptr_t x = ctl_wheap_pop(ctx->q);
 		char buf[256U];
 		char *bp = buf;
+		const char *const ep = buf + sizeof(buf);
 
-		bp += dt_strf(buf, sizeof(buf), t);
+		bp += dt_strf(bp, ep - bp, t);
 		*bp++ = '\t';
-		*bp++ = '\0';
-		fputs(buf, stdout);
 		with (ctl_caev_t c = *(ctl_caev_t*)x) {
-			ctl_caev_pr(c);
+			bp += ctl_caev_wr(bp, ep - bp, c);
 		}
+		*bp++ = '\n';
+		*bp = '\0';
+		fputs(buf, stdout);
 	}
 
 out:
