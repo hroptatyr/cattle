@@ -262,8 +262,11 @@ rp_dpd32_01_SOURCES += $(top_srcdir)/src/pr-d32.c
 rp_dpd32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 
 
-TESTS += cattle_01.clit
-TESTS += cattle_02.clit
+TESTS += cattle_print_01.clit
+TESTS += cattle_print_02.clit
+TESTS += cattle_print_03.clit
+TESTS += cattle_print_04.clit
+
 TESTS += cattle_03.clit
 TESTS += cattle_04.clit
 EXTRA_DIST += cattle_01.tser

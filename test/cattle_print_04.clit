@@ -1,0 +1,8 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle print --unique "${srcdir}/cattle_01.echs" "${srcdir}/cattle_01.echs"
+2008-01-01	caev=CTL1 {.xmkt="0+1<-10" .xnom="0+1<-10" .xout="0+10<-1"}
+2010-01-01	caev=CTL1 {.xmkt="0+10<-1" .xnom="0+10<-1" .xout="0+1<-10"}
+$
+
+## cattle_print_02.clit ends here
