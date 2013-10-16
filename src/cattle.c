@@ -456,20 +456,26 @@ cmd_print(struct ctl_args_info argi[static 1U])
 		}
 	}
 
+	static ctl_caev_t init[1];
+	const ctl_caev_t *prev = init;
 	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
-		uintptr_t x = ctl_wheap_pop(ctx->q);
+		const ctl_caev_t *this = (const void*)ctl_wheap_pop(ctx->q);
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
+		if (argi->unique_given && !memcmp(this, prev, sizeof(*this))) {
+			/* completely identical */
+			continue;
+		}
+
 		bp += dt_strf(bp, ep - bp, t);
 		*bp++ = '\t';
-		with (ctl_caev_t c = *(ctl_caev_t*)x) {
-			bp += ctl_caev_wr(bp, ep - bp, c);
-		}
+		bp += ctl_caev_wr(bp, ep - bp, *this);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(buf, stdout);
+		prev = this;
 	}
 
 out:

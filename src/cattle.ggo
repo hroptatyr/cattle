@@ -23,3 +23,10 @@ option "total-return" -
 	"Reinvest any distributed capital.  Default is to have capital \
 distributions paid out."
 	optional
+
+text "
+Options affecting the print command:"
+
+option "unique" u
+	"Assume that only one CA event will occur at any one time."
+	optional
