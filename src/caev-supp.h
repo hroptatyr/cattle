@@ -43,6 +43,13 @@
 
 typedef struct ctl_fld_s ctl_fld_t;
 
+typedef struct ctl_custm_s ctl_custm_t;
+
+struct ctl_custm_s {
+	ctl_ratio_t r;
+	ctl_price_t a;
+};
+
 /* unknown fields */
 typedef enum {
 	CTL_FLD_UNK,
@@ -214,6 +221,15 @@ typedef enum {
 	CTL_FLD_PERIO_LAST,
 } ctl_fld_perio_t;
 
+/* custom fields */
+typedef enum {
+	CTL_FLD_CUSTM_FIRST = CTL_FLD_PERIO_LAST + 1U,
+	CTL_FLD_XMKT = CTL_FLD_CUSTM_FIRST,
+	CTL_FLD_XNOM,
+	CTL_FLD_XOUT,
+	CTL_FLD_CUSTM_LAST,
+} ctl_fld_custm_t;
+
 typedef enum {
 	CTL_FLD_TYPE_UNK,
 	CTL_FLD_TYPE_ADMIN,
@@ -221,6 +237,7 @@ typedef enum {
 	CTL_FLD_TYPE_RATIO,
 	CTL_FLD_TYPE_PRICE,
 	CTL_FLD_TYPE_PERIO,
+	CTL_FLD_TYPE_CUSTM,
 } ctl_fld_type_t;
 
 /* value codes */
@@ -229,6 +246,7 @@ typedef enum {
 	CTL_CAEV_BONU,
 	CTL_CAEV_CAPD,
 	CTL_CAEV_CAPG,
+	CTL_CAEV_CTL1,
 	CTL_CAEV_DECR,
 	CTL_CAEV_DRIP,
 	CTL_CAEV_DVCA,
@@ -250,6 +268,7 @@ typedef union __attribute__((transparent_union)) {
 	ctl_fld_ratio_t ratio;
 	ctl_fld_price_t price;
 	ctl_fld_perio_t perio;
+	ctl_fld_perio_t custm;
 	ctl_fld_date_t date;
 	/* just to be transparent */
 	unsigned int u;
@@ -271,6 +290,8 @@ typedef union {
 	ctl_date_t date;
 	/* caev value */
 	ctl_caev_code_t caev;
+	/* our custom actors */
+	ctl_custm_t custm;
 } ctl_fld_val_t;
 
 struct ctl_fld_s {
@@ -320,6 +341,10 @@ extern ctl_caev_t make_splf(const ctl_fld_t f[static 1], size_t n);
 extern ctl_caev_t make_splr(const ctl_fld_t f[static 1], size_t n);
 
 /**
+ * Return ca event in canonical notation. */
+extern ctl_caev_t make_ctl1(const ctl_fld_t f[static 1], size_t n);
+
+/**
  * Catch-all constructor, the CAEV=* key/val must be part of MSG. */
 extern ctl_caev_t make_caev(const ctl_fld_t msg[static 1], size_t nflds);
 
@@ -339,6 +364,8 @@ ctl_fld_type(ctl_fld_key_t code)
 		return CTL_FLD_TYPE_PRICE;
 	case CTL_FLD_PERIO_FIRST ... CTL_FLD_PERIO_LAST:
 		return CTL_FLD_TYPE_PERIO;
+	case CTL_FLD_CUSTM_FIRST ... CTL_FLD_CUSTM_LAST:
+		return CTL_FLD_TYPE_CUSTM;
 	default:
 		break;
 	}

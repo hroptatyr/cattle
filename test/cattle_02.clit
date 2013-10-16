@@ -1,10 +1,10 @@
 #!/usr/bin/clitoris ## -*- shell-script -*-
 
 $ cattle print "${srcdir}/cattle_01.echs" "${srcdir}/cattle_01.echs"
-2008-01-01	m: 1<-10 + 0  n: 1<-10 + 0  o: 10<-1 + 0
-2008-01-01	m: 1<-10 + 0  n: 1<-10 + 0  o: 10<-1 + 0
-2010-01-01	m: 10<-1 + 0  n: 10<-1 + 0  o: 1<-10 + 0
-2010-01-01	m: 10<-1 + 0  n: 10<-1 + 0  o: 1<-10 + 0
+2008-01-01	caev=CTL1 {.xmkt="0+1<-10" .xnom="0+1<-10" .xout="0+10<-1"}
+2008-01-01	caev=CTL1 {.xmkt="0+1<-10" .xnom="0+1<-10" .xout="0+10<-1"}
+2010-01-01	caev=CTL1 {.xmkt="0+10<-1" .xnom="0+10<-1" .xout="0+1<-10"}
+2010-01-01	caev=CTL1 {.xmkt="0+10<-1" .xnom="0+10<-1" .xout="0+1<-10"}
 $
 
 ## cattle_02.clit ends here
