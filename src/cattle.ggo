@@ -19,11 +19,6 @@ option "forward" -
 modified to match past prices.  Default is backward adjustment."
 	optional
 
-option "total-return" -
-	"Reinvest any distributed capital.  Default is to have capital \
-distributions paid out."
-	optional
-
 text "
 Options affecting the print command:"
 
