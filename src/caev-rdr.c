@@ -122,9 +122,8 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		p = strtol(pp, &pp, 10);
 		if (pp[0] != '<' || pp[1] != '-') {
 			break;
-		} else if (!(q = strtoul(pp + 2U, &pp, 10))) {
-			break;
-		} else if (*pp != '"' && *pp != '\'') {
+		} else if (!(q = strtoul(pp + 2U, &pp, 10),
+			     *pp == '"' || *pp == '\'')) {
 			break;
 		}
 		/* otherwise ass */
