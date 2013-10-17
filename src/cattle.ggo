@@ -14,7 +14,7 @@ option "reverse" R
 	"Consider time-series file to be adjusted, produce raw form."
 	optional
 
-option "forward" -
+option "forward" F
 	"Forward adjust the time series, i.e. current prices are \
 modified to match past prices.  Default is backward adjustment."
 	optional
