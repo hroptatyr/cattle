@@ -48,6 +48,13 @@
 #include "caev.h"
 #include "nifty.h"
 
+/* NOTE:
+ * The CAEV operations ADD is *NOT* generally commutative, instead you
+ * must obey chronological order.  Same for SUB, the latest CAEV added
+ * must be subbed first (LIFO), this is the right inverse of ADD, called
+ * ctl_caev_sub();  to get the left inverse of ADD, respectively, the
+ * FIFO-sub, use ctl_caev_sup(). */
+
 
 static __attribute__((const, pure)) ctl_price_t
 price_add(ctl_price_t x, ctl_price_t y)
@@ -114,7 +121,7 @@ price_actor_add(ctl_price_actor_t x, ctl_price_actor_t y)
 {
 	ctl_price_actor_t res = {
 		.r = ratio_add(x.r, y.r),
-		.a = price_add(x.a, y.a),
+		.a = price_add(ratio_act_p(ratio_rev(y.r), x.a), y.a),
 	};
 	return res;
 }
@@ -124,7 +131,7 @@ quant_actor_add(ctl_quant_actor_t x, ctl_quant_actor_t y)
 {
 	ctl_quant_actor_t res = {
 		.r = ratio_add(x.r, y.r),
-		.a = quant_add(x.a, y.a),
+		.a = quant_add(ratio_act_q(ratio_rev(y.r), x.a), y.a),
 	};
 	return res;
 }
@@ -181,6 +188,17 @@ ctl_caev_sub(ctl_caev_t x, ctl_caev_t y)
 		.mktprc = price_actor_add(x.mktprc, price_actor_rev(y.mktprc)),
 		.nomval = price_actor_add(x.nomval, price_actor_rev(y.nomval)),
 		.outsec = quant_actor_add(x.outsec, quant_actor_rev(y.outsec)),
+	};
+	return res;
+}
+
+ctl_caev_t
+ctl_caev_sup(ctl_caev_t x, ctl_caev_t y)
+{
+	ctl_caev_t res = {
+		.mktprc = price_actor_add(price_actor_rev(y.mktprc), x.mktprc),
+		.nomval = price_actor_add(price_actor_rev(y.nomval), x.nomval),
+		.outsec = quant_actor_add(quant_actor_rev(y.outsec), x.outsec),
 	};
 	return res;
 }
