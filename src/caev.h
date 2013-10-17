@@ -106,6 +106,14 @@ extern ctl_caev_t ctl_caev_sub(ctl_caev_t x, ctl_caev_t y);
  * Return the reverse corporate action event of X. */
 extern ctl_caev_t ctl_caev_rev(ctl_caev_t x);
 
+/**
+ * Return the reverse corporate action event of the absolute part of X. */
+extern ctl_caev_t ctl_caev_absrev(ctl_caev_t x);
+
+/**
+ * Set the the absolute part of X to 0. */
+extern ctl_caev_t ctl_caev_zero_abs(ctl_caev_t x);
+
 
 /* caev actions */
 /**
