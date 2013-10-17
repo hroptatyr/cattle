@@ -90,6 +90,24 @@ ratio_rev(ctl_ratio_t x)
 	return ctl_ratio_recipr(x);
 }
 
+static __attribute__((const, pure)) ctl_price_t
+ratio_act_p(ctl_ratio_t r, ctl_price_t p)
+{
+	if (r.p) {
+		p = (p * r.p) / r.q;
+	}
+	return p;
+}
+
+static __attribute__((const, pure)) ctl_quant_t
+ratio_act_q(ctl_ratio_t r, ctl_quant_t q)
+{
+	if (r.p) {
+		q = (q * r.p) / r.q;
+	}
+	return q;
+}
+
 
 static ctl_price_actor_t
 price_actor_add(ctl_price_actor_t x, ctl_price_actor_t y)
@@ -134,23 +152,13 @@ quant_actor_rev(ctl_quant_actor_t x)
 static ctl_price_t
 price_act(ctl_price_actor_t a, ctl_price_t x)
 {
-	ctl_price_t res = x + a.a;
-
-	if (a.r.p) {
-		res = (res * a.r.p) / a.r.q;
-	}
-	return res;
+	return ratio_act_p(a.r, x + a.a);
 }
 
 static ctl_quant_t
 quant_act(ctl_quant_actor_t a, ctl_quant_t x)
 {
-	ctl_quant_t res = x + a.a;
-
-	if (a.r.p) {
-		res = (res * a.r.p) / a.r.q;
-	}
-	return res;
+	return ratio_act_q(a.r, x + a.a);
 }
 
 
