@@ -61,7 +61,6 @@ typedef struct ctl_caev_s ctl_caev_t;
 	struct ctl_##x##_actor_s {					\
 		ctl_ratio_t r;						\
 		ctl_##x##_t a;						\
-		double f;						\
 	};								\
 	static inline __attribute__((pure, const)) ctl_##x##_actor_t	\
 	ctl_zero_##x##_actor(void)					\
@@ -69,7 +68,6 @@ typedef struct ctl_caev_s ctl_caev_t;
 		return (ctl_##x##_actor_t){				\
 			ctl_zero_ratio(),				\
 			ctl_zero_##x(),					\
-			0.,						\
 		};							\
 	}								\
 	/* just to shut the compiler up */				\
@@ -107,22 +105,6 @@ extern ctl_caev_t ctl_caev_sub(ctl_caev_t x, ctl_caev_t y);
 /**
  * Return the reverse corporate action event of X. */
 extern ctl_caev_t ctl_caev_rev(ctl_caev_t x);
-
-/**
- * Return the reverse corporate action event of the absolute part of X. */
-extern ctl_caev_t ctl_caev_absrev(ctl_caev_t x);
-
-/**
- * Set the the absolute part of X to 0. */
-extern ctl_caev_t ctl_caev_zero_abs(ctl_caev_t x);
-
-/**
- * Make absolute part of X relative to fundamentals. */
-extern ctl_caev_t ctl_caev_rel(ctl_caev_t x, ctl_fund_t f);
-
-/**
- * Make absolute price part of X relative to price P. */
-extern ctl_caev_t ctl_caev_rel_mktprc(ctl_caev_t x, ctl_price_t p);
 
 
 /* caev actions */

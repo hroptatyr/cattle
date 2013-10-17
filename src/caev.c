@@ -97,7 +97,6 @@ price_actor_add(ctl_price_actor_t x, ctl_price_actor_t y)
 	ctl_price_actor_t res = {
 		.r = ratio_add(x.r, y.r),
 		.a = price_add(x.a, y.a),
-		.f = x.f && y.f ? x.f * y.f : x.f ?: y.f,
 	};
 	return res;
 }
@@ -108,7 +107,6 @@ quant_actor_add(ctl_quant_actor_t x, ctl_quant_actor_t y)
 	ctl_quant_actor_t res = {
 		.r = ratio_add(x.r, y.r),
 		.a = quant_add(x.a, y.a),
-		.f = x.f && y.f ? x.f * y.f : x.f ?: y.f,
 	};
 	return res;
 }
@@ -119,16 +117,8 @@ price_actor_rev(ctl_price_actor_t x)
 	ctl_price_actor_t res = {
 		.r = ratio_rev(x.r),
 		.a = price_rev(x.a),
-		.f = x.f ? 1. / x.f : 0.,
 	};
 	return res;
-}
-
-static ctl_price_actor_t
-price_actor_absrev(ctl_price_actor_t x)
-{
-	x.a = price_rev(x.a);
-	return x;
 }
 
 static ctl_quant_actor_t
@@ -137,16 +127,8 @@ quant_actor_rev(ctl_quant_actor_t x)
 	ctl_quant_actor_t res = {
 		.r = ratio_rev(x.r),
 		.a = quant_rev(x.a),
-		.f = x.f ? 1. / x.f : 0.,
 	};
 	return res;
-}
-
-static ctl_quant_actor_t
-quant_actor_absrev(ctl_quant_actor_t x)
-{
-	x.a = quant_rev(x.a);
-	return x;
 }
 
 static ctl_price_t
@@ -156,9 +138,6 @@ price_act(ctl_price_actor_t a, ctl_price_t x)
 
 	if (a.r.p) {
 		res = (res * a.r.p) / a.r.q;
-	}
-	if (a.f) {
-		res = res * a.f;
 	}
 	return res;
 }
@@ -170,9 +149,6 @@ quant_act(ctl_quant_actor_t a, ctl_quant_t x)
 
 	if (a.r.p) {
 		res = (res * a.r.p) / a.r.q;
-	}
-	if (a.f) {
-		res = res * a.f;
 	}
 	return res;
 }
@@ -210,62 +186,6 @@ ctl_caev_rev(ctl_caev_t x)
 		.outsec = quant_actor_rev(x.outsec),
 	};
 	return res;
-}
-
-ctl_caev_t
-ctl_caev_absrev(ctl_caev_t x)
-{
-	ctl_caev_t res = {
-		.mktprc = price_actor_absrev(x.mktprc),
-		.nomval = price_actor_absrev(x.nomval),
-		.outsec = quant_actor_absrev(x.outsec),
-	};
-	return res;
-}
-
-ctl_caev_t
-ctl_caev_zero_abs(ctl_caev_t x)
-{
-	x.mktprc.a = ctl_zero_price();
-	x.mktprc.a = ctl_zero_price();
-	x.outsec.a = ctl_zero_quant();
-	return x;
-}
-
-ctl_caev_t
-ctl_caev_rel(ctl_caev_t x, ctl_fund_t f)
-{
-	double fctr;
-
-	if (x.mktprc.a) {
-		fctr = f.mktprc / (f.mktprc + x.mktprc.a);
-		x.mktprc.f = x.mktprc.f ? x.mktprc.f * fctr : fctr;
-		x.mktprc.a = ctl_zero_price();
-	}
-
-	if (x.nomval.a) {
-		fctr = f.nomval / (f.nomval + x.nomval.a);
-		x.nomval.f = x.nomval.f ? x.nomval.f * fctr : fctr;
-		x.nomval.a = ctl_zero_price();
-	}
-
-	if (x.outsec.a) {
-		fctr = f.outsec / (f.outsec + x.outsec.a);
-		x.outsec.f = x.outsec.f ? x.outsec.f * fctr : fctr;
-		x.outsec.a = ctl_zero_quant();
-	}
-	return x;
-}
-
-ctl_caev_t
-ctl_caev_rel_mktprc(ctl_caev_t x, ctl_price_t p)
-{
-	if (x.mktprc.a) {
-		double fctr = (double)p / ((double)p + (double)x.mktprc.a);
-		x.mktprc.f = x.mktprc.f ? x.mktprc.f * fctr : fctr;
-		x.mktprc.a = ctl_zero_price();
-	}
-	return x;
 }
 
 
