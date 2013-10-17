@@ -403,14 +403,14 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		/* apply caev sum to price lines */
 		do {
 			char *on;
-			ctl_fund_t p;
 			ctl_price_t prc;
+			ctl_price_t adj;
 
 #define TSER_ROW(args...)	&(struct tser_row_s){args}
 			on = NULL;
-			p.mktprc = prc = strtokd32(ln->ln, &on);
-			p = ctl_caev_act(sum, p);
-			NEXT1(bang, TSER_ROW(ln->t, prc, p.mktprc));
+			prc = strtokd32(ln->ln, &on);
+			adj = ctl_caev_act_mktprc(sum, prc);
+			NEXT1(bang, TSER_ROW(ln->t, prc, adj));
 #undef TSER_ROW
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
