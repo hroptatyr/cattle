@@ -278,16 +278,20 @@ TESTS += cattle_apply_06.clit
 EXTRA_DIST += cattle_05.tser
 EXTRA_DIST += cattle_05.echs
 
+TESTS += cattle_apply_reverse_07.clit
+TESTS += cattle_apply_reverse_08.clit
+TESTS += cattle_apply_reverse_09.clit
+TESTS += cattle_apply_reverse_10.clit
+TESTS += cattle_apply_reverse_11.clit
+TESTS += cattle_apply_reverse_12.clit
+EXTRA_DIST += cattle_03.tser
+
 TESTS += cattle_05.clit
 TESTS += cattle_06.clit
 EXTRA_DIST += cattle_06.tser
 EXTRA_DIST += cattle_06.echs
 TESTS += cattle_07.clit
 TESTS += cattle_08.clit
-
-TESTS += cattle_appl_reverse_01.clit
-TESTS += cattle_appl_reverse_02.clit
-EXTRA_DIST += cattle_03.tser
 
 
 ## our friendly helpers
