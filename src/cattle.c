@@ -357,13 +357,15 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	bang = START_PACK(co_appl_bang, .fwd = ctx->fwd, .next = me);
 
 	if (!ctx->rev) {
-		sum = ctx->sum;
+		sum = ctl_zero_caev();
 	} else {
 		sum = ctl_caev_rev(ctx->sum);
 	}
 
 	const struct echs_msg_s *ev;
 	const struct tser_ln_s *ln;
+	ctl_price_t last = 0.df;
+	ctl_price_t fctr = 1.df;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
 
 		/* sum up caevs in between price lines */
@@ -376,23 +378,26 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 			/* compute the new sum */
 			if (!ctx->rev) {
-				sum = ctl_caev_sub(sum, caev);
-			} else {
 				sum = ctl_caev_add(sum, caev);
+			} else {
+				sum = ctl_caev_sub(sum, caev);
 			}
 		}
+
+		sum = ctl_caev_rel_mktprc(sum, last);
 
 		/* apply caev sum to price lines */
 		do {
 			char *on;
-			ctl_fund_t p;
 			ctl_price_t prc;
+			ctl_price_t adj;
 
 #define TSER_ROW(args...)	&(struct tser_row_s){args}
 			on = NULL;
-			p.mktprc = prc = strtokd32(ln->ln, &on);
-			p = ctl_caev_act(sum, p);
-			NEXT1(bang, TSER_ROW(ln->t, prc, p.mktprc));
+			prc = strtokd32(ln->ln, &on);
+			adj = ctl_caev_act_mktprc(sum, prc);
+			NEXT1(bang, TSER_ROW(ln->t, prc, adj * fctr));
+			last = prc;
 #undef TSER_ROW
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
