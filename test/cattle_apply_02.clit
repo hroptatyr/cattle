@@ -7,4 +7,4 @@ $ head -1 "${srcdir}/cattle_01.echs" | cattle apply "${srcdir}/cattle_01.tser"
 2009-01-01	2.60
 $
 
-## cattle_04.clit ends here
+## cattle_apply_02.clit ends here
