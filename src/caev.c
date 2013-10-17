@@ -281,4 +281,10 @@ ctl_caev_act(ctl_caev_t e, ctl_fund_t x)
 	return res;
 }
 
+ctl_price_t
+ctl_caev_act_mktprc(ctl_caev_t e, ctl_price_t x)
+{
+	return price_act(e.mktprc, x);
+}
+
 /* caev.c ends here */

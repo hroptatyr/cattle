@@ -132,6 +132,11 @@ extern ctl_caev_t ctl_caev_rel_mktprc(ctl_caev_t x, ctl_price_t p);
  * assumed that the quantified objects match. */
 extern ctl_fund_t ctl_caev_act(ctl_caev_t, ctl_fund_t x);
 
+/**
+ * Return the price after CAEV acted on X.
+ * It is assumed that currencies match. */
+extern ctl_price_t ctl_caev_act_mktprc(ctl_caev_t, ctl_price_t x);
+
 
 static inline __attribute__((const, pure)) ctl_caev_t
 ctl_zero_caev(void)
