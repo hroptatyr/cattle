@@ -393,7 +393,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			caev = *(const ctl_caev_t*)ev->msg;
 
 			/* compute the new sum */
-			if (!ctx->rev || ctx->fwd) {
+			if (!ctx->rev) {
 				sum = ctl_caev_sub(sum, caev);
 			} else {
 				sum = ctl_caev_add(sum, caev);
