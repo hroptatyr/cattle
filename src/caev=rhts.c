@@ -42,7 +42,7 @@ ctl_caev_t
 make_rhts(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for rtun (rights-to-undly ratio) */
-	ctl_caev_t res = {};
+	ctl_caev_t res = ctl_zero_caev();
 
 	WITH_CTL_FLD(ctl_ratio_t rtun, CTL_FLD_RTUN, f, nf, ratio) {
 		res.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(rtun));

@@ -1,0 +1,9 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle apply --forward "${srcdir}/cattle_05.tser" "${srcdir}/cattle_05.echs" > "foo_10"
+$ cattle apply -R --forward "foo_10" "${srcdir}/cattle_05.echs"
+< "${srcdir}/cattle_05.tser"
+$ rm -f -- "foo_10"
+$
+
+## cattle_apply_reverse_10.clit ends here

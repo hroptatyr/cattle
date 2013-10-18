@@ -95,16 +95,33 @@ struct ctl_caev_s {
 
 /* caev opers */
 /**
- * Return the joint corporate action event by applying X first, then Y. */
+ * Return the joint corporate action event by applying X first, then Y.
+ * This addition is *NOT* commutative, and there are 2 inverses:
+ * ctl_caev_sup(SUM, Y) to obtain X, and respectively
+ * ctl_caev_sub(SUM, X) to obtain Y, where SUM = ctl_caev_add(X, Y). */
 extern ctl_caev_t ctl_caev_add(ctl_caev_t x, ctl_caev_t y);
 
 /**
- * Return the joint corporate action event by reversing Y with respect to X. */
+ * Return the joint corporate action event when taking off past event Y
+ * (wrt the period captured in X this is the old-end) of X. */
+extern ctl_caev_t ctl_caev_sup(ctl_caev_t x, ctl_caev_t y);
+
+/**
+ * Return the joint corporate action event when taking off event Y, off
+ * X at the the young-end, or present end. */
 extern ctl_caev_t ctl_caev_sub(ctl_caev_t x, ctl_caev_t y);
 
 /**
- * Return the reverse corporate action event of X. */
+ * Return the reverse corporate action event of X.
+ * That is a corporate action event that can be added to the right
+ * (present side) to yield 0+0<-0, the neutral CA event. */
 extern ctl_caev_t ctl_caev_rev(ctl_caev_t x);
+
+/**
+ * Return the inverse corporate action event of X.
+ * That is a corporate action event that can be added to the left
+ * (past side) to yield 0+0<-0, the neutral CA event. */
+extern ctl_caev_t ctl_caev_inv(ctl_caev_t x);
 
 
 /* caev actions */
@@ -113,6 +130,11 @@ extern ctl_caev_t ctl_caev_rev(ctl_caev_t x);
  * For prices it is assumed that currencies match, for quanities it is
  * assumed that the quantified objects match. */
 extern ctl_fund_t ctl_caev_act(ctl_caev_t, ctl_fund_t x);
+
+/**
+ * Return the price after CAEV acted on X.
+ * It is assumed that currencies match. */
+extern ctl_price_t ctl_caev_act_mktprc(ctl_caev_t, ctl_price_t x);
 
 
 static inline __attribute__((const, pure)) ctl_caev_t

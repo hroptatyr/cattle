@@ -43,17 +43,13 @@ make_bonu(const ctl_fld_t f[static 1], size_t nf)
 {
 /* return the event actor for the pro-rata assignment
  * we're only interested in adex fields */
+	ctl_caev_t res = ctl_zero_caev();
+
 	WITH_CTL_FLD(ctl_ratio_t adex, CTL_FLD_ADEX, f, nf, ratio) {
-		ctl_caev_t res = {
-			.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex)),
-			.outsec.r = ctl_adex_to_newo(adex),
-			.mktprc.a = 0.df,
-			.nomval.a = 0.df,
-			.outsec.a = 0.df,
-		};
-		return res;
+		res.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(adex));
+		res.outsec.r = ctl_adex_to_newo(adex);
 	}
-	return (ctl_caev_t){};
+	return res;
 }
 
 /* caev=bonu.c ends here*/
