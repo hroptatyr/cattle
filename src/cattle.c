@@ -372,12 +372,14 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
 	bang = START_PACK(co_appl_bang, .next = me);
 
-	if (ctx->fwd) {
-		sum = ctl_zero_caev();
-	} else if (!ctx->rev) {
+	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
-	} else {
-		sum = ctl_caev_rev(ctx->sum);
+	} else if (!ctx->rev/* && ctx->fwd */) {
+		sum = ctl_zero_caev();
+	} else if (!ctx->fwd/* && ctx->rev */) {
+		sum = ctl_caev_rev(ctl_caev_inv(ctx->sum));
+	} else /*if (ctx->fwd && ctx->rev)*/ {
+		sum = ctl_zero_caev();
 	}
 
 	const struct echs_msg_s *ev;
@@ -393,10 +395,14 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			caev = *(const ctl_caev_t*)ev->msg;
 
 			/* compute the new sum */
-			if (!ctx->rev) {
+			if (!ctx->fwd && !ctx->rev) {
+				sum = ctl_caev_sup(sum, caev);
+			} else if (!ctx->rev/* && ctx->fwd */) {
 				sum = ctl_caev_sub(sum, caev);
-			} else {
+			} else if (!ctx->fwd/* && ctx->rev */) {
 				sum = ctl_caev_add(sum, caev);
+			} else /*if (ctx->fwd && ctx->rev)*/ {
+				sum = ctl_caev_add(caev, sum);
 			}
 		}
 
