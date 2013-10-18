@@ -1,0 +1,9 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle apply -T "${srcdir}/cattle_07.tser" "${srcdir}/cattle_07.echs" > "fooT_01"
+$ cattle apply -R -T "fooT_01" "${srcdir}/cattle_07.echs"
+< "${srcdir}/cattle_07.tser"
+$ rm -f -- "fooT_01"
+$
+
+## cattle_apply_total_return_reverse_05.clit ends here
