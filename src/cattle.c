@@ -407,9 +407,14 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	ctx->prod = 1.0;
 	ctx->trwh = make_ctl_wheap();
 
+	ctl_caev_t sum;
 	ctl_price_t last = 0.df;
 	const struct echs_msg_s *ev;
 	const struct tser_ln_s *ln;
+
+	if (ctx->fwd && ctx->rev) {
+		sum = ctl_zero_caev();
+	}
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
 
 		/* sum up caevs in between price lines */
@@ -428,7 +433,18 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			caev = *(const ctl_caev_t*)ev->msg;
-			fctr.x = 1.0 + (double)caev.mktprc.a / (double)last;
+			if (!ctx->rev) {
+				fctr.x = 1.0 + (double)caev.mktprc.a /
+					(double)last;
+			} else if (!ctx->fwd) {
+				fctr.x = 1.0 + (double)caev.mktprc.a /
+					((double)last - (double)caev.mktprc.a);
+			} else {
+				/* --forward and --reverse */
+				sum = ctl_caev_add(caev, sum);
+				fctr.x = 1.0 + (double)sum.mktprc.a /
+					(double)last;
+			}
 			fctr.x *= ratio_to_double(caev.mktprc.r);
 			ctx->prod *= fctr.x;
 			
