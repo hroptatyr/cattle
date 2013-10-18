@@ -9,4 +9,4 @@ $ head -n 1 "${srcdir}/cattle_01.echs" | cattle apply -R "foo_01"
 $ rm -- "foo_01"
 $
 
-## cattle_appl_reverse_01.clit ends here
+## cattle_apply_reverse_07.clit ends here

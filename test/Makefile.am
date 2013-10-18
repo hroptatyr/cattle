@@ -266,24 +266,55 @@ TESTS += cattle_print_01.clit
 TESTS += cattle_print_02.clit
 TESTS += cattle_print_03.clit
 TESTS += cattle_print_04.clit
-
-TESTS += cattle_03.clit
-TESTS += cattle_04.clit
 EXTRA_DIST += cattle_01.tser
 EXTRA_DIST += cattle_01.echs
 
-TESTS += cattle_05.clit
+TESTS += cattle_apply_01.clit
+TESTS += cattle_apply_02.clit
+TESTS += cattle_apply_03.clit
+TESTS += cattle_apply_04.clit
+TESTS += cattle_apply_05.clit
+TESTS += cattle_apply_06.clit
 EXTRA_DIST += cattle_05.tser
 EXTRA_DIST += cattle_05.echs
-TESTS += cattle_06.clit
-EXTRA_DIST += cattle_06.tser
-EXTRA_DIST += cattle_06.echs
-TESTS += cattle_07.clit
-TESTS += cattle_08.clit
 
-TESTS += cattle_appl_reverse_01.clit
-TESTS += cattle_appl_reverse_02.clit
+TESTS += cattle_apply_reverse_07.clit
+TESTS += cattle_apply_reverse_08.clit
+TESTS += cattle_apply_reverse_09.clit
+TESTS += cattle_apply_reverse_10.clit
+TESTS += cattle_apply_reverse_11.clit
+TESTS += cattle_apply_reverse_12.clit
 EXTRA_DIST += cattle_03.tser
+
+TESTS += cattle_apply_13.clit
+TESTS += cattle_apply_14.clit
+EXTRA_DIST += cattle_04.tser
+EXTRA_DIST += cattle_04.echs
+TESTS += cattle_apply_15.clit
+TESTS += cattle_apply_16.clit
+EXTRA_DIST += cattle_07.tser
+EXTRA_DIST += cattle_07.echs
+TESTS += cattle_apply_17.clit
+TESTS += cattle_apply_18.clit
+EXTRA_DIST += cattle_08.tser
+EXTRA_DIST += cattle_08.echs
+TESTS += cattle_apply_19.clit
+TESTS += cattle_apply_20.clit
+EXTRA_DIST += cattle_09.tser
+EXTRA_DIST += cattle_09.echs
+TESTS += cattle_apply_21.clit
+TESTS += cattle_apply_22.clit
+EXTRA_DIST += cattle_10.tser
+EXTRA_DIST += cattle_10.echs
+
+TESTS += cattle_apply_reverse_23.clit
+TESTS += cattle_apply_reverse_24.clit
+TESTS += cattle_apply_reverse_25.clit
+TESTS += cattle_apply_reverse_26.clit
+TESTS += cattle_apply_reverse_27.clit
+TESTS += cattle_apply_reverse_28.clit
+TESTS += cattle_apply_reverse_29.clit
+TESTS += cattle_apply_reverse_30.clit
 
 
 ## our friendly helpers
