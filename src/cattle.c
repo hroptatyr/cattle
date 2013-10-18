@@ -60,6 +60,9 @@ struct ctl_ctx_s {
 
 	unsigned int rev:1;
 	unsigned int fwd:1;
+
+	double prod;
+	ctl_wheap_t trwh;
 };
 
 
@@ -108,6 +111,15 @@ strtokd32(const char *ln, char **on)
 		p = *on + 1U;
 	}
 	return strtobid32(p, on);
+}
+
+static double
+ratio_to_double(ctl_ratio_t r)
+{
+	if (r.p) {
+		return (double)r.p / (double)r.q;
+	}
+	return 1.0;
 }
 
 static size_t
@@ -237,66 +249,6 @@ DEFCORU(co_appl_bang, {}, void *arg)
 	return 0;
 }
 
-DEFCORU(co_appl_bang_tr, {
-		bool fwd;
-	}, void *arg)
-{
-/* this is the total return version */
-	static struct tser_row_s *q;
-	static size_t nq;
-	bool fwd = CORU_CLOSUR(fwd);
-	_Decimal32 x;
-
-	/* total returns naturally adjust forwards
-	 * and total payouts naturally adjust backwards */
-	if (fwd) {
-		/* straight printing, i.e. no capturing prices in an array */
-		goto pr_straight;
-	}
-
-	/* we need adjustment factors, so capture everything */
-	for (; arg != NULL; arg = YIELD(nq++)) {
-		if ((nq % 64U) == 0U) {
-			/* resize */
-			q = realloc(q, (nq + 64U) * sizeof(*q));
-		}
-
-		with (const struct tser_row_s *trow = arg) {
-			q[nq] = *trow;
-		}
-	}
-
-pr_straight:
-	/* straight printing, i.e. no capturing prices in an array */
-	for (; arg != NULL; arg = YIELD(0)) {
-		const struct tser_row_s *trow = arg;
-
-		pr_ei(trow->d);
-		fputc('\t', stdout);
-		pr_d32(trow->adj);
-		fputc('\n', stdout);
-	}
-
-	/* we finished banging, time to print */
-	if (!nq) {
-		/* nothing to print */
-		return 0;
-	}
-
-	x = q[nq - 1U].prc / q[nq - 1U].adj;
-
-	for (size_t i = 0; i < nq; i++) {
-		pr_ei(q[i].d);
-		fputc('\t', stdout);
-		pr_d32(q[i].adj * x);
-		fputc('\n', stdout);
-	}
-	free(q);
-	q = NULL;
-	nq = 0UL;
-	return 0;
-}
-
 
 /* public api, might go to libcattle one day */
 static int
@@ -352,8 +304,7 @@ static int
 ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
- * format in there is first column is a date, the second column is a price
- * this applicator uses the total return scheme */
+ * format in there is first column is a date, the rest is prices */
 	struct cocore *rdr;
 	struct cocore *pop;
 	struct cocore *bang;
@@ -416,6 +367,160 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			on = NULL;
 			prc = strtokd32(ln->ln, &on);
 			adj = ctl_caev_act_mktprc(sum, prc);
+			NEXT1(bang, TSER_ROW(ln->t, prc, adj));
+#undef TSER_ROW
+		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
+			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
+	}
+
+	/* print our results */
+	NEXT(bang);
+
+	UNPREP();
+
+	fclose(f);
+	return 0;
+}
+
+static int
+ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
+{
+/* wants a const char *fn, the time series
+ * format in there is first column is a date, the rest is prices */
+	struct cocore *rdr;
+	struct cocore *pop;
+	struct cocore *me;
+	int res = 0;
+	FILE *f;
+
+	if (fn == NULL) {
+		f = stdin;
+	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+		return -1;
+	}
+
+	me = PREP();
+	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+
+	/* initialise product */
+	ctx->prod = 1.0;
+	ctx->trwh = make_ctl_wheap();
+
+	ctl_price_t last = 0.df;
+	const struct echs_msg_s *ev;
+	const struct tser_ln_s *ln;
+	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
+
+		/* sum up caevs in between price lines */
+		for (;
+		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
+		     ev = NEXT(pop)) {
+			ctl_caev_t caev;
+			union {
+				uintptr_t u;
+				double x;
+			} fctr;
+
+			if (UNLIKELY(!last)) {
+				res = -1;
+				goto out;
+			}
+
+			caev = *(const ctl_caev_t*)ev->msg;
+			fctr.x = 1.0 + (double)caev.mktprc.a / (double)last;
+			fctr.x *= ratio_to_double(caev.mktprc.r);
+			ctx->prod *= fctr.x;
+			
+			/* push to tr wheap */
+			ctl_wheap_add_deferred(ctx->trwh, ev->t, fctr.u);
+		}
+
+		/* apply caev sum to price lines */
+		do {
+			char *on = NULL;
+
+			last = strtokd32(ln->ln, &on);
+		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
+			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
+	}
+	/* fix up the wheap */
+	ctl_wheap_fix_deferred(ctx->trwh);
+
+out:
+	/* finished, yay */
+	UNPREP();
+
+	fclose(f);
+	return res;
+}
+
+static int
+ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
+{
+/* wants a const char *fn, the time series
+ * format in there is first column is a date, the rest is prices */
+	struct cocore *rdr;
+	struct cocore *pop;
+	struct cocore *bang;
+	struct cocore *me;
+	double sum;
+	FILE *f;
+
+	if (fn == NULL) {
+		f = stdin;
+	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+		return -1;
+	}
+
+	me = PREP();
+	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	pop = START_PACK(co_appl_pop, .q = ctx->trwh, .next = me);
+	bang = START_PACK(co_appl_bang, .next = me);
+
+	if (!ctx->fwd && !ctx->rev) {
+		sum = ctx->prod;
+	} else if (!ctx->rev/* && ctx->fwd */) {
+		sum = 1.0;
+	} else if (!ctx->fwd/* && ctx->rev */) {
+		sum = 1.0 / ctx->prod;
+	} else /*if (ctx->fwd && ctx->rev)*/ {
+		sum = 1.0;
+	}
+
+	const struct echs_msg_s *ev;
+	const struct tser_ln_s *ln;
+	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
+
+		/* sum up caevs in between price lines */
+		for (;
+		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
+		     ev = NEXT(pop)) {
+			union {
+				uintptr_t u;
+				double x;
+			} fctr;
+
+			fctr.u = (uintptr_t)ev->msg;
+
+			/* compute the new sum */
+			if (!ctx->rev) {
+				sum /= fctr.x;
+			} else {
+				sum *= fctr.x;
+			}
+		}
+
+		/* apply caev sum to price lines */
+		do {
+			char *on;
+			ctl_price_t prc;
+			ctl_price_t adj;
+
+#define TSER_ROW(args...)	&(struct tser_row_s){args}
+			on = NULL;
+			prc = strtokd32(ln->ln, &on);
+			adj = (ctl_price_t)((double)prc * sum);
 			NEXT1(bang, TSER_ROW(ln->t, prc, adj));
 #undef TSER_ROW
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
@@ -545,7 +650,20 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 
 	/* open time series file */
 	with (const char *tser_fn = argi->inputs[1U]) {
-		if (UNLIKELY(ctl_appl_caev_file(ctx, tser_fn) < 0)) {
+		if (argi->total_return_given) {
+			if (UNLIKELY(ctl_fctr_caev_file(ctx, tser_fn) < 0)) {
+				error("\
+cannot deduce factors for total return adjustment from `%s", tser_fn);
+				res = 1;
+				goto out;
+			}
+			if (UNLIKELY(ctl_appl_fctr_file(ctx, tser_fn) < 0)) {
+				error("\
+cannot adjust prices from `%s", tser_fn);
+				res = 1;
+				goto out;
+			}
+		} else if (UNLIKELY(ctl_appl_caev_file(ctx, tser_fn) < 0)) {
 			error("cannot open series file `%s'", tser_fn);
 			res = 1;
 			goto out;
@@ -555,6 +673,11 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 out:
 	if (LIKELY(ctx->q != NULL)) {
 		free_ctl_wheap(ctx->q);
+		ctx->q = NULL;
+	}
+	if (LIKELY(ctx->trwh != NULL)) {
+		free_ctl_wheap(ctx->trwh);
+		ctx->trwh = NULL;
 	}
 	return res;
 }
