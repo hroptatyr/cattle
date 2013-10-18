@@ -27,6 +27,10 @@ distributions paid out."
 text "
 Options affecting the print command:"
 
+option "summary" S
+	"Roll all CA events into one."
+	optional
+
 option "unique" u
 	"Assume that only one CA event will occur at any one time."
 	optional

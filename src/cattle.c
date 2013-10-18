@@ -456,8 +456,8 @@ cmd_print(struct ctl_args_info argi[static 1U])
 		}
 	}
 
-	static ctl_caev_t init[1];
-	const ctl_caev_t *prev = init;
+	ctl_caev_t sum = ctl_zero_caev();
+	const ctl_caev_t *prev = &sum;
 	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
 		const ctl_caev_t *this = (const void*)ctl_wheap_pop(ctx->q);
 		char buf[256U];
@@ -469,13 +469,27 @@ cmd_print(struct ctl_args_info argi[static 1U])
 			continue;
 		}
 
-		bp += dt_strf(bp, ep - bp, t);
-		*bp++ = '\t';
-		bp += ctl_caev_wr(bp, ep - bp, *this);
+		if (!argi->summary_given) {
+			bp += dt_strf(bp, ep - bp, t);
+			*bp++ = '\t';
+			bp += ctl_caev_wr(bp, ep - bp, *this);
+			*bp++ = '\n';
+			*bp = '\0';
+			fputs(buf, stdout);
+			prev = this;
+		} else {
+			sum = ctl_caev_add(sum, *this);
+		}
+	}
+	if (argi->summary_given) {
+		char buf[256U];
+		char *bp = buf;
+		const char *const ep = buf + sizeof(buf);
+
+		bp += ctl_caev_wr(bp, ep - bp, sum);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(buf, stdout);
-		prev = this;
 	}
 
 out:
