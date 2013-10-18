@@ -177,7 +177,7 @@ pr_trow(const struct tser_row_s trow[static 1U])
 {
 	pr_ei(trow->d);
 	fputc('\t', stdout);
-	pr_d32(trow->adj);
+	pr_d32(d32tod32(trow->adj, trow->prc));
 	fputc('\n', stdout);
 	return;
 }
