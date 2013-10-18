@@ -65,6 +65,12 @@ struct ctl_ctx_s {
 	ctl_wheap_t trwh;
 };
 
+struct tser_row_s {
+	echs_instant_t d;
+	_Decimal32 prc;
+	_Decimal32 adj;
+};
+
 
 static void
 __attribute__((format(printf, 1, 2)))
@@ -166,6 +172,16 @@ ctl_caev_wr(char *restrict buf, size_t bsz, ctl_caev_t c)
 	return bp - buf;
 }
 
+static void
+pr_trow(const struct tser_row_s trow[static 1U])
+{
+	pr_ei(trow->d);
+	fputc('\t', stdout);
+	pr_d32(trow->adj);
+	fputc('\n', stdout);
+	return;
+}
+
 
 /* coroutines */
 struct tser_ln_s {
@@ -178,12 +194,6 @@ struct echs_msg_s {
 	echs_instant_t t;
 	const void *msg;
 	size_t msz;
-};
-
-struct tser_row_s {
-	echs_instant_t d;
-	_Decimal32 prc;
-	_Decimal32 adj;
 };
 
 DEFCORU(co_appl_rdr, {
@@ -230,21 +240,6 @@ DEFCORU(co_appl_pop, {
 		ev->msg = (const ctl_caev_t*)ctl_wheap_pop(q);
 		ev->msz = sizeof(ctl_caev_t);
 		YIELD(ev);
-	}
-	return 0;
-}
-
-DEFCORU(co_appl_bang, {}, void *arg)
-{
-/* this is the total payout version */
-
-	for (; arg != NULL; arg = YIELD(0)) {
-		const struct tser_row_s *trow = arg;
-
-		pr_ei(trow->d);
-		fputc('\t', stdout);
-		pr_d32(trow->adj);
-		fputc('\n', stdout);
 	}
 	return 0;
 }
@@ -307,7 +302,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
  * format in there is first column is a date, the rest is prices */
 	struct cocore *rdr;
 	struct cocore *pop;
-	struct cocore *bang;
 	struct cocore *me;
 	ctl_caev_t sum;
 	FILE *f;
@@ -321,7 +315,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
-	bang = START_PACK(co_appl_bang, .next = me);
 
 	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
@@ -367,14 +360,11 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			on = NULL;
 			prc = strtokd32(ln->ln, &on);
 			adj = ctl_caev_act_mktprc(sum, prc);
-			NEXT1(bang, TSER_ROW(ln->t, prc, adj));
+			pr_trow(TSER_ROW(ln->t, prc, adj));
 #undef TSER_ROW
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
-
-	/* print our results */
-	NEXT(bang);
 
 	UNPREP();
 
@@ -484,7 +474,6 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
  * format in there is first column is a date, the rest is prices */
 	struct cocore *rdr;
 	struct cocore *pop;
-	struct cocore *bang;
 	struct cocore *me;
 	double sum;
 	FILE *f;
@@ -498,7 +487,6 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->trwh, .next = me);
-	bang = START_PACK(co_appl_bang, .next = me);
 
 	if (!ctx->rev && !ctx->fwd) {
 		sum = ctx->prod;
@@ -543,14 +531,11 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			on = NULL;
 			prc = strtokd32(ln->ln, &on);
 			adj = (ctl_price_t)((double)prc * sum);
-			NEXT1(bang, TSER_ROW(ln->t, prc, adj));
+			pr_trow(TSER_ROW(ln->t, prc, adj));
 #undef TSER_ROW
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
-
-	/* print our results */
-	NEXT(bang);
 
 	UNPREP();
 
