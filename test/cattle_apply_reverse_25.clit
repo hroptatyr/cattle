@@ -1,0 +1,9 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle apply "${srcdir}/cattle_08.tser" "${srcdir}/cattle_08.echs" > "foo_25"
+$ cattle apply -R "foo_25" "${srcdir}/cattle_08.echs"
+< "${srcdir}/cattle_08.tser"
+$ rm -f -- "foo_25"
+$
+
+## cattle_apply_reverse_25.clit ends here
