@@ -399,6 +399,11 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		return -1;
 	}
 
+	/* we can't do --reverse at the moment*/
+	if (ctx->rev) {
+		return -1;
+	}
+
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
@@ -407,14 +412,9 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	ctx->prod = 1.0;
 	ctx->trwh = make_ctl_wheap();
 
-	ctl_caev_t sum;
 	ctl_price_t last = 0.df;
 	const struct echs_msg_s *ev;
 	const struct tser_ln_s *ln;
-
-	if (ctx->fwd && ctx->rev) {
-		sum = ctl_zero_caev();
-	}
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
 
 		/* sum up caevs in between price lines */
@@ -433,21 +433,11 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			caev = *(const ctl_caev_t*)ev->msg;
-			if (!ctx->rev) {
-				fctr.x = 1.0 + (double)caev.mktprc.a /
-					(double)last;
-			} else if (!ctx->fwd) {
-				fctr.x = 1.0 + (double)caev.mktprc.a /
-					((double)last - (double)caev.mktprc.a);
-			} else {
-				/* --forward and --reverse */
-				sum = ctl_caev_add(caev, sum);
-				fctr.x = 1.0 + (double)sum.mktprc.a /
-					(double)last;
-			}
+
+			fctr.x = 1.0 + (double)caev.mktprc.a / (double)last;
 			fctr.x *= ratio_to_double(caev.mktprc.r);
 			ctx->prod *= fctr.x;
-			
+
 			/* push to tr wheap */
 			ctl_wheap_add_deferred(ctx->trwh, ev->t, fctr.u);
 		}
@@ -489,18 +479,19 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		return -1;
 	}
 
+	/* we can't do --reverse at the moment*/
+	if (ctx->rev) {
+		return -1;
+	}
+
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->trwh, .next = me);
 	bang = START_PACK(co_appl_bang, .next = me);
 
-	if (!ctx->fwd && !ctx->rev) {
+	if (!ctx->fwd) {
 		sum = ctx->prod;
-	} else if (!ctx->rev/* && ctx->fwd */) {
-		sum = 1.0;
-	} else if (!ctx->fwd/* && ctx->rev */) {
-		sum = 1.0 / ctx->prod;
-	} else /*if (ctx->fwd && ctx->rev)*/ {
+	} else {
 		sum = 1.0;
 	}
 
@@ -520,11 +511,7 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			fctr.u = (uintptr_t)ev->msg;
 
 			/* compute the new sum */
-			if (!ctx->rev) {
-				sum /= fctr.x;
-			} else {
-				sum *= fctr.x;
-			}
+			sum /= fctr.x;
 		}
 
 		/* apply caev sum to price lines */
