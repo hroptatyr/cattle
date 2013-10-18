@@ -159,21 +159,15 @@ quant_actor_rev(ctl_quant_actor_t x)
 static ctl_price_actor_t
 price_actor_inv(ctl_price_actor_t x)
 {
-	ctl_price_actor_t res = {
-		.r = x.r,
-		.a = ratio_act_p(x.r, x.a),
-	};
-	return res;
+	x.a = ratio_act_p(x.r, x.a);
+	return price_actor_rev(x);
 }
 
 static ctl_quant_actor_t
 quant_actor_inv(ctl_quant_actor_t x)
 {
-	ctl_quant_actor_t res = {
-		.r = x.r,
-		.a = ratio_act_q(x.r, x.a),
-	};
-	return res;
+	x.a = ratio_act_q(x.r, x.a);
+	return quant_actor_rev(x);
 }
 
 static ctl_price_t

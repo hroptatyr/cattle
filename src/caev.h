@@ -112,11 +112,15 @@ extern ctl_caev_t ctl_caev_sup(ctl_caev_t x, ctl_caev_t y);
 extern ctl_caev_t ctl_caev_sub(ctl_caev_t x, ctl_caev_t y);
 
 /**
- * Return the reverse corporate action event of X. */
+ * Return the reverse corporate action event of X.
+ * That is a corporate action event that can be added to the right
+ * (present side) to yield 0+0<-0, the neutral CA event. */
 extern ctl_caev_t ctl_caev_rev(ctl_caev_t x);
 
 /**
- * Return the inverse corporate action event of X. */
+ * Return the inverse corporate action event of X.
+ * That is a corporate action event that can be added to the left
+ * (past side) to yield 0+0<-0, the neutral CA event. */
 extern ctl_caev_t ctl_caev_inv(ctl_caev_t x);
 
 

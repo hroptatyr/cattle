@@ -377,7 +377,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	} else if (!ctx->rev/* && ctx->fwd */) {
 		sum = ctl_zero_caev();
 	} else if (!ctx->fwd/* && ctx->rev */) {
-		sum = ctl_caev_rev(ctl_caev_inv(ctx->sum));
+		sum = ctl_caev_inv(ctx->sum);
 	} else /*if (ctx->fwd && ctx->rev)*/ {
 		sum = ctl_zero_caev();
 	}
