@@ -115,6 +115,10 @@ extern ctl_caev_t ctl_caev_sub(ctl_caev_t x, ctl_caev_t y);
  * Return the reverse corporate action event of X. */
 extern ctl_caev_t ctl_caev_rev(ctl_caev_t x);
 
+/**
+ * Return the inverse corporate action event of X. */
+extern ctl_caev_t ctl_caev_inv(ctl_caev_t x);
+
 
 /* caev actions */
 /**

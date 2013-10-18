@@ -156,6 +156,26 @@ quant_actor_rev(ctl_quant_actor_t x)
 	return res;
 }
 
+static ctl_price_actor_t
+price_actor_inv(ctl_price_actor_t x)
+{
+	ctl_price_actor_t res = {
+		.r = x.r,
+		.a = ratio_act_p(x.r, x.a),
+	};
+	return res;
+}
+
+static ctl_quant_actor_t
+quant_actor_inv(ctl_quant_actor_t x)
+{
+	ctl_quant_actor_t res = {
+		.r = x.r,
+		.a = ratio_act_q(x.r, x.a),
+	};
+	return res;
+}
+
 static ctl_price_t
 price_act(ctl_price_actor_t a, ctl_price_t x)
 {
@@ -210,6 +230,17 @@ ctl_caev_rev(ctl_caev_t x)
 		.mktprc = price_actor_rev(x.mktprc),
 		.nomval = price_actor_rev(x.nomval),
 		.outsec = quant_actor_rev(x.outsec),
+	};
+	return res;
+}
+
+ctl_caev_t
+ctl_caev_inv(ctl_caev_t x)
+{
+	ctl_caev_t res = {
+		.mktprc = price_actor_inv(x.mktprc),
+		.nomval = price_actor_inv(x.nomval),
+		.outsec = quant_actor_inv(x.outsec),
 	};
 	return res;
 }
