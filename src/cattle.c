@@ -500,11 +500,11 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	if (!ctx->rev && !ctx->fwd) {
 		sum = ctx->prod;
 	} else if (!ctx->rev/* && ctx->fwd */) {
-		sum = 1.0;
+		sum = 1.f;
 	} else if (!ctx->fwd/* && ctx->rev */) {
-		sum = 1 / ctx->prod;
+		sum = 1.f / ctx->prod;
 	} else /*if (ctx->rev && ctx->fwd)*/ {
-		sum = 1.0;
+		sum = 1.f;
 	}
 
 	const struct echs_msg_s *ev;
