@@ -61,7 +61,7 @@ struct ctl_ctx_s {
 	unsigned int rev:1;
 	unsigned int fwd:1;
 
-	double prod;
+	float prod;
 	ctl_wheap_t trwh;
 };
 
@@ -119,13 +119,13 @@ strtokd32(const char *ln, char **on)
 	return strtobid32(p, on);
 }
 
-static double
-ratio_to_double(ctl_ratio_t r)
+static float
+ratio_to_float(ctl_ratio_t r)
 {
 	if (r.p) {
-		return (double)r.p / (double)r.q;
+		return (float)r.p / (float)r.q;
 	}
-	return 1.0;
+	return 1.f;
 }
 
 static size_t
@@ -416,10 +416,10 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			ctl_caev_t caev;
 			union {
 				uintptr_t u;
-				double x;
+				float x;
 			} fctr;
-			double lstprc = last;
-			double mktprc;
+			float lstprc = last;
+			float mktprc;
 
 			if (UNLIKELY(!last)) {
 				res = -1;
@@ -434,14 +434,14 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				;
 			} else if (!ctx->fwd) {
 				sum = ctl_caev_add(sum, caev);
-				mktprc /= ratio_to_double(sum.mktprc.r);
+				mktprc /= ratio_to_float(sum.mktprc.r);
 				lstprc -= mktprc;
 			} else {
 				sum = ctl_caev_add(caev, sum);
-				mktprc /= ratio_to_double(sum.mktprc.r);
+				mktprc /= ratio_to_float(sum.mktprc.r);
 			}
-			fctr.x = 1.0 + mktprc / lstprc;
-			fctr.x *= ratio_to_double(caev.mktprc.r);
+			fctr.x = 1.f + mktprc / lstprc;
+			fctr.x *= ratio_to_float(caev.mktprc.r);
 			ctx->prod *= fctr.x;
 
 			/* push to tr wheap */
@@ -475,7 +475,7 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	struct cocore *rdr;
 	struct cocore *pop;
 	struct cocore *me;
-	double sum;
+	float sum;
 	FILE *f;
 
 	if (fn == NULL) {
@@ -508,7 +508,7 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     ev = NEXT(pop)) {
 			union {
 				uintptr_t u;
-				double x;
+				float x;
 			} fctr;
 
 			fctr.u = (uintptr_t)ev->msg;
@@ -525,7 +525,7 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		do {
 			char *on;
 			ctl_price_t prc;
-			ctl_price_t adj;
+			float adj;
 
 #define TSER_ROW(args...)	&(struct tser_row_s){args}
 			on = NULL;
