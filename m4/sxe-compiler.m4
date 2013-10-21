@@ -297,8 +297,8 @@ AC_DEFUN([SXE_WARNFLAGS], [dnl
 	SXE_CHECK_COMPILER_FLAG([-Wdeprecated], [
 		warnflags="$warnflags -Wdeprecated"])
 
-	SXE_CHECK_COMPILER_FLAG([-Wparentheses], [
-		warnflags="${warnflags} -Wparentheses"])
+	SXE_CHECK_COMPILER_FLAG([-Wno-parentheses], [
+		warnflags="${warnflags} -Wno-parentheses"])
 
 	## icc specific
 	SXE_CHECK_COMPILER_FLAG([-Wcheck], [
