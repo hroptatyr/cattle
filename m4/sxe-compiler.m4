@@ -266,8 +266,8 @@ AC_DEFUN([SXE_WARNFLAGS], [dnl
 	## for gcc, see http://gcc.gnu.org/bugzilla/show_bug.cgi?id=50422
 	## we used to have -Wswitch-default and -Wswitch-enum but that
 	## set gcc off quite badly in the nested switch case
-	SXE_CHECK_COMPILER_FLAG([-Wswitch], [
-		warnflags="$warnflags -Wswitch"])
+	SXE_CHECK_COMPILER_FLAG([-Wno-switch], [
+		warnflags="$warnflags -Wno-switch"])
 
 	SXE_CHECK_COMPILER_FLAG([-Wunused-function], [
 		warnflags="$warnflags -Wunused-function"])
