@@ -173,11 +173,22 @@ ctl_caev_wr(char *restrict buf, size_t bsz, ctl_caev_t c)
 }
 
 static void
-pr_trow(const struct tser_row_s trow[static 1U])
+pr_adj(echs_instant_t d, _Decimal32 adj)
 {
-	pr_ei(trow->d);
+	pr_ei(d);
 	fputc('\t', stdout);
-	pr_d32(quantized32(trow->adj, trow->prc));
+	pr_d32(adj);
+	fputc('\n', stdout);
+	return;
+}
+
+static void
+pr_adjq(echs_instant_t d, float adj, _Decimal32 prc)
+{
+/* like pr_adj() but quantise adj first */
+	pr_ei(d);
+	fputc('\t', stdout);
+	pr_d32(quantized32(adj, prc));
 	fputc('\n', stdout);
 	return;
 }
@@ -356,12 +367,10 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			ctl_price_t prc;
 			ctl_price_t adj;
 
-#define TSER_ROW(args...)	&(struct tser_row_s){args}
 			on = NULL;
 			prc = strtokd32(ln->ln, &on);
 			adj = ctl_caev_act_mktprc(sum, prc);
-			pr_trow(TSER_ROW(ln->t, prc, adj));
-#undef TSER_ROW
+			pr_adj(ln->t, adj);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -527,12 +536,10 @@ ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			ctl_price_t prc;
 			float adj;
 
-#define TSER_ROW(args...)	&(struct tser_row_s){args}
 			on = NULL;
 			prc = strtokd32(ln->ln, &on);
-			adj = (ctl_price_t)((double)prc * sum);
-			pr_trow(TSER_ROW(ln->t, prc, adj));
-#undef TSER_ROW
+			adj = (float)prc * sum;
+			pr_adjq(ln->t, adj, prc);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
