@@ -51,37 +51,6 @@
 
 
 static inline __attribute__((pure, const)) int
-expo_bid(_Decimal32 x)
-{
-	uint32_t b = bits(x);
-	register int tmp;
-
-	if (UNLIKELY((b & 0x60000000U) == 0x60000000U)) {
-		/* exponent starts 2 bits to the left */
-		tmp = (b >> 21U);
-	} else {
-		tmp = (b >> 23U);
-	}
-	return (tmp & 0xffU) - 101;
-}
-
-static inline __attribute__((pure, const)) int
-expo_dpd(_Decimal32 x)
-{
-	uint32_t b = bits(x);
-	register int tmp;
-
-	b >>= 20U;
-	if (UNLIKELY((b & 0b11000000000U) == 0b11000000000U)) {
-		/* exponent starts 2 bits to the left */
-		tmp = ((b & 0b00110000000U) >> 1U) | (b & 0b111111U);
-	} else {
-		tmp = ((b & 0b11000000000U) >> 3U) | (b & 0b111111U);
-	}
-	return tmp - 101;
-}
-
-static inline __attribute__((pure, const)) int
 sign_bid(_Decimal32 x)
 {
 	uint32_t b = bits(x);
@@ -256,7 +225,7 @@ bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 	uint_least32_t m;
 
 	/* get the exponent, sign and mantissa */
-	e = LIKELY(bits(x)) ? expo_bid(x) : 0;
+	e = quantexpbid32(x);
 	m = mant_bid(x);
 	s = m ? sign_bid(x) : 0/*no stinking signed naughts*/;
 
@@ -284,7 +253,7 @@ dpd32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 	uint_least32_t m;
 
 	/* get the exponent, sign and mantissa */
-	e = LIKELY(bits(x)) ? expo_dpd(x) : 0;
+	e = quantexpdpd32(x);
 	if (LIKELY((m = mant_dpd(x)))) {
 		uint_least32_t l3;
 		uint_least32_t h3;

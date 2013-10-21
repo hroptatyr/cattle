@@ -49,21 +49,6 @@
 
 
 #if !defined HAVE_QUANTIZED32
-static inline __attribute__((pure, const, unused)) int
-expo_bid(_Decimal32 x)
-{
-	uint32_t b = bits(x);
-	register int tmp;
-
-	if (UNLIKELY((b & 0x60000000U) == 0x60000000U)) {
-		/* exponent starts 2 bits to the left */
-		tmp = (b >> 21U);
-	} else {
-		tmp = (b >> 23U);
-	}
-	return (tmp & 0xffU) - 101;
-}
-
 static inline __attribute__((pure, const)) int
 sign_bid(_Decimal32 x)
 {
@@ -99,8 +84,8 @@ quantizebid32(_Decimal32 x, _Decimal32 r)
 	uint_least32_t m;
 
 	/* get the exponent and mantissa */
-	er = LIKELY(bits(r)) ? expo_bid(r) : 0;
-	ex = LIKELY(bits(x)) ? expo_bid(x) : 0;
+	er = quantexpbid32(r);
+	ex = quantexpbid32(x);
 
 	m = mant_bid(x);
 

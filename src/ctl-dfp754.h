@@ -66,4 +66,45 @@ bobs(uint32_t u)
 	return (union {uint32_t u; _Decimal32 x;}){u}.x;
 }
 
+static inline __attribute__((pure, const)) int
+quantexpbid32(_Decimal32 x)
+{
+	register uint32_t b = bits(x);
+	register int tmp;
+
+	if (b == 0U) {
+		return 0;
+	} else if ((b & 0x60000000U) != 0x60000000U) {
+		tmp = (b >> 23U);
+	} else {
+		/* exponent starts 2 bits to the left */
+		tmp = (b >> 21U);
+	}
+	return (tmp & 0xffU) - 101;
+}
+
+static inline __attribute__((pure, const)) int
+quantexpdpd32(_Decimal32 x)
+{
+	register uint32_t b = bits(x);
+	register int tmp;
+
+	b >>= 20U;
+	if (b == 0U) {
+		return 0;
+	} else if ((b & 0b11000000000U) != 0b11000000000U) {
+		tmp = ((b & 0b11000000000U) >> 3U) | (b & 0b111111U);
+	} else {
+		/* exponent starts 2 bits to the left */
+		tmp = ((b & 0b00110000000U) >> 1U) | (b & 0b111111U);
+	}
+	return tmp - 101;
+}
+
+extern inline __attribute__((pure, const)) int
+quantexpd32(_Decimal32 x)
+{
+	return quantexpbid32(x);
+}
+
 #endif	/* INCLUDED_ctl_dfp754_h_ */
