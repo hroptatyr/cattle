@@ -1,0 +1,12 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+## we need reverse echs order here
+$ tail -n 1 "${srcdir}/cattle_11.echs" | cattle apply -T -F "${srcdir}/cattle_11.tser" > "chn_04_1"
+$ head -n -1 "${srcdir}/cattle_11.echs" | cattle apply -T -F "chn_04_1" | \
+	sed 's/\.66/\.67/' > "chn_04_all"
+$ cattle apply -T -F "${srcdir}/cattle_11.tser" "${srcdir}/cattle_11.echs"
+< chn_04_all
+$ rm -f -- "chn_04_1" "chn_04_all"
+$
+
+## cattle_apply_chain_03.clit ends here

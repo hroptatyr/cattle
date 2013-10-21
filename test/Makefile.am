@@ -325,6 +325,13 @@ TESTS += cattle_apply_total_return_reverse_06.clit
 TESTS += cattle_apply_total_return_reverse_07.clit
 TESTS += cattle_apply_total_return_reverse_08.clit
 
+TESTS += cattle_apply_chain_01.clit
+TESTS += cattle_apply_chain_02.clit
+TESTS += cattle_apply_chain_03.clit
+TESTS += cattle_apply_chain_04.clit
+EXTRA_DIST += cattle_11.tser
+EXTRA_DIST += cattle_11.echs
+
 
 ## our friendly helpers
 check_PROGRAMS += clitoris

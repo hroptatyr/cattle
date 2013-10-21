@@ -1,0 +1,10 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ head -n -1 "${srcdir}/cattle_11.echs" | cattle apply "${srcdir}/cattle_11.tser" > "chn_01_1"
+$ tail -n 1 "${srcdir}/cattle_11.echs" | cattle apply "chn_01_1" > "chn_01_all"
+$ cattle apply "${srcdir}/cattle_11.tser" "${srcdir}/cattle_11.echs"
+< chn_01_all
+$ rm -f -- "chn_01_1" "chn_01_all"
+$
+
+## cattle_apply_chain_01.clit ends here
