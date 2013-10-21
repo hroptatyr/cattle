@@ -47,9 +47,8 @@
 #include "ctl-dfp754.h"
 #include "nifty.h"
 
-#define C(x)	(char)((x) + '0')
-
 
+#if !defined HAVE_QUANTIZED32
 static inline __attribute__((pure, const, unused)) int
 expo_bid(_Decimal32 x)
 {
@@ -89,7 +88,6 @@ mant_bid(_Decimal32 x)
 	return res;
 }
 
-#if !defined HAVE_QUANTIZED32
 static _Decimal32
 quantizebid32(_Decimal32 x, _Decimal32 r)
 {
