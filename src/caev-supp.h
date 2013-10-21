@@ -380,7 +380,7 @@ ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_key_t fld)
 			return f[i];
 		}
 	}
-	return (ctl_fld_t){CTL_FLD_UNK};
+	return (ctl_fld_t){{CTL_FLD_UNK}, {}};
 }
 
 #define MAKE_CTL_FLD(slot, x, y...)		\
@@ -393,7 +393,7 @@ ctl_find_fld(const ctl_fld_t f[static 1], size_t n, ctl_fld_key_t fld)
 
 #define WITH_CTL_FLD(x, fcod, flds, nflds, slot)			\
 	for (ctl_fld_t paste(fld, __LINE__) = ctl_find_fld(flds, nflds, fcod); \
-	     paste(fld, __LINE__).code.unk == fcod;			\
+	     paste(fld, __LINE__).code.unk == (ctl_fld_unk_t)fcod;	\
 	     paste(fld, __LINE__).code.unk = CTL_FLD_UNK)		\
 		for (x = paste(fld, __LINE__).beef.slot,		\
 			     *paste(p, __LINE__) = (void*)1;		\
