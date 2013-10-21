@@ -50,8 +50,8 @@ extern int dpd32tostr(char *restrict buf, size_t bsz, _Decimal32);
 extern _Decimal32 strtodpd32(const char*, char**);
 
 /**
- * Round X to multiple of R. */
-extern _Decimal32 d32tod32(_Decimal32 x, _Decimal32 r);
+ * Round X to the quantum of R. */
+extern _Decimal32 quantized32(_Decimal32 x, _Decimal32 r);
 
 
 static inline __attribute__((pure, const)) uint32_t

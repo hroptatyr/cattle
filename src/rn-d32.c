@@ -89,13 +89,10 @@ mant_bid(_Decimal32 x)
 	return res;
 }
 
-
-_Decimal32
-d32tod32(_Decimal32 x, _Decimal32 r)
+#if !defined HAVE_QUANTIZED32
+static _Decimal32
+quantizebid32(_Decimal32 x, _Decimal32 r)
 {
-#if defined HAVE_QUANTIZED32
-	return quantized32(x, r);
-#else  /* !HAVE_QUANTIZED32 */
 /* d32s look like s??eeeeee mm..23..mm
  * and the decimal is (-1 * s) * m * 10^(e - 101),
  * this implementation is very minimal serving only the cattle use cases */
@@ -135,8 +132,16 @@ d32tod32(_Decimal32 x, _Decimal32 r)
 		x = bobs(u);
 	}
 	return x;
-#endif	/* HAVE_QUANTIZED32 */
 }
+#endif	/* !HAVE_QUANTIZED32 */
 
+
+#if !defined HAVE_QUANTIZED32
+_Decimal32
+quantized32(_Decimal32 x, _Decimal32 r)
+{
+	return quantizebid32(x, r);
+}
+#endif	/* !HAVE_QUANTIZED32 */
 
 /* rn-d32.c ends here */
