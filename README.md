@@ -113,6 +113,44 @@ regardless whether or not a corporate action event has been observed the
 adjustment tool must be run every day.
 
 
+Reversing the adjustment
+------------------------
+Sometimes it is desirable to reproduce the original (raw) time series
+from an adjusted series and a series of corporate action events.
+
+The cattle tool provides the `--reverse` switch for this.  For the first
+example (stored in a file `XYZ.adj`) the command line:
+
+    $ cattle apply --reverse XYZ.adj XYZ.echs
+    2013-10-01	10.00
+    2013-10-02	11.00
+    2013-10-03	12.00
+    2013-10-04	11.00
+    2013-10-07	10.00
+    2013-10-08	10.00
+    2013-10-09	10.50
+    $
+
+will reproduce exactly the original time series (`XYZ.tser`) that we
+used to produce the adjusted series.
+
+Similarly for the forward-adjusted time series (stored in `XYZ.fadj`):
+
+    $ cattle apply --reverse --forward XYZ.fadj XYZ.echs
+    2013-10-01	10.00
+    2013-10-02	11.00
+    2013-10-03	12.00
+    2013-10-04	11.00
+    2013-10-07	10.00
+    2013-10-08	10.00
+    2013-10-09	10.50
+    $
+
+reproduces the original time series, too.  The switch `--forward` in the
+second example is necessary as information is lost about whether an
+adjustment has been applied forwards or backwards.
+
+
 Similar projects
 ================
 
