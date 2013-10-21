@@ -1,8 +1,15 @@
 #!/usr/bin/clitoris ## -*- shell-script -*-
 
+## the resolution is too low for forward-adjustments to be reversed
 $ cattle apply -T -F "${srcdir}/cattle_07.tser" "${srcdir}/cattle_07.echs" > "fooT_02"
 $ cattle apply -R -F -T "fooT_02" "${srcdir}/cattle_07.echs"
-< "${srcdir}/cattle_07.tser"
+2013-10-01	12.00
+2013-10-02	10.00
+2013-10-03	8.00
+2013-10-04	2.00
+2013-10-05	15.00
+2013-10-06	11.50
+2013-10-07	10.54
 $ rm -f -- "fooT_02"
 $
 

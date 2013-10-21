@@ -49,6 +49,7 @@ libcattle_la_SOURCES += caev-fld-gp.erf
 libcattle_la_SOURCES += ctl-dfp754.h
 libcattle_la_SOURCES += pr-d32.c
 libcattle_la_SOURCES += rd-d32.c
+libcattle_la_SOURCES += rn-d32.c
 BUILT_SOURCES += caev-rdr-gp.c
 BUILT_SOURCES += caev-fld-gp.c
 
