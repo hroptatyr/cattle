@@ -54,6 +54,12 @@ extern _Decimal32 strtodpd32(const char*, char**);
 extern _Decimal32 quantized32(_Decimal32 x, _Decimal32 r);
 
 
+inline __attribute__((pure, const)) uint32_t bits(_Decimal32 x);
+inline __attribute__((pure, const)) _Decimal32 bobs(uint32_t u);
+inline __attribute__((pure, const)) int quantexpbid32(_Decimal32 x);
+inline __attribute__((pure, const)) int quantexpdpd32(_Decimal32 x);
+inline __attribute__((pure, const)) int quantexpd32(_Decimal32 x);
+
 inline __attribute__((pure, const)) uint32_t
 bits(_Decimal32 x)
 {
