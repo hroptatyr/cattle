@@ -84,7 +84,7 @@ make_caev(const ctl_fld_t msg[static 1], size_t nflds)
 			break;
 		}
 	}
-	return (ctl_caev_t){};
+	return ctl_zero_caev();
 }
 
 /* caev-supp.c ends here */

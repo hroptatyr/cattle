@@ -143,7 +143,7 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 	static struct ctl_fld_s *flds;
 	static size_t nflds;
 	ctl_caev_code_t ccod;
-	ctl_caev_t res = {};
+	ctl_caev_t res = ctl_zero_caev();
 	size_t fldi;
 
 	if (*s == '.') {
