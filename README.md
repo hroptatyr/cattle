@@ -195,11 +195,13 @@ adjustments can also be made in forward direction (`-F` is short for
     2013-10-09	15.40
     $
 
-With this adjustment it's very easy to answer questions like: How much
-did my investment earn in percent since opening the position?
+With total return adjustments it's very easy to answer questions like:
+How much did my investment earn in percent since opening the position?
 
-And like for total payout adjustments total return adjustments are
-reversible too, using the `--reverse` option.
+Moreover, total return adjustments can be reversed just like total
+payout adjustments (using the `--reverse` switch).  However, because
+adjusted prices are always quantised to market prices, the reversal
+might suffer from *quantisation artefacts*.
 
 
 Similar projects
