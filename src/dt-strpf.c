@@ -119,8 +119,8 @@ echs_instant_t
 dt_strp(const char *str)
 {
 /* code dupe, see __strpd_std() */
-	echs_instant_t nul = {0};
-	echs_instant_t res = {0};
+	echs_instant_t nul = {};
+	echs_instant_t res = {};
 	const char *sp;
 	int32_t tmp;
 

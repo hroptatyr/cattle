@@ -266,8 +266,8 @@ AC_DEFUN([SXE_WARNFLAGS], [dnl
 	## for gcc, see http://gcc.gnu.org/bugzilla/show_bug.cgi?id=50422
 	## we used to have -Wswitch-default and -Wswitch-enum but that
 	## set gcc off quite badly in the nested switch case
-	SXE_CHECK_COMPILER_FLAG([-Wswitch], [
-		warnflags="$warnflags -Wswitch"])
+	SXE_CHECK_COMPILER_FLAG([-Wno-switch], [
+		warnflags="$warnflags -Wno-switch"])
 
 	SXE_CHECK_COMPILER_FLAG([-Wunused-function], [
 		warnflags="$warnflags -Wunused-function"])
@@ -297,8 +297,8 @@ AC_DEFUN([SXE_WARNFLAGS], [dnl
 	SXE_CHECK_COMPILER_FLAG([-Wdeprecated], [
 		warnflags="$warnflags -Wdeprecated"])
 
-	SXE_CHECK_COMPILER_FLAG([-Wparentheses], [
-		warnflags="${warnflags} -Wparentheses"])
+	SXE_CHECK_COMPILER_FLAG([-Wno-parentheses], [
+		warnflags="${warnflags} -Wno-parentheses"])
 
 	## icc specific
 	SXE_CHECK_COMPILER_FLAG([-Wcheck], [
