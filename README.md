@@ -150,6 +150,57 @@ reproduces the original time series, too.  The switch `--forward` in the
 second example is necessary as information is lost about whether an
 adjustment has been applied forwards or backwards.
 
+Total returns
+-------------
+So far we considered corporate actions (especially those with payment
+events) as if they could be moved in time so long as prices are adjusted
+accordingly.  However, this inaccurately reflects situations where it's
+not a concrete investment that needs to be tracked but rather a
+benchmark or something abstract (like what would have happened to an
+initial EUR 100 investment).
+
+Under the assumption that we can always opt out of payouts (like
+dividends, interest payments, etc.) cattle offers an adjustment mode
+that keeps *true returns* unchanged.  Given above time series and
+corporate action event file (`XYZ.tser`, `XYZ.echs`) the command line:
+
+    $ cattle apply --total-return XYZ.tser XYZ.echs
+    2013-10-01	6.82
+    2013-10-02	7.50
+    2013-10-03	8.18
+    2013-10-04	9.00
+    2013-10-07	10.00
+    2013-10-08	10.00
+    2013-10-09	10.50
+    $
+
+As in the total payout case, future values could simply be appended to
+the series when no corporate action had taken place in the covered
+period.  Unlike before, dividends account partially for past prices from
+the moment the dividend has gone ex, i.e. the adjusted series does not
+pretend the dividends have been paid out at some point in the past or
+future but have been part of the observed prices all along.
+
+Naturally and for the same reasons as given above, total return
+adjustments can also be made in forward direction (`-F` is short for
+`--forward`):
+
+    $ cattle apply --total-return -F XYZ.tser XYZ.echs
+    2013-10-01	10.00
+    2013-10-02	11.00
+    2013-10-03	12.00
+    2013-10-04	13.20
+    2013-10-07	14.67
+    2013-10-08	14.67
+    2013-10-09	15.40
+    $
+
+With this adjustment it's very easy to answer questions like: How much
+did my investment earn in percent since opening the position?
+
+And like for total payout adjustments total return adjustments are
+reversible too, using the `--reverse` option.
+
 
 Similar projects
 ================
