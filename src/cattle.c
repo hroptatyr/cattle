@@ -529,16 +529,16 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			cell.t = ev->t;
 
 			/* represent everything as factor */
-			if (!ctx->rev) {
+			if (LIKELY(!ctx->rev)) {
 				/* all's good */
 				cell.fctr = 1.f + cell.aadj / cell.last;
-				cell.fctr *= ratio_to_float(caev.mktprc.r);
-				prod *= cell.fctr;
 			} else {
 				/* we do the fix up later ...
 				 * there's nothing else we need */
-				;
+				cell.fctr = 1.f;
 			}
+			cell.fctr *= ratio_to_float(caev.mktprc.r);
+			prod *= cell.fctr;
 
 			/* push to fa array */
 			if ((nfa % 64U) == 0U) {
@@ -577,7 +577,8 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			fa[i].last *= p;
 			/* improve i-th factor now, store inverse,
 			 * use identity 1 + d/x = (x + d) / x */
-			fa[i].fctr = (fa[i].last - fa[i].aadj) / fa[i].last;
+			fa[i].fctr = (fa[i].last - fa[i].aadj) / fa[i].last /
+				fa[i].fctr;
 		}
 
 		/* (re)calc prod */
