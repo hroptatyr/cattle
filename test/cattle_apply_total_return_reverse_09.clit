@@ -1,0 +1,19 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+## quantisation artefacts here
+$ cattle apply -T "${srcdir}/cattle_12.tser" "${srcdir}/cattle_12.echs" > "fooT_09"
+$ cattle apply -R -T "fooT_09" "${srcdir}/cattle_12.echs"
+2013-10-01	10.01
+2013-10-02	11.00
+2013-10-03	12.00
+2013-10-04	11.00
+2013-10-07	10.00
+2013-10-08	10.00
+2013-10-09	10.50
+2013-10-10	10.00
+2013-10-11	10.50
+2013-10-14	11.00
+$ rm -f -- "fooT_09"
+$
+
+## cattle_apply_total_return_reverse_09.clit ends here
