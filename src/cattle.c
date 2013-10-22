@@ -45,6 +45,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
@@ -60,9 +61,6 @@ struct ctl_ctx_s {
 
 	unsigned int rev:1;
 	unsigned int fwd:1;
-
-	float prod;
-	ctl_wheap_t trwh;
 };
 
 struct tser_row_s {
@@ -382,18 +380,20 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 }
 
 static int
-ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
+ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
- * format in there is first column is a date, the rest is prices */
+ * format in there is first column is a date, the rest is prices
+ * this is the total return forward adjustment */
 	struct cocore *rdr;
 	struct cocore *pop;
 	struct cocore *me;
 	ctl_caev_t sum;
-	ctl_wheap_t trwh;
 	float prod;
 	int res = 0;
 	FILE *f;
+
+	assert(ctx->fwd);
 
 	if (fn == NULL) {
 		f = stdin;
@@ -407,11 +407,7 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	/* initialise product */
 	prod = 1.f;
-	trwh = make_ctl_wheap();
-
-	if (ctx->rev && !ctx->fwd) {
-		sum = ctl_caev_inv(ctx->sum);
-	} else if (ctx->rev) {
+	if (ctx->rev) {
 		sum = ctl_zero_caev();
 	}
 
@@ -425,14 +421,8 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
 		     ev = NEXT(pop)) {
 			ctl_caev_t caev;
-			union {
-				uintptr_t u;
-				struct {
-					float x;
-					float a;
-				};
-			} fctr;
 			float lstprc = last;
+			float fctr;
 			float mktprc;
 
 			if (UNLIKELY(!last)) {
@@ -448,79 +438,73 @@ ctl_fctr_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				;
 			} else {
 				mktprc /= ratio_to_float(sum.mktprc.r);
-				fctr.a = mktprc;
-				if (!ctx->fwd) {
-					sum = ctl_caev_add(sum, caev);
-					lstprc -= mktprc;
-				} else {
-					sum = ctl_caev_add(caev, sum);
-				}
+				lstprc *= prod;
+				sum = ctl_caev_add(caev, sum);
 			}
-			fctr.x = 1.f + mktprc / lstprc;
-			fctr.x *= ratio_to_float(caev.mktprc.r);
-			prod *= fctr.x;
-
-			/* push to tr wheap */
-			ctl_wheap_add_deferred(trwh, ev->t, fctr.u);
+			fctr = 1.f + mktprc / lstprc;
+			fctr *= ratio_to_float(caev.mktprc.r);
+			if (!ctx->rev) {
+				prod /= fctr;
+			} else {
+				prod *= fctr;
+			}
 		}
 
 		/* apply caev sum to price lines */
 		do {
 			char *on = NULL;
+			float adj;
 
 			last = strtokd32(ln->ln, &on);
+			adj = (float)last * prod;
+			pr_adjq(ln->t, adj, last);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
-	/* fix up the wheap */
-	ctl_wheap_fix_deferred(trwh);
 
 out:
 	/* finished, yay */
 	UNPREP();
-
-	/* bang wheap and product */
-	ctx->trwh = trwh;
-	ctx->prod = prod;
 
 	fclose(f);
 	return res;
 }
 
 static int
-ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
+ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
- * format in there is first column is a date, the rest is prices */
+ * format in there is first column is a date, the rest is prices
+ * this is the total return forward adjustment */
+	struct fa_s {
+		echs_instant_t t;
+		float fctr;
+		float aadj;
+		float last;
+	};
 	struct cocore *rdr;
 	struct cocore *pop;
 	struct cocore *me;
-	ctl_wheap_t trwh;
+	struct fa_s *fa = NULL;
+	size_t nfa = 0U;
 	float prod;
-	float padj;
 	int res = 0;
 	FILE *f;
 
+	assert(!ctx->fwd);
+
 	if (fn == NULL) {
 		f = stdin;
-	} else if (UNLIKELY(!ctx->rev)) {
-		return -1;
 	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
 	}
 
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .q = ctx->trwh, .next = me);
+	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
 
 	/* initialise another wheap and another prod */
-	padj = 1.f;
-	if (ctx->fwd) {
-		prod = 1.f;
-	} else {
-		prod = 1 / ctx->prod;
-	}
-	trwh = make_ctl_wheap();
+	prod = 1.f;
 
 	ctl_price_t last = 0.df;
 	const struct echs_msg_s *ev;
@@ -531,40 +515,36 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		for (;
 		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
 		     ev = NEXT(pop)) {
-			union {
-				uintptr_t u;
-				struct {
-					float x;
-					float a;
-				};
-			} fctr;
-			float lstprc = last;
+			ctl_caev_t caev;
+			struct fa_s cell;
 
 			if (UNLIKELY(!last)) {
 				res = -1;
 				goto out;
 			}
 
-			fctr.u = (uintptr_t)ev->msg;
+			caev = *(const ctl_caev_t*)ev->msg;
+			cell.last = (float)last;
+			cell.aadj = (float)caev.mktprc.a;
+			cell.t = ev->t;
 
-			/* compute the new factor */
-			if (!ctx->fwd) {
-				prod *= fctr.x;
+			/* represent everything as factor */
+			if (!ctx->rev) {
+				/* all's good */
+				cell.fctr = 1.f + cell.aadj / cell.last;
+				cell.fctr *= ratio_to_float(caev.mktprc.r);
+				prod *= cell.fctr;
+			} else {
+				/* we do the fix up later ...
+				 * there's nothing else we need */
+				;
 			}
-			if (fctr.a < 0.f) {
-				lstprc *= prod;
-				if (!ctx->fwd) {
-					lstprc -= fctr.a;
-				}
-				fctr.x = 1.f + fctr.a / lstprc;
-			}
-			if (ctx->fwd) {
-				prod *= fctr.x;
-			}
-			padj *= fctr.x;
 
-			/* push to tr wheap */
-			ctl_wheap_add_deferred(trwh, ev->t, fctr.u);
+			/* push to fa array */
+			if ((nfa % 64U) == 0U) {
+				fa = realloc(fa, (nfa + 64) * sizeof(*fa));
+			}
+			fa[nfa++] = cell;
 		}
 
 		/* apply caev sum to price lines */
@@ -575,96 +555,84 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
-	/* fix up the wheap */
-	ctl_wheap_fix_deferred(trwh);
 
-out:
-	/* finished, yay */
+	/* end of first pass */
 	UNPREP();
 
-	free_ctl_wheap(ctx->trwh);
-	ctx->trwh = trwh;
-	ctx->prod = padj;
+	if (UNLIKELY(ctx->rev)) {
+		/* massage the factors,
+		 * we know the last factor is correct, we don't know
+		 * about the N-1 factors before that though
+		 * so we reinstantiate the raw price P[N-1] using the
+		 * last factor and improve the (N-1)-th factor
+		 * and so on */
+		for (size_t i = nfa - 1U; i < nfa; i--) {
+			float p = 1.f;
 
-	fclose(f);
-	return res;
-}
+			/* determine sub-prod */
+			for (size_t j = i + 1U; j < nfa; j++) {
+				p *= fa[j].fctr;
+			}
+			/* unadjust i-th last price */
+			fa[i].last *= p;
+			/* improve i-th factor now, store inverse,
+			 * use identity 1 + d/x = (x + d) / x */
+			fa[i].fctr = (fa[i].last - fa[i].aadj) / fa[i].last;
+		}
 
-static int
-ctl_appl_fctr_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
-{
-/* wants a const char *fn, the time series
- * format in there is first column is a date, the rest is prices */
-	struct cocore *rdr;
-	struct cocore *pop;
-	struct cocore *me;
-	float sum;
-	FILE *f;
-
-	if (fn == NULL) {
-		f = stdin;
-	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
-		return -1;
+		/* (re)calc prod */
+		prod = 1.f;
+		for (size_t i = 0; i < nfa; i++) {
+			prod *= fa[i].fctr;
+		}
 	}
+
+	/* last pass */
+	fseek(f, 0, SEEK_SET);
 
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .q = ctx->trwh, .next = me);
 
-	if (!ctx->rev && !ctx->fwd) {
-		sum = ctx->prod;
-	} else if (!ctx->rev/* && ctx->fwd */) {
-		sum = 1.f;
-	} else if (!ctx->fwd/* && ctx->rev */) {
-		sum = 1.f / ctx->prod;
-	} else /*if (ctx->rev && ctx->fwd)*/ {
-		sum = 1.f;
-	}
-
-	const struct echs_msg_s *ev;
-	const struct tser_ln_s *ln;
-	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
-
-		/* sum up caevs in between price lines */
+	last = 0.df;
+	size_t i;
+	for (ln = NEXT(rdr), i = 0U; ln != NULL;) {
+		/* mul up factors in between price lines */
 		for (;
-		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
-		     ev = NEXT(pop)) {
-			union {
-				uintptr_t u;
-				struct {
-					float x;
-					float a;
-				};
-			} fctr;
-
-			fctr.u = (uintptr_t)ev->msg;
-
-			/* compute the new sum */
-			if (!ctx->rev) {
-				sum /= fctr.x;
-			} else {
-				sum *= fctr.x;
+		     LIKELY(i < nfa) && UNLIKELY(!__inst_lt_p(ln->t, fa[i].t));
+		     i++) {
+			if (UNLIKELY(!last)) {
+				res = -1;
+				goto out;
 			}
+
+			/* compute the new adjustment factor */
+			prod /= fa[i].fctr;
 		}
 
 		/* apply caev sum to price lines */
 		do {
 			char *on;
-			ctl_price_t prc;
 			float adj;
 
 			on = NULL;
-			prc = strtokd32(ln->ln, &on);
-			adj = (float)prc * sum;
-			pr_adjq(ln->t, adj, prc);
+			last = strtokd32(ln->ln, &on);
+			adj = (float)last * prod;
+			pr_adjq(ln->t, adj, last);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
-			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
+			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
 
+out:
+	/* finished, yay */
 	UNPREP();
 
+	if (nfa > 0U) {
+		assert(fa != NULL);
+		free(fa);
+	}
+
 	fclose(f);
-	return 0;
+	return res;
 }
 
 
@@ -781,24 +749,18 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 
 	/* open time series file */
 	with (const char *tser_fn = argi->inputs[1U]) {
-		if (argi->total_return_given) {
-			/* total return mode needs at least 2 scans */
-			if (UNLIKELY(ctl_fctr_caev_file(ctx, tser_fn) < 0)) {
+		if (argi->total_return_given && !ctx->fwd) {
+			/* total return back adjustment needs 2 scans */
+			if (UNLIKELY(ctl_badj_caev_file(ctx, tser_fn) < 0)) {
 				error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
 				res = 1;
 				goto out;
 			}
-			if (UNLIKELY(ctx->rev) &&
-			    UNLIKELY(ctl_fadj_caev_file(ctx, tser_fn) < 0)) {
+		} else if (argi->total_return_given/* && ctx->fwd */) {
+			if (UNLIKELY(ctl_fadj_caev_file(ctx, tser_fn) < 0)) {
 				error("\
-cannot adjust reverse factors for reproduction from `%s'", tser_fn);
-				res = 1;
-				goto out;
-			}
-			if (UNLIKELY(ctl_appl_fctr_file(ctx, tser_fn) < 0)) {
-				error("\
-cannot adjust prices from `%s", tser_fn);
+cannot deduce factors for total return adjustment from `%s'", tser_fn);
 				res = 1;
 				goto out;
 			}
@@ -813,10 +775,6 @@ out:
 	if (LIKELY(ctx->q != NULL)) {
 		free_ctl_wheap(ctx->q);
 		ctx->q = NULL;
-	}
-	if (LIKELY(ctx->trwh != NULL)) {
-		free_ctl_wheap(ctx->trwh);
-		ctx->trwh = NULL;
 	}
 	return res;
 }
