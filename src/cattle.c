@@ -388,7 +388,6 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	struct cocore *rdr;
 	struct cocore *pop;
 	struct cocore *me;
-	ctl_caev_t sum;
 	float prod;
 	int res = 0;
 	FILE *f;
@@ -407,9 +406,6 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	/* initialise product */
 	prod = 1.f;
-	if (ctx->rev) {
-		sum = ctl_zero_caev();
-	}
 
 	ctl_price_t last = 0.df;
 	const struct echs_msg_s *ev;
@@ -423,7 +419,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			ctl_caev_t caev;
 			float lstprc = last;
 			float fctr;
-			float mktprc;
+			float aadj;
 
 			if (UNLIKELY(!last)) {
 				res = -1;
@@ -431,17 +427,13 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			caev = *(const ctl_caev_t*)ev->msg;
-			mktprc = caev.mktprc.a;
+			aadj = (float)caev.mktprc.a;
 
-			if (!ctx->rev) {
-				/* all's good */
-				;
-			} else {
-				mktprc /= ratio_to_float(sum.mktprc.r);
+			if (UNLIKELY(ctx->rev)) {
+				/* last price needs adaption */
 				lstprc *= prod;
-				sum = ctl_caev_add(caev, sum);
 			}
-			fctr = 1.f + mktprc / lstprc;
+			fctr = 1.f + aadj / lstprc;
 			fctr *= ratio_to_float(caev.mktprc.r);
 			if (!ctx->rev) {
 				prod /= fctr;
