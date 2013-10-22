@@ -1,0 +1,10 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+## quantisation artefacts :(
+$ cattle apply -T -F "${srcdir}/cattle_13.tser" "${srcdir}/cattle_13.echs" > "fooT_12"
+$ cattle apply -R -T -F "fooT_12" "${srcdir}/cattle_13.echs"
+< "${srcdir}/cattle_13.tser"
+$ rm -f -- "fooT_12"
+$
+
+## cattle_apply_total_return_reverse_12.clit ends here

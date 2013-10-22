@@ -1,0 +1,16 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle apply -T "${srcdir}/cattle_12.tser" "${srcdir}/cattle_12.echs"
+2013-10-01	6.14
+2013-10-02	6.75
+2013-10-03	7.36
+2013-10-04	8.10
+2013-10-07	9.00
+2013-10-08	9.00
+2013-10-09	10.50
+2013-10-10	10.00
+2013-10-11	10.50
+2013-10-14	11.00
+$
+
+## cattle_apply_total_return_05.clit ends here
