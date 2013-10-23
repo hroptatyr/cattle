@@ -344,6 +344,12 @@ TESTS += cattle_apply_chain_04.clit
 EXTRA_DIST += cattle_11.tser
 EXTRA_DIST += cattle_11.echs
 
+TESTS += cattle_midpnt_01.clit
+TESTS += cattle_midpnt_02.clit
+TESTS += cattle_midpnt_03.clit
+TESTS += cattle_midpnt_04.clit
+EXTRA_DIST += cattle_13.quot
+
 
 ## our friendly helpers
 check_PROGRAMS += clitoris

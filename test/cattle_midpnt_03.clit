@@ -1,0 +1,19 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+## tilman's idea was that geom mean of bid and ask and total return
+## adjustment on the mean or separately would commute
+$ cut -f1,2 "${srcdir}/cattle_13.quot" > "midpnt_03_b"
+$ cut -f1,3 "${srcdir}/cattle_13.quot" > "midpnt_03_a"
+$ cat "${srcdir}/cattle_13.quot" | \
+	awk 'BEGIN{FS=OFS="\t"}{$2=sprintf("%.4f", sqrt($2 * $3)); NF=2; print}' \
+	> "midpnt_03_m"
+$ cattle apply -T "midpnt_03_m" "${srcdir}/cattle_13.echs" | \
+	awk 'BEGIN{FS=OFS="\t"}{$2=sprintf("%.3f", $2 + 0.0); print;}' \
+	> "midpnt_03_m.adj"
+$ cattle apply -T "midpnt_03_b" "${srcdir}/cattle_13.echs" > "midpnt_03_b.adj"
+$ cattle apply -T "midpnt_03_a" "${srcdir}/cattle_13.echs" > "midpnt_03_a.adj"
+$ ignore-output paste "midpnt_03_b.adj" "midpnt_03_a.adj" | \
+	awk 'BEGIN{FS=OFS="\t"}{$2=sprintf("%.3f", sqrt($2 * $4)); NF=2; print}'
+< "midpnt_03_m.adj"
+$ rm -f -- "midpnt_03_m" "midpnt_03_b" "midpnt_03_a" "midpnt_03_b.adj" "midpnt_03_a.adj"
+$
