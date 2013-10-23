@@ -15,5 +15,6 @@ $ cattle apply -F "midpnt_02_a" "${srcdir}/cattle_13.echs" > "midpnt_02_a.adj"
 $ paste "midpnt_02_b.adj" "midpnt_02_a.adj" | \
 	awk 'BEGIN{FS=OFS="\t"}{$2=sprintf("%.3f", ($2 + $4) / 2.0); NF=2; print}'
 < "midpnt_02_m.adj"
-$ rm -f -- "midpnt_02_m" "midpnt_02_b" "midpnt_02_a" "midpnt_02_b.adj" "midpnt_02_a.adj"
+$ rm -f -- "midpnt_02_m" "midpnt_02_b" "midpnt_02_a" \
+	"midpnt_02_b.adj" "midpnt_02_a.adj" "midpnt_02_m.adj"
 $
