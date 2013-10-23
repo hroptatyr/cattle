@@ -69,6 +69,7 @@ EXTRA_libcoru_la_SOURCES += coru/switch-x86_64.c
 
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
+cattle_SOURCES += cattle.ggo
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
 cattle_CPPFLAGS += -DSTANDALONE
 cattle_LDADD = libcattle.la
