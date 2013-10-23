@@ -27,6 +27,7 @@ cattle.man: $(top_srcdir)/src/cattle.ggo \
 	$(my_bld_man) $(HELP2MAN) -S "$(PACKAGE_STRING)" -p "($(PACKAGE))$*" \
 		-I "$(srcdir)/author.h2m" \
 		-I "$(srcdir)/cattle.name" \
+		-N \
 		-o $@ $(top_builddir)/src/cattle
 
 ## Makefile.am ends here
