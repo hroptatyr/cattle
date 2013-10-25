@@ -46,6 +46,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <math.h>
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
@@ -421,7 +422,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	/* initialise product */
 	prod = 1.f;
 
-	float last = 0.f;
+	float last = NAN;
 	const struct echs_msg_s *ev;
 	const struct tser_ln_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
@@ -434,7 +435,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			float fctr;
 			float aadj;
 
-			if (UNLIKELY(!last)) {
+			if (UNLIKELY(isnan(last))) {
 				res = -1;
 				goto out;
 			}
@@ -527,7 +528,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	/* initialise another wheap and another prod */
 	prod = 1.f;
 
-	float last = 0.f;
+	float last = NAN;
 	const struct echs_msg_s *ev;
 	const struct tser_ln_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
@@ -539,7 +540,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			ctl_caev_t caev;
 			struct fa_s cell;
 
-			if (UNLIKELY(!last)) {
+			if (UNLIKELY(isnan(last))) {
 				res = -1;
 				goto out;
 			}
@@ -614,14 +615,14 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 
-	last = 0.f;
+	last = NAN;
 	size_t i;
 	for (ln = NEXT(rdr), i = 0U; ln != NULL;) {
 		/* mul up factors in between price lines */
 		for (;
 		     LIKELY(i < nfa) && UNLIKELY(!__inst_lt_p(ln->t, fa[i].t));
 		     i++) {
-			if (UNLIKELY(!last)) {
+			if (UNLIKELY(isnan(last))) {
 				res = -1;
 				goto out;
 			}
