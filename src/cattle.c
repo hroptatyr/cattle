@@ -732,7 +732,8 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 	}
 
 	/* open caev file and read */
-	with (const char *caev_fn = argi->inputs[2U]) {
+	with (const char *caev_fn =
+	      argi->inputs_num > 2U ? argi->inputs[2U] : NULL) {
 		if (UNLIKELY(ctl_read_caev_file(ctx, caev_fn) < 0)) {
 			error("cannot open caev file `%s'", caev_fn);
 			res = 1;
