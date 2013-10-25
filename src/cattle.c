@@ -218,6 +218,14 @@ struct echs_msg_s {
 	size_t msz;
 };
 
+struct last_scal_s {
+	union {
+		_Decimal32 df;
+		float f;
+	} last;
+	_Decimal32 scal;
+};
+
 DEFCORU(co_appl_rdr, {
 		FILE *f;
 	}, void *UNUSED(arg))
@@ -263,6 +271,46 @@ DEFCORU(co_appl_pop, {
 		ev->msz = sizeof(ctl_caev_t);
 		YIELD(ev);
 	}
+	return 0;
+}
+
+DEFCORU(co_last_scal, {
+	bool abs;
+	bool totret;
+	signed int prec;
+	}, void *arg)
+{
+	const bool abs = CORU_CLOSUR(abs);
+	const bool totret = CORU_CLOSUR(totret);
+	const signed int prec = CORU_CLOSUR(prec);
+
+#define YIELD_LAST_SCAL(args...)	YIELD(&(struct last_scal_s){args})
+	if (!abs) {
+		while (arg != NULL) {
+			_Decimal32 raw;
+			float last;
+
+			raw = strtokd32((const char*)arg, NULL);
+			last = (float)raw;
+			if (UNLIKELY(prec)) {
+				/* come up with a new raw value */
+				int tgtx = quantexpd32(raw) + prec;
+				raw = scalbnd32(1.df, tgtx);
+			}
+			arg = YIELD_LAST_SCAL(.last.f = last, .scal = raw);
+		}
+	} else {
+		const _Decimal32 scal = mkscal(prec);
+
+		/* absolute precision mode,
+		 * no need to read a d32 first */
+		while (arg != NULL) {
+			float last = strtof((const char*)arg, NULL);
+
+			arg = YIELD_LAST_SCAL(.last.f = last, .scal = scal);
+		}
+	}
+#undef YIELD_LAST_SCAL
 	return 0;
 }
 
@@ -400,9 +448,8 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
  * this is the total return forward adjustment */
 	struct cocore *rdr;
 	struct cocore *pop;
+	struct cocore *lsg;
 	struct cocore *me;
-	const _Decimal32 scal =
-		UNLIKELY(ctx->abs_prec) ? mkscal(ctx->prec) : 0.df;
 	float prod;
 	int res = 0;
 	FILE *f;
@@ -418,6 +465,12 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	lsg = START_PACK(
+		co_last_scal,
+		.totret = true,
+		.abs = ctx->abs_prec,
+		.prec = ctx->prec,
+		.next = me);
 
 	/* initialise product */
 	prod = 1.f;
@@ -458,29 +511,17 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			char *on = NULL;
-			ctl_price_t raw;
+			struct last_scal_s ls;
 			float adj;
 
-			if (!ctx->abs_prec) {
-				raw = strtokd32(ln->ln, &on);
-				adj = (last = (float)raw) * prod;
-				if (UNLIKELY(ctx->prec)) {
-					/* come up with a new raw value */
-					int tgtx = quantexpd32(raw) + ctx->prec;
-					raw = scalbnd32(1.df, tgtx);
-				}
-			} else {
-				/* absolute precision mode,
-				 * no need to read a d32 first */
-				last = strtof(ln->ln, &on);
-				adj = last * prod;
-				raw = scal;
-			}
-			pr_adjq(ln->t, adj, raw);
+			ls = *(const struct last_scal_s*)NEXT1(lsg, ln->ln);
+			adj = (last = ls.last.f) * prod;
+			pr_adjq(ln->t, adj, ls.scal);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
+	/* unload the last-scal getter */
+	(void)NEXT(lsg);
 
 out:
 	/* finished, yay */
@@ -504,10 +545,9 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	};
 	struct cocore *rdr;
 	struct cocore *pop;
+	struct cocore *lsg;
 	struct cocore *me;
 	struct fa_s *fa = NULL;
-	const _Decimal32 scal =
-		UNLIKELY(ctx->abs_prec) ? mkscal(ctx->prec) : 0.df;
 	size_t nfa = 0U;
 	float prod;
 	int res = 0;
@@ -614,6 +654,12 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	lsg = START_PACK(
+		co_last_scal,
+		.totret = true,
+		.abs = ctx->abs_prec,
+		.prec = ctx->prec,
+		.next = me);
 
 	last = NAN;
 	size_t i;
@@ -633,29 +679,17 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			char *on = NULL;
-			ctl_price_t raw;
+			struct last_scal_s ls;
 			float adj;
 
-			if (!ctx->abs_prec) {
-				raw = strtokd32(ln->ln, &on);
-				adj = (last = (float)raw) * prod;
-				if (UNLIKELY(ctx->prec)) {
-					/* come up with a new raw value */
-					int tgtx = quantexpd32(raw) + ctx->prec;
-					raw = scalbnd32(1.df, tgtx);
-				}
-			} else {
-				/* absolute precision mode,
-				 * no need to read a d32 first */
-				last = strtof(ln->ln, &on);
-				adj = last * prod;
-				raw = scal;
-			}
-			pr_adjq(ln->t, adj, raw);
+			ls = *(const struct last_scal_s*)NEXT1(lsg, ln->ln);
+			adj = (last = ls.last.f) * prod;
+			pr_adjq(ln->t, adj, ls.scal);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
+	/* unload the last-scal getter */
+	(void)NEXT(lsg);
 
 out:
 	/* finished, yay */
