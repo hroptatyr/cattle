@@ -265,33 +265,11 @@ DEFCORU(co_last_scal, {
 	}, void *arg)
 {
 	const bool abs = CORU_CLOSUR(abs);
-	const bool totret = CORU_CLOSUR(totret);
 	const signed int prec = CORU_CLOSUR(prec);
 
 #define YIELD_LAST_SCAL(args...)	YIELD(&(struct last_scal_s){args})
 
-	if (!totret && !abs) {
-		while (arg != NULL) {
-			_Decimal32 last;
-			_Decimal32 scal;
-
-			last = scal = strtod32((const char*)arg, NULL);
-			if (UNLIKELY(prec)) {
-				/* come up with a new raw value */
-				int tgtx = quantexpd32(last) + prec;
-				scal = scalbnd32(1.df, tgtx);
-			}
-			arg = YIELD_LAST_SCAL(.last.df = last, .scal = scal);
-		}
-	} else if (!totret/* && abs*/) {
-		const _Decimal32 scal = mkscal(prec);
-
-		while (arg != NULL) {
-			_Decimal32 last = strtod32((const char*)arg, NULL);
-
-			arg = YIELD_LAST_SCAL(.last.df = last, .scal = scal);
-		}
-	} else if (/*totret && */!abs) {
+	if (/*totret && */!abs) {
 		while (arg != NULL) {
 			_Decimal32 raw;
 			float last;
@@ -378,7 +356,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
  * format in there is first column is a date, the rest is prices */
 	struct cocore *rdr;
 	struct cocore *pop;
-	struct cocore *lsg;
 	struct cocore *me;
 	ctl_caev_t sum;
 	FILE *f;
@@ -392,12 +369,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
-	lsg = START_PACK(
-		co_last_scal,
-		.totret = false,
-		.abs = ctx->abs_prec,
-		.prec = ctx->prec,
-		.next = me);
 
 	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
@@ -409,6 +380,8 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		sum = ctl_zero_caev();
 	}
 
+	const _Decimal32 cscal =
+		ctx->abs_prec ? mkscal(ctx->prec) : 0.df;
 	const struct echs_msg_s *ev;
 	const struct tser_ln_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
@@ -435,17 +408,27 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			struct last_scal_s ls;
+			ctl_price_t prc;
 			ctl_price_t adj;
+			ctl_price_t scal;
 
-			ls = *(const struct last_scal_s*)NEXT1(lsg, ln->ln);
-			adj = ctl_caev_act_mktprc(sum, ls.last.df);
-			pr_adjq(ln->t, adj, ls.scal);
+			prc = strtod32(ln->ln, NULL);
+			adj = scal = ctl_caev_act_mktprc(sum, prc);
+			/* zap adj to precision */
+			if (!ctx->abs_prec) {
+				if (UNLIKELY(ctx->prec)) {
+					/* come up with a new raw value */
+					int tgtx = quantexpd32(adj) + ctx->prec;
+					scal = scalbnd32(1.df, tgtx);
+				}
+			} else {
+				scal = cscal;
+			}
+			/* and print */
+			pr_adjq(ln->t, adj, scal);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
-	/* unload the last-scal getter */
-	(void)NEXT(lsg);
 
 	UNPREP();
 
