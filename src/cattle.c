@@ -286,8 +286,6 @@ DEFCORU(co_last_scal, {
 	} else if (!totret/* && abs*/) {
 		const _Decimal32 scal = mkscal(prec);
 
-		/* absolute precision mode,
-		 * no need to read a d32 first */
 		while (arg != NULL) {
 			_Decimal32 last = strtod32((const char*)arg, NULL);
 
