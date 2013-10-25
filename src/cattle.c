@@ -275,7 +275,7 @@ DEFCORU(co_last_scal, {
 			_Decimal32 last;
 			_Decimal32 scal;
 
-			last = strtod32((const char*)arg, NULL);
+			last = scal = strtod32((const char*)arg, NULL);
 			if (UNLIKELY(prec)) {
 				/* come up with a new raw value */
 				int tgtx = quantexpd32(last) + prec;
