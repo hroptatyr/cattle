@@ -160,7 +160,7 @@ ctl_caev_wr(char *restrict buf, size_t bsz, ctl_caev_t c)
 	return bp - buf;
 }
 
-static void
+static __attribute__((unused)) void
 pr_adj(echs_instant_t d, _Decimal32 adj)
 {
 	pr_ei(d);
@@ -440,7 +440,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 			ls = *(const struct last_scal_s*)NEXT1(lsg, ln->ln);
 			adj = ctl_caev_act_mktprc(sum, ls.last.df);
-			pr_adj(ln->t, adj);
+			pr_adjq(ln->t, adj, ls.scal);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
