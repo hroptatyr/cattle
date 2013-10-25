@@ -350,6 +350,19 @@ TESTS += cattle_midpnt_03.clit
 TESTS += cattle_midpnt_04.clit
 EXTRA_DIST += cattle_13.quot
 
+TESTS += cattle_apply_prec_01.clit
+TESTS += cattle_apply_prec_02.clit
+TESTS += cattle_apply_prec_03.clit
+TESTS += cattle_apply_prec_04.clit
+TESTS += cattle_apply_prec_05.clit
+TESTS += cattle_apply_prec_06.clit
+TESTS += cattle_apply_prec_07.clit
+TESTS += cattle_apply_prec_08.clit
+TESTS += cattle_apply_prec_09.clit
+TESTS += cattle_apply_prec_10.clit
+TESTS += cattle_apply_prec_11.clit
+TESTS += cattle_apply_prec_12.clit
+
 
 ## our friendly helpers
 check_PROGRAMS += clitoris
