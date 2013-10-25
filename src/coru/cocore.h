@@ -83,7 +83,7 @@ struct cocore *create_cocore(
 
 /* Switches control to the selected target coroutine with parameter
  * pass-through. */
-void *switch_cocore(struct cocore *target, void *parameter);
+void *switch_cocore(struct cocore *target, const void *parameter);
 
 /* Reports current and maximum stack use for the calling coroutine.  On the
  * base coroutine *current_use is relative to the base used for frame
