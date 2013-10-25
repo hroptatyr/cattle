@@ -267,7 +267,14 @@ DEFCORU(co_last_scal, {
 	const bool abs = CORU_CLOSUR(abs);
 	const signed int prec = CORU_CLOSUR(prec);
 
-#define YIELD_LAST_SCAL(args...)	YIELD(&(struct last_scal_s){args})
+#if defined __INTEL_COMPILER
+# define YIELD_LAST_SCAL(args...)	YIELD(&(struct last_scal_s){args})
+#elif defined __GNUC__
+/* thanks gcc */
+	static struct last_scal_s res;
+# define YIELD_LAST_SCAL(args...)			\
+	(res = (struct last_scal_s){args}, YIELD(&res))
+#endif	/* COMPILERS */
 
 	if (/*totret && */!abs) {
 		while (arg != NULL) {
