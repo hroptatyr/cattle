@@ -48,7 +48,6 @@
 #include "nifty.h"
 
 
-#if !defined HAVE_QUANTIZED32
 static inline __attribute__((pure, const)) int
 sign_bid(_Decimal32 x)
 {
@@ -93,8 +92,8 @@ quantizebid32(_Decimal32 x, _Decimal32 r)
 	for (; ex < er; ex++) {
 		m = m / 10U + ((m % 10U) >= 5U);
 	}
-	/* expand */
-	for (; ex > er; ex--) {
+	/* expand (only if we don't exceed the range) */
+	for (; m < 1000000U && ex > er; ex--) {
 		m *= 10U;
 	}
 
@@ -103,11 +102,11 @@ quantizebid32(_Decimal32 x, _Decimal32 r)
 		/* check if 24th bit of mantissa is set */
 		if (UNLIKELY(m & (1U << 23U))) {
 			u |= 0b11U << 29U;
-			u |= (unsigned int)(er + 101) << 21U;
+			u |= (unsigned int)(ex + 101) << 21U;
 			/* just use 21 bits of the mantissa */
 			m &= 0x1fffffU;
 		} else {
-			u |= (unsigned int)(er + 101) << 23U;
+			u |= (unsigned int)(ex + 101) << 23U;
 			/* use all 23 bits */
 			m &= 0x7fffffU;
 		}
@@ -116,15 +115,47 @@ quantizebid32(_Decimal32 x, _Decimal32 r)
 	}
 	return x;
 }
-#endif	/* !HAVE_QUANTIZED32 */
+
+#if !defined HAVE_SCALBND32
+static _Decimal32
+scalbnbid32(_Decimal32 x, int n)
+{
+	/* just fiddle with the exponent of X then */
+	with (uint32_t b = bits(x), u) {
+		/* the idea is to xor the current expo with the new expo
+		 * and shift the result to the right position and xor again */
+		if (UNLIKELY((b & 0x60000000U) == 0x60000000U)) {
+			/* 24th bit of mantissa is set, special expo */
+			u = (b >> 21U) & 0xffU;
+			u ^= u + n;
+			u &= 0xffU;
+			u <<= 21U;
+		} else {
+			u = (b >> 23U) & 0xffU;
+			u ^= u + n;
+			u &= 0xffU;
+			u <<= 23U;
+		}
+		b ^= u;
+		x = bobs(b);
+	}
+	return x;
+}
+#endif	/* !HAVE_SCALBND32 */
 
 
-#if !defined HAVE_QUANTIZED32
 _Decimal32
 quantized32(_Decimal32 x, _Decimal32 r)
 {
 	return quantizebid32(x, r);
 }
-#endif	/* !HAVE_QUANTIZED32 */
+
+#if !defined HAVE_SCALBND32
+_Decimal32
+scalbnd32(_Decimal32 x, int n)
+{
+	return scalbnbid32(x, n);
+}
+#endif	/* !HAVE_SCALBND32 */
 
 /* rn-d32.c ends here */

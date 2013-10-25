@@ -202,7 +202,7 @@ static __attribute__((noreturn))
 /* Called to switch control from current to target if target doesn't currently
  * own its stack. */
 static void *switch_shared_frame(
-    struct cocore *current, struct cocore *target, void *arg)
+    struct cocore *current, struct cocore *target, const void *arg)
 {
     if (current->stack == target->stack)
     {
@@ -501,7 +501,7 @@ static void delete_cocore(struct cocore *coroutine)
 
 /* Switches control to target coroutine passing the given parameter.  Depending
  * on stack frame sharing the switching process may be more or less involved. */
-void *switch_cocore(struct cocore *target, void *parameter)
+void *switch_cocore(struct cocore *target, const void *parameter)
 {
     assert(target->state == GET_TLS(cocore_state));
     struct cocore *this = target->state->current_coroutine;

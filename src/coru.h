@@ -51,7 +51,7 @@
 	})
 #define NEXT1(x, o)	(check_cocore(x) ? switch_cocore((x), (o)) : NULL)
 #define NEXT(x)		NEXT1(x, NULL)
-#define YIELD(x)	switch_cocore(CORU_CLOSUR(next), (void*)(intptr_t)(x))
+#define YIELD(args...)	switch_cocore(CORU_CLOSUR(next), (args))
 
 #define DEFCORU(name, closure, arg)			\
 	struct name##_s {				\

@@ -1,0 +1,10 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle apply -p 2 "${srcdir}/cattle_01.tser" "${srcdir}/cattle_01.echs"
+2006-01-01	20.00
+2007-01-01	22.00
+2008-01-01	24.00
+2009-01-01	26.00
+$
+
+## cattle_apply_prec_01.clit ends here

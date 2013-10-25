@@ -71,7 +71,7 @@ typedef __attribute__((noreturn))
 
 /* Switch to new_frame, previously established by create_frame() or an earlier
  * switch_frame().  The caller's stack frame is written to *old_frame. */
-void * switch_frame(frame_t *old_frame, frame_t new_frame, void *arg);
+void * switch_frame(frame_t *old_frame, frame_t new_frame, const void *arg);
 
 /* Establish a new frame in the given stack.  action(arg, context) will be
  * called when the newly created frame is switched to, and it must never return.

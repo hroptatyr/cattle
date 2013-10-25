@@ -1,0 +1,13 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle apply --precision=2 -T "${srcdir}/cattle_07.tser" "${srcdir}/cattle_07.echs"
+2013-10-01	116.00
+2013-10-02	96.67
+2013-10-03	77.33
+2013-10-04	19.33
+2013-10-05	14.50
+2013-10-06	11.50
+2013-10-07	10.50
+$
+
+## cattle_apply_prec_05.clit ends here
