@@ -48,7 +48,6 @@
 #include "nifty.h"
 
 
-#if !defined HAVE_QUANTIZED32
 static inline __attribute__((pure, const)) int
 sign_bid(_Decimal32 x)
 {
@@ -116,7 +115,6 @@ quantizebid32(_Decimal32 x, _Decimal32 r)
 	}
 	return x;
 }
-#endif	/* !HAVE_QUANTIZED32 */
 
 #if !defined HAVE_SCALBND32
 static _Decimal32
@@ -146,13 +144,11 @@ scalbnbid32(_Decimal32 x, int n)
 #endif	/* !HAVE_SCALBND32 */
 
 
-#if !defined HAVE_QUANTIZED32
 _Decimal32
 quantized32(_Decimal32 x, _Decimal32 r)
 {
 	return quantizebid32(x, r);
 }
-#endif	/* !HAVE_QUANTIZED32 */
 
 #if !defined HAVE_SCALBND32
 _Decimal32
