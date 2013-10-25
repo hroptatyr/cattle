@@ -181,7 +181,7 @@ pr_adj(echs_instant_t d, _Decimal32 adj)
 }
 
 static void
-pr_adjq(echs_instant_t d, float adj, _Decimal32 prc)
+pr_adjq(echs_instant_t d, _Decimal32 adj, _Decimal32 prc)
 {
 /* like pr_adj() but quantise adj first */
 	pr_ei(d);
