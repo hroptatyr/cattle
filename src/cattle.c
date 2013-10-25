@@ -61,6 +61,11 @@ struct ctl_ctx_s {
 
 	unsigned int rev:1;
 	unsigned int fwd:1;
+	/* use absolute precision */
+	unsigned int abs_prec:1;
+
+	/* use prec fractional digits if abs_prec */
+	signed int prec;
 };
 
 struct tser_row_s {
@@ -189,6 +194,13 @@ pr_adjq(echs_instant_t d, float adj, _Decimal32 prc)
 	pr_d32(quantized32(adj, prc));
 	fputc('\n', stdout);
 	return;
+}
+
+static _Decimal32
+mkscal(signed int nd)
+{
+/* produce a d32 with -ND fractional digits */
+	return scalbnd32(1.df, nd);
 }
 
 
@@ -388,6 +400,8 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	struct cocore *rdr;
 	struct cocore *pop;
 	struct cocore *me;
+	const _Decimal32 scal =
+		UNLIKELY(ctx->abs_prec) ? mkscal(ctx->prec) : 0.df;
 	float prod;
 	int res = 0;
 	FILE *f;
@@ -407,7 +421,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	/* initialise product */
 	prod = 1.f;
 
-	ctl_price_t last = 0.df;
+	float last = 0.f;
 	const struct echs_msg_s *ev;
 	const struct tser_ln_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
@@ -417,7 +431,6 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
 		     ev = NEXT(pop)) {
 			ctl_caev_t caev;
-			float lstprc = last;
 			float fctr;
 			float aadj;
 
@@ -431,9 +444,9 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 			if (UNLIKELY(ctx->rev)) {
 				/* last price needs adaption */
-				lstprc *= prod;
+				last *= prod;
 			}
-			fctr = 1.f + aadj / lstprc;
+			fctr = 1.f + aadj / last;
 			fctr *= ratio_to_float(caev.mktprc.r);
 			if (!ctx->rev) {
 				prod /= fctr;
@@ -445,11 +458,25 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		/* apply caev sum to price lines */
 		do {
 			char *on = NULL;
+			ctl_price_t raw;
 			float adj;
 
-			last = strtokd32(ln->ln, &on);
-			adj = (float)last * prod;
-			pr_adjq(ln->t, adj, last);
+			if (!ctx->abs_prec) {
+				raw = strtokd32(ln->ln, &on);
+				adj = (last = (float)raw) * prod;
+				if (UNLIKELY(ctx->prec)) {
+					/* come up with a new raw value */
+					int tgtx = quantexpd32(raw) + ctx->prec;
+					raw = scalbnd32(1.df, tgtx);
+				}
+			} else {
+				/* absolute precision mode,
+				 * no need to read a d32 first */
+				last = strtof(ln->ln, &on);
+				adj = last * prod;
+				raw = scal;
+			}
+			pr_adjq(ln->t, adj, raw);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -478,6 +505,8 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	struct cocore *pop;
 	struct cocore *me;
 	struct fa_s *fa = NULL;
+	const _Decimal32 scal =
+		UNLIKELY(ctx->abs_prec) ? mkscal(ctx->prec) : 0.df;
 	size_t nfa = 0U;
 	float prod;
 	int res = 0;
@@ -498,7 +527,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	/* initialise another wheap and another prod */
 	prod = 1.f;
 
-	ctl_price_t last = 0.df;
+	float last = 0.f;
 	const struct echs_msg_s *ev;
 	const struct tser_ln_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
@@ -516,7 +545,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			caev = *(const ctl_caev_t*)ev->msg;
-			cell.last = (float)last;
+			cell.last = last;
 			cell.aadj = (float)caev.mktprc.a;
 			cell.t = ev->t;
 
@@ -541,9 +570,8 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			char *on = NULL;
-
-			last = strtokd32(ln->ln, &on);
+			/* no need to use the strtokd32() reader */
+			last = strtof(ln->ln, NULL);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -586,7 +614,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 
-	last = 0.df;
+	last = 0.f;
 	size_t i;
 	for (ln = NEXT(rdr), i = 0U; ln != NULL;) {
 		/* mul up factors in between price lines */
@@ -604,13 +632,26 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			char *on;
+			char *on = NULL;
+			ctl_price_t raw;
 			float adj;
 
-			on = NULL;
-			last = strtokd32(ln->ln, &on);
-			adj = (float)last * prod;
-			pr_adjq(ln->t, adj, last);
+			if (!ctx->abs_prec) {
+				raw = strtokd32(ln->ln, &on);
+				adj = (last = (float)raw) * prod;
+				if (UNLIKELY(ctx->prec)) {
+					/* come up with a new raw value */
+					int tgtx = quantexpd32(raw) + ctx->prec;
+					raw = scalbnd32(1.df, tgtx);
+				}
+			} else {
+				/* absolute precision mode,
+				 * no need to read a d32 first */
+				last = strtof(ln->ln, &on);
+				adj = last * prod;
+				raw = scal;
+			}
+			pr_adjq(ln->t, adj, raw);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
@@ -729,6 +770,21 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 	}
 	if (argi->forward_given) {
 		ctx->fwd = 1U;
+	}
+	if (argi->precision_given) {
+		const char *p = argi->precision_arg;
+		char *on;
+
+		if (*p == '+' || *p == '-') {
+			;
+		} else {
+			ctx->abs_prec = 1U;
+		}
+		if ((ctx->prec = -strtol(p, &on, 10), *on)) {
+			error("invalid precision `%s'", argi->precision_arg);
+			res = 1;
+			goto out;
+		}
 	}
 
 	/* open caev file and read */
