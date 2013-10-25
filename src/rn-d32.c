@@ -118,6 +118,33 @@ quantizebid32(_Decimal32 x, _Decimal32 r)
 }
 #endif	/* !HAVE_QUANTIZED32 */
 
+#if !defined HAVE_SCALBND32
+static _Decimal32
+scalbnbid32(_Decimal32 x, int n)
+{
+	/* just fiddle with the exponent of X then */
+	with (uint32_t b = bits(x), u) {
+		/* the idea is to xor the current expo with the new expo
+		 * and shift the result to the right position and xor again */
+		if (UNLIKELY((b & 0x60000000U) == 0x60000000U)) {
+			/* 24th bit of mantissa is set, special expo */
+			u = (b >> 21U) & 0xffU;
+			u ^= u + n;
+			u &= 0xffU;
+			u <<= 21U;
+		} else {
+			u = (b >> 23U) & 0xffU;
+			u ^= u + n;
+			u &= 0xffU;
+			u <<= 23U;
+		}
+		b ^= u;
+		x = bobs(b);
+	}
+	return x;
+}
+#endif	/* !HAVE_SCALBND32 */
+
 
 #if !defined HAVE_QUANTIZED32
 _Decimal32
@@ -126,5 +153,13 @@ quantized32(_Decimal32 x, _Decimal32 r)
 	return quantizebid32(x, r);
 }
 #endif	/* !HAVE_QUANTIZED32 */
+
+#if !defined HAVE_SCALBND32
+_Decimal32
+scalbnd32(_Decimal32 x, int n)
+{
+	return scalbnbid32(x, n);
+}
+#endif	/* !HAVE_SCALBND32 */
 
 /* rn-d32.c ends here */
