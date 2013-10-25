@@ -107,22 +107,6 @@ pr_d32(_Decimal32 x)
 	return fwrite(bf, sizeof(*bf), bid32tostr(bf, sizeof(bf), x), stdout);
 }
 
-static _Decimal32
-strtokd32(const char *ln, char **on)
-{
-	const char *p;
-
-	if (*on == NULL) {
-		p = ln;
-	} else if (**on != '\t') {
-		*on = NULL;
-		return 0.df;
-	} else {
-		p = *on + 1U;
-	}
-	return strtobid32(p, on);
-}
-
 static float
 ratio_to_float(ctl_ratio_t r)
 {
