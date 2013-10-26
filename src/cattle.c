@@ -69,12 +69,6 @@ struct ctl_ctx_s {
 	signed int prec;
 };
 
-struct tser_row_s {
-	echs_instant_t d;
-	_Decimal32 prc;
-	_Decimal32 adj;
-};
-
 
 static void
 __attribute__((format(printf, 1, 2)))
@@ -202,13 +196,22 @@ struct echs_msg_s {
 	size_t msz;
 };
 
-struct last_scal_s {
+struct tser_row_s {
+	echs_instant_t t;
+	_Decimal32 prc;
 	union {
 		_Decimal32 df;
 		float f;
-	} last;
-	_Decimal32 scal;
+	} adj;
 };
+
+#if defined __INTEL_COMPILER
+# define TSER_ROW(args...)	(&(struct tser_row_s){args})
+#elif defined __GNUC__
+/* thanks gcc */
+# define TSER_ROW(args...)					\
+	({static struct tser_row_s res = {args}; &res;})
+#endif	/* COMPILERS */
 
 DEFCORU(co_appl_rdr, {
 		FILE *f;
@@ -258,50 +261,58 @@ DEFCORU(co_appl_pop, {
 	return 0;
 }
 
-DEFCORU(co_last_scal, {
+DEFCORU(co_appl_wrr, {
 	bool abs;
 	bool totret;
 	signed int prec;
 	}, void *arg)
 {
 	const bool abs = CORU_CLOSUR(abs);
+	const bool totret = CORU_CLOSUR(totret);
 	const signed int prec = CORU_CLOSUR(prec);
+	const struct tser_row_s *row = arg;
 
-#if defined __INTEL_COMPILER
-# define YIELD_LAST_SCAL(args...)	YIELD(&(struct last_scal_s){args})
-#elif defined __GNUC__
-/* thanks gcc */
-	static struct last_scal_s res;
-# define YIELD_LAST_SCAL(args...)			\
-	(res = (struct last_scal_s){args}, YIELD(&res))
-#endif	/* COMPILERS */
+	if (!totret && !abs) {
+		while (row != NULL) {
+			_Decimal32 prc = row->prc;
 
-	if (/*totret && */!abs) {
-		while (arg != NULL) {
-			_Decimal32 raw;
-			float last;
-
-			raw = strtod32((const char*)arg, NULL);
-			last = (float)raw;
 			if (UNLIKELY(prec)) {
 				/* come up with a new raw value */
-				int tgtx = quantexpd32(raw) + prec;
-				raw = scalbnd32(1.df, tgtx);
+				int tgtx = quantexpd32(prc) + prec;
+				prc = scalbnd32(1.df, tgtx);
 			}
-			arg = YIELD_LAST_SCAL(.last.f = last, .scal = raw);
+			pr_adjq(row->t, row->adj.df, prc);
+			row = YIELD(NULL);
+		}
+	} else if (!totret/* && abs*/) {
+		const _Decimal32 scal = mkscal(prec);
+
+		/* absolute precision mode */
+		while (row != NULL) {
+			pr_adjq(row->t, row->adj.df, scal);
+			row = YIELD(NULL);
+		}
+	} else if (/*totret && */!abs) {
+		while (row != NULL) {
+			_Decimal32 prc = row->prc;
+
+			if (UNLIKELY(prec)) {
+				/* come up with a new raw value */
+				int tgtx = quantexpd32(prc) + prec;
+				prc = scalbnd32(1.df, tgtx);
+			}
+			pr_adjq(row->t, row->adj.f, prc);
+			row = YIELD(NULL);
 		}
 	} else /* if (totret && abs) */ {
 		const _Decimal32 scal = mkscal(prec);
 
-		/* absolute precision mode,
-		 * no need to read a d32 first */
-		while (arg != NULL) {
-			float last = strtof((const char*)arg, NULL);
-
-			arg = YIELD_LAST_SCAL(.last.f = last, .scal = scal);
+		/* absolute precision mode */
+		while (row != NULL) {
+			pr_adjq(row->t, row->adj.f, scal);
+			row = YIELD(NULL);
 		}
 	}
-#undef YIELD_LAST_SCAL
 	return 0;
 }
 
@@ -451,7 +462,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
  * this is the total return forward adjustment */
 	struct cocore *rdr;
 	struct cocore *pop;
-	struct cocore *lsg;
+	struct cocore *wrr;
 	struct cocore *me;
 	float prod;
 	int res = 0;
@@ -468,12 +479,11 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
-	lsg = START_PACK(
-		co_last_scal,
-		.totret = true,
-		.abs = ctx->abs_prec,
-		.prec = ctx->prec,
-		.next = me);
+	wrr = START_PACK(co_appl_wrr,
+			 .totret = true,
+			 .abs = ctx->abs_prec,
+			 .prec = ctx->prec,
+			 .next = me);
 
 	/* initialise product */
 	prod = 1.f;
@@ -514,17 +524,18 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			struct last_scal_s ls;
+			ctl_price_t prc;
 			float adj;
 
-			ls = *(const struct last_scal_s*)NEXT1(lsg, ln->ln);
-			adj = (last = ls.last.f) * prod;
-			pr_adjq(ln->t, adj, ls.scal);
+			prc = strtod32(ln->ln, NULL);
+			adj = (last = (float)prc) * prod;
+			NEXT1(wrr,
+			      TSER_ROW(.t = ln->t, .prc = prc, .adj.f = adj));
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
-	/* unload the last-scal getter */
-	(void)NEXT(lsg);
+	/* unload the writer */
+	(void)NEXT(wrr);
 
 out:
 	/* finished, yay */
@@ -548,7 +559,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	};
 	struct cocore *rdr;
 	struct cocore *pop;
-	struct cocore *lsg;
+	struct cocore *wrr;
 	struct cocore *me;
 	struct fa_s *fa = NULL;
 	size_t nfa = 0U;
@@ -657,12 +668,11 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
-	lsg = START_PACK(
-		co_last_scal,
-		.totret = true,
-		.abs = ctx->abs_prec,
-		.prec = ctx->prec,
-		.next = me);
+	wrr = START_PACK(co_appl_wrr,
+			 .totret = true,
+			 .abs = ctx->abs_prec,
+			 .prec = ctx->prec,
+			 .next = me);
 
 	last = NAN;
 	size_t i;
@@ -682,17 +692,18 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			struct last_scal_s ls;
+			ctl_price_t prc;
 			float adj;
 
-			ls = *(const struct last_scal_s*)NEXT1(lsg, ln->ln);
-			adj = (last = ls.last.f) * prod;
-			pr_adjq(ln->t, adj, ls.scal);
+			prc = strtod32(ln->ln, NULL);
+			adj = (last = (float)prc) * prod;
+			NEXT1(wrr,
+			      TSER_ROW(.t = ln->t, .prc = prc, .adj.f = adj));
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
-	/* unload the last-scal getter */
-	(void)NEXT(lsg);
+	/* unload the writer */
+	(void)NEXT(wrr);
 
 out:
 	/* finished, yay */
