@@ -374,6 +374,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
  * format in there is first column is a date, the rest is prices */
 	struct cocore *rdr;
 	struct cocore *pop;
+	struct cocore *wrr;
 	struct cocore *me;
 	ctl_caev_t sum;
 	FILE *f;
@@ -387,6 +388,11 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	wrr = START_PACK(co_appl_wrr,
+			 .totret = false,
+			 .abs = ctx->abs_prec,
+			 .prec = ctx->prec,
+			 .next = me);
 
 	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
@@ -398,8 +404,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		sum = ctl_zero_caev();
 	}
 
-	const _Decimal32 cscal =
-		ctx->abs_prec ? mkscal(ctx->prec) : 0.df;
 	const struct echs_msg_s *ev;
 	const struct tser_ln_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
@@ -428,25 +432,17 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		do {
 			ctl_price_t prc;
 			ctl_price_t adj;
-			ctl_price_t scal;
 
 			prc = strtod32(ln->ln, NULL);
-			adj = scal = ctl_caev_act_mktprc(sum, prc);
-			/* zap adj to precision */
-			if (!ctx->abs_prec) {
-				if (UNLIKELY(ctx->prec)) {
-					/* come up with a new raw value */
-					int tgtx = quantexpd32(adj) + ctx->prec;
-					scal = scalbnd32(1.df, tgtx);
-				}
-			} else {
-				scal = cscal;
-			}
+			adj = ctl_caev_act_mktprc(sum, prc);
 			/* and print */
-			pr_adjq(ln->t, adj, scal);
+			NEXT1(wrr,
+			      TSER_ROW(.t = ln->t, .prc = adj, .adj.df = adj));
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
+	/* drain the writer */
+	(void)NEXT(wrr);
 
 	UNPREP();
 
