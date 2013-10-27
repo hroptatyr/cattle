@@ -205,13 +205,7 @@ struct tser_row_s {
 	} adj;
 };
 
-#if defined __INTEL_COMPILER
-# define TSER_ROW(args...)	(&(struct tser_row_s){args})
-#elif defined __GNUC__
-/* thanks gcc */
-# define TSER_ROW(args...)					\
-	({static struct tser_row_s res = {args}; &res;})
-#endif	/* COMPILERS */
+#define TSER_ROW(args...)	(&(struct tser_row_s){args})
 
 DEFCORU(co_appl_rdr, {
 		FILE *f;
