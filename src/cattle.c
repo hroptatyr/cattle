@@ -184,19 +184,19 @@ mkscal(signed int nd)
 
 
 /* coroutines */
-struct tser_ln_s {
+struct rdr_res_s {
 	echs_instant_t t;
 	const char *ln;
 	size_t lz;
 };
 
-struct echs_msg_s {
+struct pop_res_s {
 	echs_instant_t t;
 	const void *msg;
 	size_t msz;
 };
 
-struct tser_row_s {
+struct adj_res_s {
 	echs_instant_t t;
 	_Decimal32 prc;
 	union {
@@ -204,8 +204,6 @@ struct tser_row_s {
 		float f;
 	} adj;
 };
-
-#define TSER_ROW(args...)	(&(struct tser_row_s){args})
 
 DEFCORU(co_appl_rdr, {
 		FILE *f;
@@ -215,22 +213,23 @@ DEFCORU(co_appl_rdr, {
 	char *line = NULL;
 	size_t llen = 0UL;
 	ssize_t nrd;
+	/* we'll yield a rdr_res */
+	static struct rdr_res_s res[1];
 
 	while ((nrd = getline(&line, &llen, CORU_CLOSUR(f))) > 0) {
-		static struct tser_ln_s ln[1];
 		char *p;
 
 		if (*line == '#') {
 			continue;
 		} else if ((p = strchr(line, '\t')) == NULL) {
 			break;
-		} else if (__inst_0_p(ln->t = dt_strp(line))) {
+		} else if (__inst_0_p(res->t = dt_strp(line))) {
 			break;
 		}
 		/* pack the result structure */
-		ln->ln = p + 1U;
-		ln->lz = nrd - (p + 1U - line);
-		YIELD(ln);
+		res->ln = p + 1U;
+		res->lz = nrd - (p + 1U - line);
+		(void)YIELD(res);
 	}
 
 	free(line);
@@ -241,30 +240,32 @@ DEFCORU(co_appl_rdr, {
 
 DEFCORU(co_appl_pop, {
 		ctl_wheap_t q;
-	}, void *UNUSED(arg))
+	}, const void *UNUSED(arg))
 {
-	static struct echs_msg_s ev[1];
 	ctl_wheap_t q = CORU_CLOSUR(q);
+	/* we'll yield a pop_res_s */
+	static struct pop_res_s res[1];
 
-	while (!__inst_0_p(ev->t = ctl_wheap_top_rank(q))) {
+	while (!__inst_0_p(res->t = ctl_wheap_top_rank(q))) {
 		/* assume it's a ctl-caev_t */
-		ev->msg = (const ctl_caev_t*)ctl_wheap_pop(q);
-		ev->msz = sizeof(ctl_caev_t);
-		YIELD(ev);
+		res->msg = (const ctl_caev_t*)ctl_wheap_pop(q);
+		res->msz = sizeof(ctl_caev_t);
+		(void)YIELD(res);
 	}
 	return 0;
 }
 
 DEFCORU(co_appl_wrr, {
-	bool abs;
-	bool totret;
-	signed int prec;
-	}, void *arg)
+		bool totret;
+		bool abs;
+		signed int prec;
+	}, const void *arg)
 {
 	const bool abs = CORU_CLOSUR(abs);
 	const bool totret = CORU_CLOSUR(totret);
 	const signed int prec = CORU_CLOSUR(prec);
-	const struct tser_row_s *row = arg;
+	const struct adj_res_s *row = arg;
+	/* no yield whatsoever */
 
 	if (!totret && !abs) {
 		while (row != NULL) {
@@ -334,7 +335,7 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	/* initialise sum to some zero */
 	ctx->sum = ctl_zero_caev();
 
-	for (const struct tser_ln_s *ln; (ln = NEXT(rdr));) {
+	for (const struct rdr_res_s *ln; (ln = NEXT(rdr));) {
 		/* try to read the whole shebang */
 		ctl_caev_t c = ctl_caev_rdr(ctx, ln->t, ln->ln);
 		uintptr_t qmsg;
@@ -398,8 +399,8 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		sum = ctl_zero_caev();
 	}
 
-	const struct echs_msg_s *ev;
-	const struct tser_ln_s *ln;
+	const struct pop_res_s *ev;
+	const struct rdr_res_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
 
 		/* sum up caevs in between price lines */
@@ -430,8 +431,10 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			prc = strtod32(ln->ln, NULL);
 			adj = ctl_caev_act_mktprc(sum, prc);
 			/* and print */
-			NEXT1(wrr,
-			      TSER_ROW(.t = ln->t, .prc = adj, .adj.df = adj));
+			struct adj_res_s arg = {
+				.t = ln->t, .prc = adj, .adj.df = adj,
+			};
+			NEXT1(wrr, &arg);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -479,8 +482,8 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	prod = 1.f;
 
 	float last = NAN;
-	const struct echs_msg_s *ev;
-	const struct tser_ln_s *ln;
+	const struct pop_res_s *ev;
+	const struct rdr_res_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
 
 		/* sum up caevs in between price lines */
@@ -519,8 +522,10 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 			prc = strtod32(ln->ln, NULL);
 			adj = (last = (float)prc) * prod;
-			NEXT1(wrr,
-			      TSER_ROW(.t = ln->t, .prc = prc, .adj.f = adj));
+			struct adj_res_s arg = {
+				.t = ln->t, .prc = prc, .adj.f = adj,
+			};
+			NEXT1(wrr, &arg);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -573,8 +578,8 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	prod = 1.f;
 
 	float last = NAN;
-	const struct echs_msg_s *ev;
-	const struct tser_ln_s *ln;
+	const struct pop_res_s *ev;
+	const struct rdr_res_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
 
 		/* sum up caevs in between price lines */
@@ -687,8 +692,10 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 			prc = strtod32(ln->ln, NULL);
 			adj = (last = (float)prc) * prod;
-			NEXT1(wrr,
-			      TSER_ROW(.t = ln->t, .prc = prc, .adj.f = adj));
+			struct adj_res_s arg = {
+				.t = ln->t, .prc = prc, .adj.f = adj,
+			};
+			NEXT1(wrr, &arg);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
