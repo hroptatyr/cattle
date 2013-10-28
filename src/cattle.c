@@ -283,6 +283,14 @@ DEFCORU(co_appl_wrr, {
 				prc = scalbnd32(1.df, tgtx);
 			}
 			pr_adjq(row->t, row->val->adj, prc);
+			if (row->nval > 1U) {
+				pr_adjq(row->t,
+					row->val[1U].adj, row->val[1U].prc);
+			}
+			if (row->nval > 2U) {
+				pr_adjq(row->t,
+					row->val[2U].adj, row->val[2U].prc);
+			}
 			row = YIELD(&row->val->prc);
 		}
 	} else /*if (abs)*/ {
@@ -291,6 +299,14 @@ DEFCORU(co_appl_wrr, {
 		/* absolute precision mode */
 		while (row != NULL) {
 			pr_adjq(row->t, row->val->adj, scal);
+			if (row->nval > 1U) {
+				pr_adjq(row->t,
+					row->val[1U].adj, scal);
+			}
+			if (row->nval > 2U) {
+				pr_adjq(row->t,
+					row->val[2U].adj, scal);
+			}
 			row = YIELD(&row->val->prc);
 		}
 	}
