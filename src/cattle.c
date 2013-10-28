@@ -206,8 +206,11 @@ struct adj_in_s {
 
 struct adj_res_s {
 	echs_instant_t t;
-	_Decimal32 prc;
-	_Decimal32 adj;
+	size_t nval;
+	struct {
+		_Decimal32 prc;
+		_Decimal32 adj;
+	} val[];
 };
 
 DEFCORU(co_appl_rdr, {
@@ -272,23 +275,23 @@ DEFCORU(co_appl_wrr, {
 
 	if (!abs) {
 		while (row != NULL) {
-			_Decimal32 prc = row->prc;
+			_Decimal32 prc = row->val->prc;
 
 			if (UNLIKELY(prec)) {
 				/* come up with a new raw value */
 				int tgtx = quantexpd32(prc) + prec;
 				prc = scalbnd32(1.df, tgtx);
 			}
-			pr_adjq(row->t, row->adj, prc);
-			row = YIELD(&row->prc);
+			pr_adjq(row->t, row->val->adj, prc);
+			row = YIELD(&row->val->prc);
 		}
 	} else /*if (abs)*/ {
 		const _Decimal32 scal = mkscal(prec);
 
 		/* absolute precision mode */
 		while (row != NULL) {
-			pr_adjq(row->t, row->adj, scal);
-			row = YIELD(&row->prc);
+			pr_adjq(row->t, row->val->adj, scal);
+			row = YIELD(&row->val->prc);
 		}
 	}
 	return 0;
@@ -302,7 +305,14 @@ DEFCORU(co_appl_adj, {
 	/* we get a rdr_res_s */
 	const struct adj_in_s *in = arg;
 	/* we'll yield a adj_res */
-	static struct adj_res_s res[1];
+	static struct {
+		echs_instant_t t;
+		size_t nval;
+		struct {
+			_Decimal32 prc;
+			_Decimal32 adj;
+		} val[3U];
+	} res[1];
 	ctl_price_t prc;
 	char *on;
 
@@ -315,6 +325,7 @@ DEFCORU(co_appl_adj, {
 
 	if (LIKELY(*on == '\n')) {
 		/* just a price value mehopes */
+		res->nval = 1U;
 		do {
 			ctl_price_t adj;
 
@@ -326,20 +337,21 @@ DEFCORU(co_appl_adj, {
 
 				assert(c != NULL);
 				adj = ctl_caev_act_mktprc(*c, prc);
-				res->prc = adj;
+				res->val->prc = adj;
 			} else {
 				adj = (float)prc * in->adj_param.f;
-				res->prc = prc;
+				res->val->prc = prc;
 			}
 
 			/* store adjusted value for passing to writer */
-			res->adj = adj;
+			res->val->adj = adj;
 
 			/* and yield ... */
 		} while ((in = YIELD(res)) != NULL);
 
 	} else {
 		/* more than one value column aye */
+		res->nval = 2U;
 		do {
 			ctl_fund_t fnd;
 			ctl_fund_t adj;
@@ -351,19 +363,53 @@ DEFCORU(co_appl_adj, {
 			if (UNLIKELY(*on != '\n')) {
 				fnd.nomval = fnd.outsec;
 				fnd.outsec = strtod32(on + 1, NULL);
+				res->nval = 3U;
 			}
 			/* adjust */
 			if (!totret) {
 				assert(in->adj_param.c != NULL);
 				adj = ctl_caev_act(*in->adj_param.c, fnd);
-				res->prc = adj.mktprc;
+				res->val->prc = adj.mktprc;
+				switch (res->nval) {
+				case 2U:
+					res->val[1U].prc = adj.outsec;
+					break;
+				case 3U:
+					res->val[1U].prc = adj.nomval;
+					res->val[2U].prc = adj.outsec;
+				}
 			} else {
 				float pm = (float)fnd.mktprc * in->adj_param.f;
 				adj.mktprc = (ctl_price_t)pm;
-				res->prc = prc;
+				res->val->prc = fnd.mktprc;
+				switch (res->nval) {
+				case 2U:
+					res->val[1U].prc = fnd.outsec;
+					adj.outsec =
+						(float)fnd.outsec /
+						in->adj_param.f;
+					break;
+				case 3U:
+					res->val[1U].prc = fnd.nomval;
+					res->val[2U].prc = fnd.outsec;
+					adj.nomval =
+						(float)fnd.nomval /
+						in->adj_param.f;
+					adj.outsec =
+						(float)fnd.outsec /
+						in->adj_param.f;
+				}
 			}
 			/* bang adjusted prices and print */
-			res->adj = adj.mktprc;
+			res->val->adj = adj.mktprc;
+			switch (res->nval) {
+			case 2U:
+				res->val[1U].adj = adj.outsec;
+				break;
+			case 3U:
+				res->val[1U].adj = adj.nomval;
+				res->val[2U].adj = adj.outsec;
+			}
 		} while ((in = YIELD(res)) != NULL);
 	}
 	return 0;
