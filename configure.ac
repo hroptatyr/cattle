@@ -43,6 +43,9 @@ AM_CONDITIONAL([HAVE_DFP754], [test "${ac_cv_header_dfp754_h}" = "yes"])
 AC_CHECK_HEADERS([dfp/stdlib.h])
 AM_CONDITIONAL([HAVE_DFP_STDLIB], [test "${ac_cv_header_dfp_stdlib_h}" = "yes"])
 
+AC_CHECK_FUNCS([strtod32])
+AM_CONDITIONAL([HAVE_STRTOD32], [test "${ac_cv_func_strtod32}" = "yes"])
+
 AC_CHECK_FUNCS([quantized32])
 AM_CONDITIONAL([HAVE_QUANTIZED32], [test "${ac_cv_func_quantized32}" = "yes"])
 
