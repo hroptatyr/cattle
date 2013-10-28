@@ -250,12 +250,12 @@ strtodpd32(const char *src, char **on)
 	return res;
 }
 
-#if !defined HAVE_DFP754_H && !defined HAVE_DFP_STDLIB_H
+#if !defined HAVE_STRTOD32
 _Decimal32
 strtod32(const char *src, char **on)
 {
 	return strtobid32(src, on);
 }
-#endif	/* !HAVE_DFP754_H && !HAVE_DFP_STDLIB_H */
+#endif	/* !HAVE_STRTOD32 */
 
 /* rd-d32.c ends here */
