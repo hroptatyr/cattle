@@ -196,6 +196,14 @@ struct pop_res_s {
 	size_t msz;
 };
 
+struct adj_in_s {
+	const struct rdr_res_s *rdr;
+	union {
+		const ctl_caev_t *c;
+		float f;
+	} adj_param;
+};
+
 struct adj_res_s {
 	echs_instant_t t;
 	_Decimal32 prc;
@@ -204,7 +212,7 @@ struct adj_res_s {
 
 DEFCORU(co_appl_rdr, {
 		FILE *f;
-	}, void *UNUSED(arg))
+	}, const void *UNUSED(arg))
 {
 /* coroutine for the reader of the tseries */
 	char *line = NULL;
@@ -272,7 +280,7 @@ DEFCORU(co_appl_wrr, {
 				prc = scalbnd32(1.df, tgtx);
 			}
 			pr_adjq(row->t, row->adj, prc);
-			row = YIELD(NULL);
+			row = YIELD(&row->prc);
 		}
 	} else /*if (abs)*/ {
 		const _Decimal32 scal = mkscal(prec);
@@ -280,8 +288,83 @@ DEFCORU(co_appl_wrr, {
 		/* absolute precision mode */
 		while (row != NULL) {
 			pr_adjq(row->t, row->adj, scal);
-			row = YIELD(NULL);
+			row = YIELD(&row->prc);
 		}
+	}
+	return 0;
+}
+
+DEFCORU(co_appl_adj, {
+		bool totret;
+	}, const void *arg)
+{
+	const bool totret = CORU_CLOSUR(totret);
+	/* we get a rdr_res_s */
+	const struct adj_in_s *in = arg;
+	/* we'll yield a adj_res */
+	static struct adj_res_s res[1];
+	ctl_price_t prc;
+	char *on;
+
+	if (UNLIKELY(in == NULL)) {
+		return 0;
+	}
+
+	/* otherwise proceed with an initial reading */
+	prc = strtod32(in->rdr->ln, &on);
+
+	if (LIKELY(*on == '\n')) {
+		/* just a price value mehopes */
+		do {
+			ctl_price_t adj;
+
+			res->t = in->rdr->t;
+
+			prc = strtod32(in->rdr->ln, NULL);
+			if (!totret) {
+				const ctl_caev_t *c = in->adj_param.c;
+
+				assert(c != NULL);
+				adj = ctl_caev_act_mktprc(*c, prc);
+				res->prc = adj;
+			} else {
+				adj = (float)prc * in->adj_param.f;
+				res->prc = prc;
+			}
+
+			/* store adjusted value for passing to writer */
+			res->adj = adj;
+
+			/* and yield ... */
+		} while ((in = YIELD(res)) != NULL);
+
+	} else {
+		/* more than one value column aye */
+		do {
+			ctl_fund_t fnd;
+			ctl_fund_t adj;
+
+			res->t = in->rdr->t;
+
+			fnd.mktprc = strtod32(in->rdr->ln, &on);
+			fnd.outsec = strtod32(on + 1, &on);
+			if (UNLIKELY(*on != '\n')) {
+				fnd.nomval = fnd.outsec;
+				fnd.outsec = strtod32(on + 1, NULL);
+			}
+			/* adjust */
+			if (!totret) {
+				assert(in->adj_param.c != NULL);
+				adj = ctl_caev_act(*in->adj_param.c, fnd);
+				res->prc = adj.mktprc;
+			} else {
+				float pm = (float)fnd.mktprc * in->adj_param.f;
+				adj.mktprc = (ctl_price_t)pm;
+				res->prc = prc;
+			}
+			/* bang adjusted prices and print */
+			res->adj = adj.mktprc;
+		} while ((in = YIELD(res)) != NULL);
 	}
 	return 0;
 }
@@ -344,6 +427,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
  * format in there is first column is a date, the rest is prices */
 	struct cocore *rdr;
 	struct cocore *pop;
+	struct cocore *adj;
 	struct cocore *wrr;
 	struct cocore *me;
 	ctl_caev_t sum;
@@ -358,10 +442,12 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	/* chain up adj->wrr */
 	wrr = START_PACK(co_appl_wrr,
 			 .abs = ctx->abs_prec,
 			 .prec = ctx->prec,
 			 .next = me);
+	adj = START_PACK(co_appl_adj, .totret = false, .next = wrr);
 
 	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
@@ -399,19 +485,14 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			ctl_price_t prc;
-			ctl_price_t adj;
-
-			prc = strtod32(ln->ln, NULL);
-			adj = ctl_caev_act_mktprc(sum, prc);
-			/* and print */
 			NEXT_PACK(
-				wrr, struct adj_res_s,
-				.t = ln->t, .prc = adj, .adj = adj);
+				adj, struct adj_in_s,
+				.rdr = ln, .adj_param.c = &sum);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
-	/* drain the writer */
+	/* drain the adjuster, then the writer */
+	(void)NEXT(adj);
 	(void)NEXT(wrr);
 
 	UNPREP();
@@ -428,6 +509,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
  * this is the total return forward adjustment */
 	struct cocore *rdr;
 	struct cocore *pop;
+	struct cocore *adj;
 	struct cocore *wrr;
 	struct cocore *me;
 	float prod;
@@ -449,6 +531,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			 .abs = ctx->abs_prec,
 			 .prec = ctx->prec,
 			 .next = me);
+	adj = START_PACK(co_appl_adj, .totret = true, .next = wrr);
 
 	/* initialise product */
 	prod = 1.f;
@@ -489,18 +572,16 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			ctl_price_t prc;
-			float adj;
-
-			prc = strtod32(ln->ln, NULL);
-			adj = (last = (float)prc) * prod;
-			NEXT_PACK(
-				wrr, struct adj_res_s,
-				.t = ln->t, .prc = prc, .adj = adj);
+			const ctl_price_t *tmp =
+				NEXT_PACK(
+					adj, struct adj_in_s,
+					.rdr = ln, .adj_param.f = prod);
+			last = (float)*tmp;
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
-	/* unload the writer */
+	/* unload the writer and adjuster */
+	(void)NEXT(adj);
 	(void)NEXT(wrr);
 
 out:
@@ -525,6 +606,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	};
 	struct cocore *rdr;
 	struct cocore *pop;
+	struct cocore *adj;
 	struct cocore *wrr;
 	struct cocore *me;
 	struct fa_s *fa = NULL;
@@ -638,6 +720,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			 .abs = ctx->abs_prec,
 			 .prec = ctx->prec,
 			 .next = me);
+	adj = START_PACK(co_appl_adj, .totret = true, .next = wrr);
 
 	last = NAN;
 	size_t i;
@@ -657,18 +740,16 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			ctl_price_t prc;
-			float adj;
-
-			prc = strtod32(ln->ln, NULL);
-			adj = (last = (float)prc) * prod;
-			NEXT_PACK(
-				wrr, struct adj_res_s,
-				.t = ln->t, .prc = prc, .adj = adj);
+			const ctl_price_t *tmp =
+				NEXT_PACK(
+					adj, struct adj_in_s,
+					.rdr = ln, .adj_param.f = prod);
+			last = (float)*tmp;
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
-	/* unload the writer */
+	/* unload the writer and adjuster */
+	(void)NEXT(adj);
 	(void)NEXT(wrr);
 
 out:
