@@ -199,10 +199,7 @@ struct pop_res_s {
 struct adj_res_s {
 	echs_instant_t t;
 	_Decimal32 prc;
-	union {
-		_Decimal32 df;
-		float f;
-	} adj;
+	_Decimal32 adj;
 };
 
 DEFCORU(co_appl_rdr, {
@@ -276,7 +273,7 @@ DEFCORU(co_appl_wrr, {
 				int tgtx = quantexpd32(prc) + prec;
 				prc = scalbnd32(1.df, tgtx);
 			}
-			pr_adjq(row->t, row->adj.df, prc);
+			pr_adjq(row->t, row->adj, prc);
 			row = YIELD(NULL);
 		}
 	} else if (!totret/* && abs*/) {
@@ -284,7 +281,7 @@ DEFCORU(co_appl_wrr, {
 
 		/* absolute precision mode */
 		while (row != NULL) {
-			pr_adjq(row->t, row->adj.df, scal);
+			pr_adjq(row->t, row->adj, scal);
 			row = YIELD(NULL);
 		}
 	} else if (/*totret && */!abs) {
@@ -296,7 +293,7 @@ DEFCORU(co_appl_wrr, {
 				int tgtx = quantexpd32(prc) + prec;
 				prc = scalbnd32(1.df, tgtx);
 			}
-			pr_adjq(row->t, row->adj.f, prc);
+			pr_adjq(row->t, row->adj, prc);
 			row = YIELD(NULL);
 		}
 	} else /* if (totret && abs) */ {
@@ -304,7 +301,7 @@ DEFCORU(co_appl_wrr, {
 
 		/* absolute precision mode */
 		while (row != NULL) {
-			pr_adjq(row->t, row->adj.f, scal);
+			pr_adjq(row->t, row->adj, scal);
 			row = YIELD(NULL);
 		}
 	}
@@ -432,7 +429,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			adj = ctl_caev_act_mktprc(sum, prc);
 			/* and print */
 			struct adj_res_s arg = {
-				.t = ln->t, .prc = adj, .adj.df = adj,
+				.t = ln->t, .prc = adj, .adj = adj,
 			};
 			NEXT1(wrr, &arg);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
@@ -523,7 +520,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			prc = strtod32(ln->ln, NULL);
 			adj = (last = (float)prc) * prod;
 			struct adj_res_s arg = {
-				.t = ln->t, .prc = prc, .adj.f = adj,
+				.t = ln->t, .prc = prc, .adj = adj,
 			};
 			NEXT1(wrr, &arg);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
@@ -693,7 +690,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			prc = strtod32(ln->ln, NULL);
 			adj = (last = (float)prc) * prod;
 			struct adj_res_s arg = {
-				.t = ln->t, .prc = prc, .adj.f = adj,
+				.t = ln->t, .prc = prc, .adj = adj,
 			};
 			NEXT1(wrr, &arg);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
