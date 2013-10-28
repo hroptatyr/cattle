@@ -24,6 +24,12 @@ Pronunciation
 -------------
 cattle is correctly pronounced SEE-AYE-tool.
 
+Red tape
+--------
++ no external dependencies
++ licensed under BSD3c
++ contains GPLv2 code by Michael Abbott
+
 
 Examples
 ========
