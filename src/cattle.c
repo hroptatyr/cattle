@@ -428,10 +428,9 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			prc = strtod32(ln->ln, NULL);
 			adj = ctl_caev_act_mktprc(sum, prc);
 			/* and print */
-			struct adj_res_s arg = {
-				.t = ln->t, .prc = adj, .adj = adj,
-			};
-			NEXT1(wrr, &arg);
+			NEXT_PACK(
+				wrr, struct adj_res_s,
+				.t = ln->t, .prc = adj, .adj = adj);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -519,10 +518,9 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 			prc = strtod32(ln->ln, NULL);
 			adj = (last = (float)prc) * prod;
-			struct adj_res_s arg = {
-				.t = ln->t, .prc = prc, .adj = adj,
-			};
-			NEXT1(wrr, &arg);
+			NEXT_PACK(
+				wrr, struct adj_res_s,
+				.t = ln->t, .prc = prc, .adj = adj);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -689,10 +687,9 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 			prc = strtod32(ln->ln, NULL);
 			adj = (last = (float)prc) * prod;
-			struct adj_res_s arg = {
-				.t = ln->t, .prc = prc, .adj = adj,
-			};
-			NEXT1(wrr, &arg);
+			NEXT_PACK(
+				wrr, struct adj_res_s,
+				.t = ln->t, .prc = prc, .adj = adj);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
