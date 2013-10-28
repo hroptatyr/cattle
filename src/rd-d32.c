@@ -128,6 +128,21 @@ pack_declet(unsigned int x)
 	return res;
 }
 
+static uint_least32_t
+round_bcd32(uint_least32_t mant, int roff)
+{
+	register uint_least32_t x;
+	unsigned int sh = 0U;
+
+	while (UNLIKELY((x = (mant & 0b1111U) + roff) > 9)) {
+		mant >>= 4U;
+		sh += 4U;
+	}
+	mant = (mant & ~0b1111U) | x;
+	mant <<= sh;
+	return mant;
+}
+
 static bcd32_t
 strtobcd32(const char *src, char **on)
 {
@@ -135,6 +150,7 @@ strtobcd32(const char *src, char **on)
 	uint_least32_t mant = 0;
 	int expo = 0;
 	int sign = 0;
+	int roff = 0;
 	unsigned int nd;
 
 	if (UNLIKELY(*sp == '-')) {
@@ -148,7 +164,9 @@ strtobcd32(const char *src, char **on)
 		mant <<= 4U;
 		mant |= U(*sp);
 	}
-	/* just pick up digits, don't fiddle with the mantissa though */
+	/* just pick up digits, don't fiddle with the mantissa though
+	 * here we determine the round off digit really */
+	roff += (*sp >= '5' && *sp <= '9');
 	for (; *sp >= '0' && *sp <= '9'; sp++, expo++);
 	if (*sp == '.' && nd > 0) {
 		/* less than 7 digits, read more from the right side */
@@ -158,10 +176,16 @@ strtobcd32(const char *src, char **on)
 			mant |= U(*sp);
 		}
 		/* pick up trailing digits for the word */
+		roff += (*sp >= '5' && *sp <= '9');
 		for (; *sp >= '0' && *sp <= '9'; sp++);
 	} else if (*sp == '.') {
 		/* more than 7 digits already, just consume */
+		roff += (*sp >= '5' && *sp <= '9');
 		for (sp++; *sp >= '0' && *sp <= '9'; sp++);
+	}
+
+	if (UNLIKELY(roff)) {
+		mant = round_bcd32(mant, sign ? -1 : 1);
 	}
 
 	if (LIKELY(on != NULL)) {
