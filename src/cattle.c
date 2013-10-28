@@ -253,18 +253,16 @@ DEFCORU(co_appl_pop, {
 }
 
 DEFCORU(co_appl_wrr, {
-		bool totret;
 		bool abs;
 		signed int prec;
 	}, const void *arg)
 {
 	const bool abs = CORU_CLOSUR(abs);
-	const bool totret = CORU_CLOSUR(totret);
 	const signed int prec = CORU_CLOSUR(prec);
 	const struct adj_res_s *row = arg;
 	/* no yield whatsoever */
 
-	if (!totret && !abs) {
+	if (!abs) {
 		while (row != NULL) {
 			_Decimal32 prc = row->prc;
 
@@ -276,27 +274,7 @@ DEFCORU(co_appl_wrr, {
 			pr_adjq(row->t, row->adj, prc);
 			row = YIELD(NULL);
 		}
-	} else if (!totret/* && abs*/) {
-		const _Decimal32 scal = mkscal(prec);
-
-		/* absolute precision mode */
-		while (row != NULL) {
-			pr_adjq(row->t, row->adj, scal);
-			row = YIELD(NULL);
-		}
-	} else if (/*totret && */!abs) {
-		while (row != NULL) {
-			_Decimal32 prc = row->prc;
-
-			if (UNLIKELY(prec)) {
-				/* come up with a new raw value */
-				int tgtx = quantexpd32(prc) + prec;
-				prc = scalbnd32(1.df, tgtx);
-			}
-			pr_adjq(row->t, row->adj, prc);
-			row = YIELD(NULL);
-		}
-	} else /* if (totret && abs) */ {
+	} else /*if (abs)*/ {
 		const _Decimal32 scal = mkscal(prec);
 
 		/* absolute precision mode */
@@ -381,7 +359,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
 	wrr = START_PACK(co_appl_wrr,
-			 .totret = false,
 			 .abs = ctx->abs_prec,
 			 .prec = ctx->prec,
 			 .next = me);
@@ -469,7 +446,6 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
 	wrr = START_PACK(co_appl_wrr,
-			 .totret = true,
 			 .abs = ctx->abs_prec,
 			 .prec = ctx->prec,
 			 .next = me);
@@ -659,7 +635,6 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	wrr = START_PACK(co_appl_wrr,
-			 .totret = true,
 			 .abs = ctx->abs_prec,
 			 .prec = ctx->prec,
 			 .next = me);
