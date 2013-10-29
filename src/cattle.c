@@ -175,21 +175,23 @@ struct pop_res_s {
 	size_t msz;
 };
 
+struct echs_fund_s {
+	echs_instant_t t;
+	size_t nf;
+	_Decimal32 f[3U];
+};
+
 struct adj_in_s {
-	const struct rdr_res_s *rdr;
+	const struct echs_fund_s *rdr;
 	union {
 		const ctl_caev_t *c;
 		float f;
 	} adj_param;
 };
 
-struct adj_res_s {
-	echs_instant_t t;
-	size_t nval;
-	struct {
-		_Decimal32 prc;
-		_Decimal32 adj;
-	} val[];
+struct wrr_in_s {
+	const struct echs_fund_s *rdr;
+	const struct echs_fund_s *adj;
 };
 
 DEFCORU(co_appl_rdr, {
@@ -225,6 +227,23 @@ DEFCORU(co_appl_rdr, {
 	return 0;
 }
 
+static struct echs_fund_s
+massage_rdr(const struct rdr_res_s *msg)
+{
+/* massage a message from the rdr coru into something more useful */
+	struct echs_fund_s res;
+	const char *p = msg->ln - 1U;
+
+	res.t = msg->t;
+	res.nf = 0U;
+	for (size_t i = 0U; i < countof(res.f) && *p != '\n'; i++) {
+		char *next;
+		res.f[res.nf++] = strtod32(p + 1U, &next);
+		p = next;
+	}
+	return res;
+}
+
 DEFCORU(co_appl_pop, {
 		ctl_wheap_t q;
 	}, const void *UNUSED(arg))
@@ -246,18 +265,17 @@ DEFCORU(co_appl_pop, {
 DEFCORU(co_appl_wrr, {
 		bool absp;
 		signed int prec;
-	}, const void *arg)
+	}, const struct wrr_in_s *arg)
 {
+/* no yield */
 	const bool absp = CORU_CLOSUR(absp);
 	const signed int prec = CORU_CLOSUR(prec);
-	const struct adj_res_s *row = arg;
-	/* no yield whatsoever */
 
 	if (!absp) {
-		while (row != NULL) {
-			_Decimal32 prc = row->val->prc;
+		while (arg != NULL) {
+			_Decimal32 prc = arg->rdr->f[0U];
 
-			pr_ei(row->t);
+			pr_ei(arg->adj->t);
 
 			if (UNLIKELY(prec)) {
 				/* come up with a new raw value */
@@ -265,38 +283,33 @@ DEFCORU(co_appl_wrr, {
 				prc = scalbnd32(1.df, tgtx);
 			}
 			fputc('\t', stdout);
-			pr_d32(quantized32(row->val->adj, prc));
+			pr_d32(quantized32(arg->adj->f[0U], prc));
 
-			if (row->nval > 1U) {
+			for (size_t i = 1U; i < arg->adj->nf; i++) {
+				/* print the rest without prec scaling */
 				fputc('\t', stdout);
-				pr_d32(row->val[1U].adj);
-			}
-			if (row->nval > 2U) {
-				fputc('\t', stdout);
-				pr_d32(row->val[1U].adj);
+				pr_d32(arg->adj->f[i]);
 			}
 			fputc('\n', stdout);
-			row = YIELD(&row->val->prc);
+			arg = YIELD(NULL);
 		}
 	} else /*if (absp)*/ {
 		const _Decimal32 scal = mkscal(prec);
 
 		/* absolute precision mode */
-		while (row != NULL) {
-			pr_ei(row->t);
-			fputc('\t', stdout);
-			pr_d32(quantized32(row->val->adj, scal));
+		while (arg != NULL) {
+			pr_ei(arg->adj->t);
 
-			if (row->nval > 1U) {
+			fputc('\t', stdout);
+			pr_d32(quantized32(arg->adj->f[0U], scal));
+
+			for (size_t i = 1U; i < arg->adj->nf; i++) {
+				/* print the rest without prec scaling */
 				fputc('\t', stdout);
-				pr_d32(row->val[1U].adj);
-			}
-			if (row->nval > 2U) {
-				fputc('\t', stdout);
-				pr_d32(row->val[2U].adj);
+				pr_d32(arg->adj->f[i]);
 			}
 			fputc('\n', stdout);
-			row = YIELD(&row->val->prc);
+			arg = YIELD(NULL);
 		}
 	}
 	return 0;
@@ -304,120 +317,86 @@ DEFCORU(co_appl_wrr, {
 
 DEFCORU(co_appl_adj, {
 		bool totret;
-	}, const void *arg)
+	}, const struct adj_in_s *arg)
 {
 	const bool totret = CORU_CLOSUR(totret);
-	/* we get a rdr_res_s */
-	const struct adj_in_s *in = arg;
-	/* we'll yield a adj_res */
-	static struct {
-		echs_instant_t t;
-		size_t nval;
-		struct {
-			_Decimal32 prc;
-			_Decimal32 adj;
-		} val[3U];
-	} res[1];
-	ctl_price_t prc;
-	char *on;
+	/* we'll yield a wrr_in_s */
+	static struct echs_fund_s res[1];
+	size_t nf;
 
-	if (UNLIKELY(in == NULL)) {
+	if (UNLIKELY(arg == NULL)) {
+		return 0;
+	} else if ((nf = res->nf = arg->rdr->nf) == 0U || nf > 3U) {
 		return 0;
 	}
 
-	/* otherwise proceed with an initial reading */
-	prc = strtod32(in->rdr->ln, &on);
-
-	if (LIKELY(*on == '\n')) {
-		/* just a price value mehopes */
-		res->nval = 1U;
-		do {
-			ctl_price_t adj;
-
-			res->t = in->rdr->t;
-
-			prc = strtod32(in->rdr->ln, NULL);
-			if (!totret) {
-				const ctl_caev_t *c = in->adj_param.c;
+	if (!totret) {
+		switch (nf) {
+		case 1U:
+			do {
+				const ctl_caev_t *c = arg->adj_param.c;
+				ctl_price_t adj;
 
 				assert(c != NULL);
-				adj = ctl_caev_act_mktprc(*c, prc);
-				res->val->prc = adj;
-			} else {
-				adj = (float)prc * in->adj_param.f;
-				res->val->prc = prc;
-			}
+				adj = ctl_caev_act_mktprc(*c, arg->rdr->f[0U]);
+				res->t = arg->rdr->t;
+				res->f[0U] = adj;
+			} while ((arg = YIELD(res)) != NULL);
+			break;
+		case 2U:
+		case 3U:
+			do {
+				const ctl_caev_t *c = arg->adj_param.c;
+				ctl_fund_t fnd;
+				ctl_fund_t adj;
 
-			/* store adjusted value for passing to writer */
-			res->val->adj = adj;
+				assert(c != NULL);
 
-			/* and yield ... */
-		} while ((in = YIELD(res)) != NULL);
+				fnd.mktprc = arg->rdr->f[0U];
+				fnd.nomval = arg->rdr->f[nf - 2U];
+				fnd.outsec = arg->rdr->f[nf - 1U];
 
-	} else {
-		/* more than one value column aye */
-		res->nval = 2U;
-		do {
-			ctl_fund_t fnd;
-			ctl_fund_t adj;
+				adj = ctl_caev_act(*c, fnd);
+				res->t = arg->rdr->t;
+				res->f[nf - 2U] = adj.nomval;
+				res->f[nf - 1U] = adj.outsec;
+				res->f[0U] = adj.mktprc;
+			} while ((arg = YIELD(res)) != NULL);
+			break;
+		}
 
-			res->t = in->rdr->t;
+	} else /* if (totret)*/ {
+		switch (nf) {
+		case 1U:
+			do {
+				const float fctr = arg->adj_param.f;
 
-			fnd.mktprc = strtod32(in->rdr->ln, &on);
-			fnd.outsec = strtod32(on + 1, &on);
-			if (UNLIKELY(*on != '\n')) {
-				fnd.nomval = fnd.outsec;
-				fnd.outsec = strtod32(on + 1, NULL);
-				res->nval = 3U;
-			}
-			/* adjust */
-			if (!totret) {
-				assert(in->adj_param.c != NULL);
-				adj = ctl_caev_act(*in->adj_param.c, fnd);
-				res->val->prc = adj.mktprc;
-				switch (res->nval) {
-				case 2U:
-					res->val[1U].prc = adj.outsec;
-					break;
-				case 3U:
-					res->val[1U].prc = adj.nomval;
-					res->val[2U].prc = adj.outsec;
-				}
-			} else {
-				float pm = (float)fnd.mktprc * in->adj_param.f;
-				adj.mktprc = (ctl_price_t)pm;
-				res->val->prc = fnd.mktprc;
-				switch (res->nval) {
-				case 2U:
-					res->val[1U].prc = fnd.outsec;
-					adj.outsec =
-						(float)fnd.outsec /
-						in->adj_param.f;
-					break;
-				case 3U:
-					res->val[1U].prc = fnd.nomval;
-					res->val[2U].prc = fnd.outsec;
-					adj.nomval =
-						(float)fnd.nomval /
-						in->adj_param.f;
-					adj.outsec =
-						(float)fnd.outsec /
-						in->adj_param.f;
-				}
-			}
-			/* bang adjusted prices and print */
-			res->val->adj = adj.mktprc;
-			switch (res->nval) {
-			case 2U:
-				res->val[1U].adj = adj.outsec;
-				break;
-			case 3U:
-				res->val[1U].adj = adj.nomval;
-				res->val[2U].adj = adj.outsec;
-			}
-		} while ((in = YIELD(res)) != NULL);
+				res->t = arg->rdr->t;
+				res->f[0U] = arg->rdr->f[0U] * fctr;
+			} while ((arg = YIELD(res)) != NULL);
+			break;
+		case 2U:
+		case 3U:
+			do {
+				const float fctr = arg->adj_param.f;
+
+				res->t = arg->rdr->t;
+				res->f[nf - 2U] = arg->rdr->f[nf - 2U] / fctr;
+				res->f[nf - 1U] = arg->rdr->f[nf - 1U] / fctr;
+				res->f[0U] = arg->rdr->f[0U] * fctr;
+			} while ((arg = YIELD(res)) != NULL);
+			break;
+		}
 	}
+
 	return 0;
+}
+
+static struct echs_fund_s
+massage_adj(const struct echs_fund_s *msg)
+{
+/* massage a message from the adj coru into something more useful */
+	return *msg;
 }
 
 
@@ -493,11 +472,10 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
-	/* chain up adj->wrr */
+	adj = START_PACK(co_appl_adj, .args.totret = false, .next = me);
 	wrr = START_PACK(co_appl_wrr,
 			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .args.totret = false, .next = wrr);
 
 	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
@@ -512,7 +490,6 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	const struct pop_res_s *ev;
 	const struct rdr_res_s *ln;
 	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
-
 		/* sum up caevs in between price lines */
 		for (;
 		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
@@ -535,9 +512,17 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			NEXT_PACK(
-				adj, struct adj_in_s,
-				.rdr = ln, .adj_param.c = &sum);
+			struct echs_fund_s r = massage_rdr(ln);
+			struct echs_fund_s a;
+
+			with (const struct echs_fund_s *tmp) {
+				tmp = NEXT_PACK(
+					adj, struct adj_in_s,
+					.rdr = &r, .adj_param.c = &sum);
+				a = massage_adj(tmp);
+			}
+			/* off to the writer */
+			NEXT_PACK(wrr, struct wrr_in_s, .rdr = &r, .adj = &a);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -577,10 +562,10 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
+	adj = START_PACK(co_appl_adj, .args.totret = true, .next = me);
 	wrr = START_PACK(co_appl_wrr,
 			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .args.totret = true, .next = wrr);
 
 	/* initialise product */
 	prod = 1.f;
@@ -621,11 +606,20 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			const ctl_price_t *tmp =
-				NEXT_PACK(
+			struct echs_fund_s r = massage_rdr(ln);
+			struct echs_fund_s a;
+
+			/* save last value */
+			last = (float)r.f[0U];
+
+			with (const struct echs_fund_s *tmp) {
+				tmp = NEXT_PACK(
 					adj, struct adj_in_s,
-					.rdr = ln, .adj_param.f = prod);
-			last = (float)*tmp;
+					.rdr = &r, .adj_param.f = prod);
+				a = massage_adj(tmp);
+			}
+			/* off to the writer */
+			NEXT_PACK(wrr, struct wrr_in_s, .rdr = &r, .adj = &a);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -765,10 +759,10 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
+	adj = START_PACK(co_appl_adj, .args.totret = true, .next = me);
 	wrr = START_PACK(co_appl_wrr,
 			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .args.totret = true, .next = wrr);
 
 	last = NAN;
 	size_t i;
@@ -788,11 +782,21 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			const ctl_price_t *tmp =
-				NEXT_PACK(
+			struct echs_fund_s r = massage_rdr(ln);
+			struct echs_fund_s a;
+
+			/* save last value */
+			last = (float)r.f[0U];
+
+			with (const struct echs_fund_s *tmp) {
+				tmp = NEXT_PACK(
 					adj, struct adj_in_s,
-					.rdr = ln, .adj_param.f = prod);
-			last = (float)*tmp;
+					.rdr = &r, .adj_param.f = prod);
+				a = massage_adj(tmp);
+			}
+
+			/* off to the writer */
+			NEXT_PACK(wrr, struct wrr_in_s, .rdr = &r, .adj = &a);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
