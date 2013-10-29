@@ -235,7 +235,8 @@ DEFCORU(co_appl_pop, {
 
 	while (!__inst_0_p(res->t = ctl_wheap_top_rank(q))) {
 		/* assume it's a ctl-caev_t */
-		res->msg = (const ctl_caev_t*)ctl_wheap_pop(q);
+		uintptr_t tmp = ctl_wheap_pop(q);
+		res->msg = (const ctl_caev_t*)tmp;
 		res->msz = sizeof(ctl_caev_t);
 		(void)YIELD(res);
 	}
@@ -852,7 +853,8 @@ cmd_print(struct ctl_args_info argi[static 1U])
 	ctl_caev_t sum = ctl_zero_caev();
 	const ctl_caev_t *prev = &sum;
 	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
-		const ctl_caev_t *this = (const void*)ctl_wheap_pop(ctx->q);
+		uintptr_t tmp = ctl_wheap_pop(ctx->q);
+		const ctl_caev_t *this = (const void*)tmp;
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
