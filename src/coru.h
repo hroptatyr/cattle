@@ -51,17 +51,17 @@
 	})
 #define NEXT1(x, o)	(check_cocore(x) ? switch_cocore((x), (o)) : NULL)
 #define NEXT(x)		NEXT1(x, NULL)
-#define YIELD(args...)	switch_cocore(CORU_CLOSUR(next), (args))
+#define YIELD(args...)	switch_cocore(coru_ctx->next, (args))
 #define NEXT_PACK(x, s, a...)			\
 	NEXT1(x, PACK(s, a))
 
 #define DEFCORU(name, closure, arg)			\
 	struct name##_s {				\
 		struct cocore *next;			\
-		struct closure;				\
+		struct closure args;			\
 	};						\
 	static void *name(struct name##_s *coru_ctx, arg)
-#define CORU_CLOSUR(x)	(coru_ctx->x)
+#define CORU_CLOSUR(x)	(coru_ctx->args.x)
 #define CORU_STRUCT(x)	struct x##_s
 #define PACK(x, args...)	&((x){args})
 #define START_PACK(x, args...)	START(x, PACK(CORU_STRUCT(x), args))

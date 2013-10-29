@@ -235,7 +235,8 @@ DEFCORU(co_appl_pop, {
 
 	while (!__inst_0_p(res->t = ctl_wheap_top_rank(q))) {
 		/* assume it's a ctl-caev_t */
-		res->msg = (const ctl_caev_t*)ctl_wheap_pop(q);
+		uintptr_t tmp = ctl_wheap_pop(q);
+		res->msg = (const ctl_caev_t*)tmp;
 		res->msz = sizeof(ctl_caev_t);
 		(void)YIELD(res);
 	}
@@ -243,16 +244,16 @@ DEFCORU(co_appl_pop, {
 }
 
 DEFCORU(co_appl_wrr, {
-		bool abs;
+		bool absp;
 		signed int prec;
 	}, const void *arg)
 {
-	const bool abs = CORU_CLOSUR(abs);
+	const bool absp = CORU_CLOSUR(absp);
 	const signed int prec = CORU_CLOSUR(prec);
 	const struct adj_res_s *row = arg;
 	/* no yield whatsoever */
 
-	if (!abs) {
+	if (!absp) {
 		while (row != NULL) {
 			_Decimal32 prc = row->val->prc;
 
@@ -277,7 +278,7 @@ DEFCORU(co_appl_wrr, {
 			fputc('\n', stdout);
 			row = YIELD(&row->val->prc);
 		}
-	} else /*if (abs)*/ {
+	} else /*if (absp)*/ {
 		const _Decimal32 scal = mkscal(prec);
 
 		/* absolute precision mode */
@@ -439,7 +440,7 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
 	/* initialise sum to some zero */
 	ctx->sum = ctl_zero_caev();
 
@@ -490,14 +491,13 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
+	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
 	/* chain up adj->wrr */
 	wrr = START_PACK(co_appl_wrr,
-			 .abs = ctx->abs_prec,
-			 .prec = ctx->prec,
+			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .totret = false, .next = wrr);
+	adj = START_PACK(co_appl_adj, .args.totret = false, .next = wrr);
 
 	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
@@ -575,13 +575,12 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
+	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
 	wrr = START_PACK(co_appl_wrr,
-			 .abs = ctx->abs_prec,
-			 .prec = ctx->prec,
+			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .totret = true, .next = wrr);
+	adj = START_PACK(co_appl_adj, .args.totret = true, .next = wrr);
 
 	/* initialise product */
 	prod = 1.f;
@@ -674,8 +673,8 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
+	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
 
 	/* initialise another wheap and another prod */
 	prod = 1.f;
@@ -765,12 +764,11 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	fseek(f, 0, SEEK_SET);
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
 	wrr = START_PACK(co_appl_wrr,
-			 .abs = ctx->abs_prec,
-			 .prec = ctx->prec,
+			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .totret = true, .next = wrr);
+	adj = START_PACK(co_appl_adj, .args.totret = true, .next = wrr);
 
 	last = NAN;
 	size_t i;
@@ -855,7 +853,8 @@ cmd_print(struct ctl_args_info argi[static 1U])
 	ctl_caev_t sum = ctl_zero_caev();
 	const ctl_caev_t *prev = &sum;
 	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
-		const ctl_caev_t *this = (const void*)ctl_wheap_pop(ctx->q);
+		uintptr_t tmp = ctl_wheap_pop(ctx->q);
+		const ctl_caev_t *this = (const void*)tmp;
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
