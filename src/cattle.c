@@ -243,16 +243,16 @@ DEFCORU(co_appl_pop, {
 }
 
 DEFCORU(co_appl_wrr, {
-		bool abs;
+		bool absp;
 		signed int prec;
 	}, const void *arg)
 {
-	const bool abs = CORU_CLOSUR(abs);
+	const bool absp = CORU_CLOSUR(absp);
 	const signed int prec = CORU_CLOSUR(prec);
 	const struct adj_res_s *row = arg;
 	/* no yield whatsoever */
 
-	if (!abs) {
+	if (!absp) {
 		while (row != NULL) {
 			_Decimal32 prc = row->val->prc;
 
@@ -277,7 +277,7 @@ DEFCORU(co_appl_wrr, {
 			fputc('\n', stdout);
 			row = YIELD(&row->val->prc);
 		}
-	} else /*if (abs)*/ {
+	} else /*if (absp)*/ {
 		const _Decimal32 scal = mkscal(prec);
 
 		/* absolute precision mode */
@@ -494,7 +494,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
 	/* chain up adj->wrr */
 	wrr = START_PACK(co_appl_wrr,
-			 .abs = ctx->abs_prec,
+			 .absp = ctx->abs_prec,
 			 .prec = ctx->prec,
 			 .next = me);
 	adj = START_PACK(co_appl_adj, .totret = false, .next = wrr);
@@ -578,7 +578,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
 	wrr = START_PACK(co_appl_wrr,
-			 .abs = ctx->abs_prec,
+			 .absp = ctx->abs_prec,
 			 .prec = ctx->prec,
 			 .next = me);
 	adj = START_PACK(co_appl_adj, .totret = true, .next = wrr);
@@ -767,7 +767,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
 	wrr = START_PACK(co_appl_wrr,
-			 .abs = ctx->abs_prec,
+			 .absp = ctx->abs_prec,
 			 .prec = ctx->prec,
 			 .next = me);
 	adj = START_PACK(co_appl_adj, .totret = true, .next = wrr);
