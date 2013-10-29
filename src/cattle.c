@@ -228,13 +228,13 @@ DEFCORU(co_appl_rdr, {
 }
 
 static struct echs_fund_s
-massage_rdr(struct rdr_res_s msg)
+massage_rdr(const struct rdr_res_s *msg)
 {
 /* massage a message from the rdr coru into something more useful */
 	struct echs_fund_s res;
-	const char *p = msg.ln - 1U;
+	const char *p = msg->ln - 1U;
 
-	res.t = msg.t;
+	res.t = msg->t;
 	res.nf = 0U;
 	for (size_t i = 0U; i < countof(res.f) && *p != '\n'; i++) {
 		char *next;
@@ -321,17 +321,15 @@ DEFCORU(co_appl_adj, {
 {
 	const bool totret = CORU_CLOSUR(totret);
 	/* we'll yield a wrr_in_s */
-	static struct echs_fund_s ef[1];
-	static struct wrr_in_s res[1];
+	static struct echs_fund_s res[1];
 	size_t nf;
 
 	if (UNLIKELY(arg == NULL)) {
 		return 0;
-	} else if ((nf = ef->nf = arg->rdr->nf) == 0U || nf > 3U) {
+	} else if ((nf = res->nf = arg->rdr->nf) == 0U || nf > 3U) {
 		return 0;
 	}
 
-	res->adj = ef;
 	if (!totret) {
 		switch (nf) {
 		case 1U:
@@ -341,11 +339,8 @@ DEFCORU(co_appl_adj, {
 
 				assert(c != NULL);
 				adj = ctl_caev_act_mktprc(*c, arg->rdr->f[0U]);
-				ef->t = arg->rdr->t;
-				ef->f[0U] = adj;
-
-				/* pass on rdr */
-				res->rdr = arg->rdr;
+				res->t = arg->rdr->t;
+				res->f[0U] = adj;
 			} while ((arg = YIELD(res)) != NULL);
 			break;
 		case 2U:
@@ -362,13 +357,10 @@ DEFCORU(co_appl_adj, {
 				fnd.outsec = arg->rdr->f[nf - 1U];
 
 				adj = ctl_caev_act(*c, fnd);
-				ef->t = arg->rdr->t;
-				ef->f[nf - 2U] = adj.nomval;
-				ef->f[nf - 1U] = adj.outsec;
-				ef->f[0U] = adj.mktprc;
-
-				/* pass on rdr */
-				res->rdr = arg->rdr;
+				res->t = arg->rdr->t;
+				res->f[nf - 2U] = adj.nomval;
+				res->f[nf - 1U] = adj.outsec;
+				res->f[0U] = adj.mktprc;
 			} while ((arg = YIELD(res)) != NULL);
 			break;
 		}
@@ -379,11 +371,8 @@ DEFCORU(co_appl_adj, {
 			do {
 				const float fctr = arg->adj_param.f;
 
-				ef->t = arg->rdr->t;
-				ef->f[0U] = arg->rdr->f[0U] * fctr;
-
-				/* pass on rdr */
-				res->rdr = arg->rdr;
+				res->t = arg->rdr->t;
+				res->f[0U] = arg->rdr->f[0U] * fctr;
 			} while ((arg = YIELD(res)) != NULL);
 			break;
 		case 2U:
@@ -391,19 +380,23 @@ DEFCORU(co_appl_adj, {
 			do {
 				const float fctr = arg->adj_param.f;
 
-				ef->t = arg->rdr->t;
-				ef->f[nf - 2U] = arg->rdr->f[nf - 2U] / fctr;
-				ef->f[nf - 1U] = arg->rdr->f[nf - 1U] / fctr;
-				ef->f[0U] = arg->rdr->f[0U] * fctr;
-
-				/* pass on rdr */
-				res->rdr = arg->rdr;
+				res->t = arg->rdr->t;
+				res->f[nf - 2U] = arg->rdr->f[nf - 2U] / fctr;
+				res->f[nf - 1U] = arg->rdr->f[nf - 1U] / fctr;
+				res->f[0U] = arg->rdr->f[0U] * fctr;
 			} while ((arg = YIELD(res)) != NULL);
 			break;
 		}
 	}
 
 	return 0;
+}
+
+static struct echs_fund_s
+massage_adj(const struct echs_fund_s *msg)
+{
+/* massage a message from the adj coru into something more useful */
+	return *msg;
 }
 
 
@@ -479,11 +472,10 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
-	/* chain up adj->wrr */
+	adj = START_PACK(co_appl_adj, .args.totret = false, .next = me);
 	wrr = START_PACK(co_appl_wrr,
 			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .args.totret = false, .next = wrr);
 
 	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
@@ -520,10 +512,17 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			struct echs_fund_s r = massage_rdr(*ln);
-			NEXT_PACK(
-				adj, struct adj_in_s,
-				.rdr = &r, .adj_param.c = &sum);
+			struct echs_fund_s r = massage_rdr(ln);
+			struct echs_fund_s a;
+
+			with (const struct echs_fund_s *tmp) {
+				tmp = NEXT_PACK(
+					adj, struct adj_in_s,
+					.rdr = &r, .adj_param.c = &sum);
+				a = massage_adj(tmp);
+			}
+			/* off to the writer */
+			NEXT_PACK(wrr, struct wrr_in_s, .rdr = &r, .adj = &a);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -563,10 +562,10 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
 	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
+	adj = START_PACK(co_appl_adj, .args.totret = true, .next = me);
 	wrr = START_PACK(co_appl_wrr,
 			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .args.totret = true, .next = wrr);
 
 	/* initialise product */
 	prod = 1.f;
@@ -607,11 +606,20 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			struct echs_fund_s r = massage_rdr(*ln);
-			NEXT_PACK(
-				adj, struct adj_in_s,
-				.rdr = &r, .adj_param.f = prod);
+			struct echs_fund_s r = massage_rdr(ln);
+			struct echs_fund_s a;
+
+			/* save last value */
 			last = (float)r.f[0U];
+
+			with (const struct echs_fund_s *tmp) {
+				tmp = NEXT_PACK(
+					adj, struct adj_in_s,
+					.rdr = &r, .adj_param.f = prod);
+				a = massage_adj(tmp);
+			}
+			/* off to the writer */
+			NEXT_PACK(wrr, struct wrr_in_s, .rdr = &r, .adj = &a);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -751,10 +759,10 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	me = PREP();
 	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
+	adj = START_PACK(co_appl_adj, .args.totret = true, .next = me);
 	wrr = START_PACK(co_appl_wrr,
 			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .args.totret = true, .next = wrr);
 
 	last = NAN;
 	size_t i;
@@ -774,11 +782,21 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* apply caev sum to price lines */
 		do {
-			struct echs_fund_s r = massage_rdr(*ln);
-			NEXT_PACK(
-				adj, struct adj_in_s,
-				.rdr = &r, .adj_param.f = prod);
+			struct echs_fund_s r = massage_rdr(ln);
+			struct echs_fund_s a;
+
+			/* save last value */
 			last = (float)r.f[0U];
+
+			with (const struct echs_fund_s *tmp) {
+				tmp = NEXT_PACK(
+					adj, struct adj_in_s,
+					.rdr = &r, .adj_param.f = prod);
+				a = massage_adj(tmp);
+			}
+
+			/* off to the writer */
+			NEXT_PACK(wrr, struct wrr_in_s, .rdr = &r, .adj = &a);
 		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
