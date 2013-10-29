@@ -372,7 +372,7 @@ DEFCORU(co_appl_adj, {
 				const float fctr = arg->adj_param.f;
 
 				res->t = arg->rdr->t;
-				res->f[0U] = arg->rdr->f[0U] * fctr;
+				res->f[0U] = (float)arg->rdr->f[0U] * fctr;
 			} while ((arg = YIELD(res)) != NULL);
 			break;
 		case 2U:
@@ -381,9 +381,11 @@ DEFCORU(co_appl_adj, {
 				const float fctr = arg->adj_param.f;
 
 				res->t = arg->rdr->t;
-				res->f[nf - 2U] = arg->rdr->f[nf - 2U] / fctr;
-				res->f[nf - 1U] = arg->rdr->f[nf - 1U] / fctr;
-				res->f[0U] = arg->rdr->f[0U] * fctr;
+				res->f[nf - 2U] =
+					(float)arg->rdr->f[nf - 2U] / fctr;
+				res->f[nf - 1U] =
+					(float)arg->rdr->f[nf - 1U] / fctr;
+				res->f[0U] = (float)arg->rdr->f[0U] * fctr;
 			} while ((arg = YIELD(res)) != NULL);
 			break;
 		}
