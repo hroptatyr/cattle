@@ -1,9 +1,9 @@
 #!/usr/bin/clitoris ## -*- shell-script -*-
 
-$ head -n 1 "${srcdir}/cattle_01.echs" | cattle apply "${srcdir}/cattle_03.tser" > "foo_01"
-$ head -n 1 "${srcdir}/cattle_01.echs" | cattle apply -R "foo_01"
-2006-01-01	19.980
-2007-01-01	21.980
+$ head -n 1 "${srcdir}/cattle_01.echs" | cattle apply -p +2 "${srcdir}/cattle_03.tser" > "foo_01"
+$ head -n 1 "${srcdir}/cattle_01.echs" | cattle apply -p -2 -R "foo_01"
+2006-01-01	19.98
+2007-01-01	21.98
 2008-01-01	2.39
 2009-01-01	2.60
 $ rm -- "foo_01"
