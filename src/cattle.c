@@ -154,27 +154,6 @@ ctl_caev_wr(char *restrict buf, size_t bsz, ctl_caev_t c)
 	return bp - buf;
 }
 
-static __attribute__((unused)) void
-pr_adj(echs_instant_t d, _Decimal32 adj)
-{
-	pr_ei(d);
-	fputc('\t', stdout);
-	pr_d32(adj);
-	fputc('\n', stdout);
-	return;
-}
-
-static void
-pr_adjq(echs_instant_t d, _Decimal32 adj, _Decimal32 prc)
-{
-/* like pr_adj() but quantise adj first */
-	pr_ei(d);
-	fputc('\t', stdout);
-	pr_d32(quantized32(adj, prc));
-	fputc('\n', stdout);
-	return;
-}
-
 static _Decimal32
 mkscal(signed int nd)
 {
@@ -277,20 +256,25 @@ DEFCORU(co_appl_wrr, {
 		while (row != NULL) {
 			_Decimal32 prc = row->val->prc;
 
+			pr_ei(row->t);
+
 			if (UNLIKELY(prec)) {
 				/* come up with a new raw value */
 				int tgtx = quantexpd32(prc) + prec;
 				prc = scalbnd32(1.df, tgtx);
 			}
-			pr_adjq(row->t, row->val->adj, prc);
+			fputc('\t', stdout);
+			pr_d32(quantized32(row->val->adj, prc));
+
 			if (row->nval > 1U) {
-				pr_adjq(row->t,
-					row->val[1U].adj, row->val[1U].prc);
+				fputc('\t', stdout);
+				pr_d32(row->val[1U].adj);
 			}
 			if (row->nval > 2U) {
-				pr_adjq(row->t,
-					row->val[2U].adj, row->val[2U].prc);
+				fputc('\t', stdout);
+				pr_d32(row->val[1U].adj);
 			}
+			fputc('\n', stdout);
 			row = YIELD(&row->val->prc);
 		}
 	} else /*if (abs)*/ {
@@ -298,15 +282,19 @@ DEFCORU(co_appl_wrr, {
 
 		/* absolute precision mode */
 		while (row != NULL) {
-			pr_adjq(row->t, row->val->adj, scal);
+			pr_ei(row->t);
+			fputc('\t', stdout);
+			pr_d32(quantized32(row->val->adj, scal));
+
 			if (row->nval > 1U) {
-				pr_adjq(row->t,
-					row->val[1U].adj, scal);
+				fputc('\t', stdout);
+				pr_d32(row->val[1U].adj);
 			}
 			if (row->nval > 2U) {
-				pr_adjq(row->t,
-					row->val[2U].adj, scal);
+				fputc('\t', stdout);
+				pr_d32(row->val[2U].adj);
 			}
+			fputc('\n', stdout);
 			row = YIELD(&row->val->prc);
 		}
 	}
