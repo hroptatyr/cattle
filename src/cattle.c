@@ -439,7 +439,7 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
 	/* initialise sum to some zero */
 	ctx->sum = ctl_zero_caev();
 
@@ -490,14 +490,13 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
+	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
 	/* chain up adj->wrr */
 	wrr = START_PACK(co_appl_wrr,
-			 .absp = ctx->abs_prec,
-			 .prec = ctx->prec,
+			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .totret = false, .next = wrr);
+	adj = START_PACK(co_appl_adj, .args.totret = false, .next = wrr);
 
 	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
@@ -575,13 +574,12 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
+	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
 	wrr = START_PACK(co_appl_wrr,
-			 .absp = ctx->abs_prec,
-			 .prec = ctx->prec,
+			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .totret = true, .next = wrr);
+	adj = START_PACK(co_appl_adj, .args.totret = true, .next = wrr);
 
 	/* initialise product */
 	prod = 1.f;
@@ -674,8 +672,8 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .q = ctx->q, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
+	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
 
 	/* initialise another wheap and another prod */
 	prod = 1.f;
@@ -765,12 +763,11 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	fseek(f, 0, SEEK_SET);
 
 	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .f = f, .next = me);
+	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
 	wrr = START_PACK(co_appl_wrr,
-			 .absp = ctx->abs_prec,
-			 .prec = ctx->prec,
+			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
 			 .next = me);
-	adj = START_PACK(co_appl_adj, .totret = true, .next = wrr);
+	adj = START_PACK(co_appl_adj, .args.totret = true, .next = wrr);
 
 	last = NAN;
 	size_t i;
