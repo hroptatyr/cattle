@@ -39,7 +39,7 @@ void initialise_cocore(void);
 /* The coroutine action is passed a pointer to itself together with the argument
  * passed to the first switch_cocore() routine used to activate it.  The
  * returned result will be passed through to the registered parent. */
-typedef void *(*cocore_action_t)(void *context, void *argument);
+typedef const void *(*cocore_action_t)(const void *inarg, void *context);
 
 /* Initialises the master coroutine for the calling thread.  Must be called (per
  * thread) before any other coroutine actions.  Returns the newly initialised
@@ -83,7 +83,7 @@ struct cocore *create_cocore(
 
 /* Switches control to the selected target coroutine with parameter
  * pass-through. */
-void *switch_cocore(struct cocore *target, const void *parameter);
+const void *switch_cocore(struct cocore *target, const void *inarg);
 
 /* Reports current and maximum stack use for the calling coroutine.  On the
  * base coroutine *current_use is relative to the base used for frame
