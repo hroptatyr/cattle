@@ -257,14 +257,15 @@ static struct stack *create_stack(
     stack->stack_size = stack_size;
     stack->guard_size = guard_size;
     stack->valgrind_stack_id =
-        VALGRIND_STACK_REGISTER(alloc_base, alloc_base + alloc_size);
+        VALGRIND_STACK_REGISTER(alloc_base, (char*)alloc_base + alloc_size);
 
     stack->check_stack = check_stack;
     stack->current = coroutine;
     stack->ref_count = 1;
-    if (check_stack)
-        memset(FRAME_START(alloc_base, alloc_base + guard_size),
-            0xC5, stack_size);
+    if (check_stack) {
+        memset(FRAME_START(alloc_base, (char*)alloc_base + guard_size),
+               0xC5, stack_size);
+    }
     return stack;
 }
 
@@ -410,7 +411,7 @@ struct cocore *initialise_cocore_thread(void)
     void *stack = malloc(FRAME_SWITCHER_STACK);
     state->switcher_coroutine = create_frame(
         STACK_BASE(stack, FRAME_SWITCHER_STACK), frame_switcher, state);
-    VALGRIND_STACK_REGISTER(stack, stack + FRAME_SWITCHER_STACK);
+    VALGRIND_STACK_REGISTER(stack, (char*)stack + FRAME_SWITCHER_STACK);
 
     return coroutine;
 }
