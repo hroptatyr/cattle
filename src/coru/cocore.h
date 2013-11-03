@@ -29,6 +29,7 @@
 
 /* Core of coroutine switching implementation. */
 #include <stdbool.h>
+#include <stdlib.h>
 
 struct cocore;
 
