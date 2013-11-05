@@ -65,8 +65,8 @@ AC_ARG_WITH([asm-backed-coroutines], [
 AS_HELP_STRING([--with-asm-backed-coroutines], [
 Provide coroutines through asm-backed frame switching instead
 of more portable setjmp/longjmp/ucontext.])
-AS_HELP_STRING([], [Default: without])],
-	[with_asm_corus="${withval}"], [with_asm_corus="no"])
+AS_HELP_STRING([], [Default: with])],
+	[with_asm_corus="${withval}"], [with_asm_corus="yes"])
 AM_CONDITIONAL([USE_ASM_CORUS], [test "${with_asm_corus}" = "yes"])
 if test "${with_asm_corus}" = "yes"; then
 	AC_DEFINE([USE_ASM_CORUS], [1], [Whether to use asm backed coroutines])
