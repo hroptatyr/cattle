@@ -228,15 +228,20 @@ trampoline(int i0, int i1, int i2, int i3)
 		(void*)____glob;				\
 	})
 
-#define next(x)			next_with(x, NULL)
+#define next(x)			____next(x, NULL)
 
 #define next_with(x, val)				\
 	({						\
-		static jmp_buf __##x##sb;		\
 		static typeof((val)) TMP(res);		\
 							\
 		TMP(res) = val;				\
-		____glob = (intptr_t)&TMP(res);		\
+		____next(x, &TMP(res));			\
+	})
+#define ____next(x, ptr)				\
+	({						\
+		static jmp_buf __##x##sb;		\
+							\
+		____glob = (intptr_t)ptr;		\
 		if (!_setjmp(__##x##sb)) {		\
 			____caller.jb = &__##x##sb;	\
 			____callee = x;			\
