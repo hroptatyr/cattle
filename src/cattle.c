@@ -210,9 +210,9 @@ DEFCORU(co_appl_rdr, {
 
 		if (*line == '#') {
 			continue;
-		} else if ((p = strchr(line, '\t')) == NULL) {
+		} else if (__inst_0_p(res->t = dt_strp(line, &p))) {
 			break;
-		} else if (__inst_0_p(res->t = dt_strp(line))) {
+		} else if (*p != '\t') {
 			break;
 		}
 		/* pack the result structure */
