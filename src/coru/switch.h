@@ -67,7 +67,7 @@ typedef void *frame_t;
  *
  * This routine must never return. */
 typedef __attribute__((noreturn))
-    void (*frame_action_t)(void *arg, void *context);
+    void (*frame_action_t)(const void *arg, void *context);
 
 /* Switch to new_frame, previously established by create_frame() or an earlier
  * switch_frame().  The caller's stack frame is written to *old_frame. */

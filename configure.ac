@@ -60,10 +60,24 @@ if test -n "${GPERF}"; then
 	AC_DEFINE([HAVE_GPERF], [1], [define when gperf tool is present])
 fi
 
+## coroutine provider
+AC_ARG_WITH([asm-backed-coroutines], [
+AS_HELP_STRING([--with-asm-backed-coroutines], [
+Provide coroutines through asm-backed frame switching instead
+of more portable setjmp/longjmp/ucontext.])
+AS_HELP_STRING([], [Default: without])],
+	[with_asm_corus="${withval}"], [with_asm_corus="no"])
+AM_CONDITIONAL([USE_ASM_CORUS], [test "${with_asm_corus}" = "yes"])
+if test "${with_asm_corus}" = "yes"; then
+	AC_DEFINE([USE_ASM_CORUS], [1], [Whether to use asm backed coroutines])
+fi
+
+
 ## libtool goddess^Wgoodness
 ## has to be down here as we're turning -Werror'ing off
 LT_INIT
 SXE_CHECK_LIBTOOL
+
 
 AC_CONFIG_FILES([Makefile])
 AC_CONFIG_FILES([src/Makefile])
@@ -71,13 +85,22 @@ AC_CONFIG_FILES([info/Makefile])
 AC_CONFIG_FILES([test/Makefile])
 AC_OUTPUT
 
+## trivial, no special stuff needed
+apps="${apps} cattle"
+
+if test "${with_asm_corus}" = "yes"; then
+	coru=" asm"
+else
+	coru=" setjmp/longjmp/ucontext"
+fi
+
 echo
 echo
 echo "Build summary"
 echo "============="
 echo
-echo "Everything will be built"
+echo "Build apps:${apps}"
+echo "Coroutines:${coru}"
 echo
 
-## configure ends here
 dnl configure.ac ends here

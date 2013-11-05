@@ -166,14 +166,14 @@ static void restore_frame(struct cocore *target)
 
 /* Arguments passed to frame_switcher. */
 struct frame_action {
-    void *arg;                  // Argument to pass through to target coroutine
+    const void *arg;            // Argument to pass through to target coroutine
     struct cocore *target;      // Coroutine to be switched to
 };
 
 /* Independent coroutine dedicated to switch stack frames when the current frame
  * overlaps with the new frame. */
 static __attribute__((noreturn))
-    void frame_switcher(void *action_, void *context)
+    void frame_switcher(const void *action_, void *context)
 {
     struct cocore_state *state = context;
     frame_t *switcher_coroutine = &state->switcher_coroutine;
@@ -182,8 +182,8 @@ static __attribute__((noreturn))
         /* Pull the target coroutine and switch argument from the callers stack
          * frame before we potentially destroy this information by relocating
          * the frame. */
-        struct frame_action *action = action_;
-        void *arg = action->arg;
+        const struct frame_action *action = action_;
+        const void *arg = action->arg;
         struct cocore *target = action->target;
 
         /* The frame switching code below is likely to destroy the action
@@ -201,15 +201,15 @@ static __attribute__((noreturn))
 
 /* Called to switch control from current to target if target doesn't currently
  * own its stack. */
-static void *switch_shared_frame(
-    struct cocore *current, struct cocore *target, const void *arg)
+static const void *switch_shared_frame(
+    struct cocore *current, struct cocore *target, const void *inarg)
 {
     if (current->stack == target->stack)
     {
         /* In this case the stack we want to switch to overlaps the stack we're
          * currently using.  We solve this problem by switching control away to
          * a dedicated switching coroutine while we swap the stacks out. */
-        struct frame_action action = { .arg = arg, .target = target };
+        struct frame_action action = { .arg = inarg, .target = target };
         return switch_frame(
             &current->frame, current->state->switcher_coroutine, &action);
     }
@@ -221,7 +221,7 @@ static void *switch_shared_frame(
         if (target->stack->current != NULL)
             save_frame(target->stack->current);
         restore_frame(target);
-        return switch_frame(&current->frame, target->frame, arg);
+        return switch_frame(&current->frame, target->frame, inarg);
     }
 }
 
@@ -257,14 +257,15 @@ static struct stack *create_stack(
     stack->stack_size = stack_size;
     stack->guard_size = guard_size;
     stack->valgrind_stack_id =
-        VALGRIND_STACK_REGISTER(alloc_base, alloc_base + alloc_size);
+        VALGRIND_STACK_REGISTER(alloc_base, (char*)alloc_base + alloc_size);
 
     stack->check_stack = check_stack;
     stack->current = coroutine;
     stack->ref_count = 1;
-    if (check_stack)
-        memset(FRAME_START(alloc_base, alloc_base + guard_size),
-            0xC5, stack_size);
+    if (check_stack) {
+        memset(FRAME_START(alloc_base, (char*)alloc_base + guard_size),
+               0xC5, stack_size);
+    }
     return stack;
 }
 
@@ -332,11 +333,11 @@ static void delete_stack(struct cocore_state *state, struct stack *stack)
  * our action until it completes and finally return control to our parent having
  * marked ourself as defunct. */
 static __attribute__((noreturn))
-    void action_wrapper(void *switch_arg, void *context)
+    void action_wrapper(const void *switch_arg, void *context)
 {
     struct cocore *this = context;
     this->state->current_coroutine = this;
-    void *result = this->action(this->context, switch_arg);
+    const void *result = this->action(switch_arg, this->context);
 
     /* We're nearly done.  As soon as control is switched away from this
      * coroutine it can be recycled: the receiver of our switch will do the
@@ -410,7 +411,7 @@ struct cocore *initialise_cocore_thread(void)
     void *stack = malloc(FRAME_SWITCHER_STACK);
     state->switcher_coroutine = create_frame(
         STACK_BASE(stack, FRAME_SWITCHER_STACK), frame_switcher, state);
-    VALGRIND_STACK_REGISTER(stack, stack + FRAME_SWITCHER_STACK);
+    VALGRIND_STACK_REGISTER(stack, (char*)stack + FRAME_SWITCHER_STACK);
 
     return coroutine;
 }
@@ -501,18 +502,19 @@ static void delete_cocore(struct cocore *coroutine)
 
 /* Switches control to target coroutine passing the given parameter.  Depending
  * on stack frame sharing the switching process may be more or less involved. */
-void *switch_cocore(struct cocore *target, const void *parameter)
+const void *switch_cocore(struct cocore *target, const void *inarg)
 {
     assert(target->state == GET_TLS(cocore_state));
     struct cocore *this = target->state->current_coroutine;
-    void *result;
-    if (target->stack->current == target)
+    const void *result;
+    if (target->stack->current == target) {
         /* No stack retargeting required, simply switch to already available
          * stack frame. */
-        result = switch_frame(&this->frame, target->frame, parameter);
-    else
+        result = switch_frame(&this->frame, target->frame, inarg);
+    } else {
         /* Need to switch a shared frame at the same time. */
-        result = switch_shared_frame(this, target, parameter);
+        result = switch_shared_frame(this, target, inarg);
+    }
     this->state->current_coroutine = this;
 
     /* If the coroutine which just gave us control is defunct delete it now. */

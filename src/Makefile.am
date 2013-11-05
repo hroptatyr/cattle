@@ -32,6 +32,7 @@ libcattle_la_SOURCES += instant.h
 libcattle_la_SOURCES += wheap.c wheap.h
 libcattle_la_SOURCES += version.c version.h
 libcattle_la_SOURCES += nifty.h
+libcattle_la_SOURCES += coru.h
 ## actual mt564 events
 libcattle_la_SOURCES += caev-supp.c caev-supp.h
 libcattle_la_SOURCES += caev=ctl1.c
@@ -53,6 +54,7 @@ libcattle_la_SOURCES += rn-d32.c
 BUILT_SOURCES += caev-rdr-gp.c
 BUILT_SOURCES += caev-fld-gp.c
 
+if USE_ASM_CORUS
 noinst_LTLIBRARIES += libcoru.la
 libcoru_la_SOURCES =
 EXTRA_libcoru_la_SOURCES =
@@ -66,6 +68,8 @@ EXTRA_libcoru_la_SOURCES += coru/switch-arm.c
 EXTRA_libcoru_la_SOURCES += coru/switch-ppc_osx.c
 EXTRA_libcoru_la_SOURCES += coru/switch-x86.c
 EXTRA_libcoru_la_SOURCES += coru/switch-x86_64.c
+endif  USE_ASM_CORUS
+
 
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
@@ -73,7 +77,9 @@ cattle_SOURCES += cattle.ggo
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
 cattle_CPPFLAGS += -DSTANDALONE
 cattle_LDADD = libcattle.la
+if USE_ASM_CORUS
 cattle_LDADD += libcoru.la
+endif  USE_ASM_CORUS
 BUILT_SOURCES += cattle.x cattle.xh
 
 
