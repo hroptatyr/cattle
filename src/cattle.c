@@ -69,6 +69,8 @@ struct ctl_ctx_s {
 	signed int prec;
 };
 
+#define PACK(str, args...)	((str){args})
+
 
 static void
 __attribute__((format(printf, 1, 2)))
@@ -163,18 +165,6 @@ mkscal(signed int nd)
 
 
 /* coroutines */
-struct rdr_res_s {
-	echs_instant_t t;
-	const char *ln;
-	size_t lz;
-};
-
-struct pop_res_s {
-	echs_instant_t t;
-	const void *msg;
-	size_t msz;
-};
-
 struct echs_fund_s {
 	echs_instant_t t;
 	size_t nf;
@@ -194,31 +184,37 @@ struct wrr_in_s {
 	const struct echs_fund_s *adj;
 };
 
-DEFCORU(co_appl_rdr, {
+declcoru(co_appl_rdr, {
 		FILE *f;
-	}, const void *UNUSED(arg))
+	});
+
+static const struct rdr_res_s {
+	echs_instant_t t;
+	const char *ln;
+	size_t lz;
+} *co_appl_rdr(void *UNUSED(arg), const struct co_appl_rdr_initargs_s *c)
 {
 /* coroutine for the reader of the tseries */
 	char *line = NULL;
 	size_t llen = 0UL;
 	ssize_t nrd;
 	/* we'll yield a rdr_res */
-	static struct rdr_res_s res[1];
+	struct rdr_res_s res;
 
-	while ((nrd = getline(&line, &llen, CORU_CLOSUR(f))) > 0) {
+	while ((nrd = getline(&line, &llen, c->f)) > 0) {
 		char *p;
 
 		if (*line == '#') {
 			continue;
-		} else if (__inst_0_p(res->t = dt_strp(line, &p))) {
+		} else if (__inst_0_p(res.t = dt_strp(line, &p))) {
 			continue;
 		} else if (*p != '\t') {
 			continue;
 		}
 		/* pack the result structure */
-		res->ln = p + 1U;
-		res->lz = nrd - (p + 1U - line);
-		(void)YIELD(res);
+		res.ln = p + 1U;
+		res.lz = nrd - (p + 1U - line);
+		yield(res);
 	}
 
 	free(line);
@@ -244,32 +240,40 @@ massage_rdr(const struct rdr_res_s *msg)
 	return res;
 }
 
-DEFCORU(co_appl_pop, {
+declcoru(co_appl_pop, {
 		ctl_wheap_t q;
-	}, const void *UNUSED(arg))
-{
-	ctl_wheap_t q = CORU_CLOSUR(q);
-	/* we'll yield a pop_res_s */
-	static struct pop_res_s res[1];
+	});
 
-	while (!__inst_0_p(res->t = ctl_wheap_top_rank(q))) {
+static const struct pop_res_s {
+	echs_instant_t t;
+	const void *msg;
+	size_t msz;
+} *co_appl_pop(void *UNUSED(arg), const struct co_appl_pop_initargs_s *c)
+{
+	/* we'll yield a pop_res_s */
+	struct pop_res_s res;
+
+	while (!__inst_0_p(res.t = ctl_wheap_top_rank(c->q))) {
 		/* assume it's a ctl-caev_t */
-		uintptr_t tmp = ctl_wheap_pop(q);
-		res->msg = (const ctl_caev_t*)tmp;
-		res->msz = sizeof(ctl_caev_t);
-		(void)YIELD(res);
+		uintptr_t tmp = ctl_wheap_pop(c->q);
+		res.msg = (const ctl_caev_t*)tmp;
+		res.msz = sizeof(ctl_caev_t);
+		yield(res);
 	}
 	return 0;
 }
 
-DEFCORU(co_appl_wrr, {
+declcoru(co_appl_wrr, {
 		bool absp;
 		signed int prec;
-	}, const struct wrr_in_s *arg)
+	});
+
+static const void*
+co_appl_wrr(const struct wrr_in_s *arg, const struct co_appl_wrr_initargs_s *ia)
 {
 /* no yield */
-	const bool absp = CORU_CLOSUR(absp);
-	const signed int prec = CORU_CLOSUR(prec);
+	const bool absp = ia->absp;
+	const signed int prec = ia->prec;
 
 	if (!absp) {
 		while (arg != NULL) {
@@ -291,7 +295,7 @@ DEFCORU(co_appl_wrr, {
 				pr_d32(arg->adj->f[i]);
 			}
 			fputc('\n', stdout);
-			arg = YIELD(NULL);
+			arg = yield(NULL);
 		}
 	} else /*if (absp)*/ {
 		const _Decimal32 scal = mkscal(prec);
@@ -309,24 +313,27 @@ DEFCORU(co_appl_wrr, {
 				pr_d32(arg->adj->f[i]);
 			}
 			fputc('\n', stdout);
-			arg = YIELD(NULL);
+			arg = yield(NULL);
 		}
 	}
 	return 0;
 }
 
-DEFCORU(co_appl_adj, {
+declcoru(co_appl_adj, {
 		bool totret;
-	}, const struct adj_in_s *arg)
+	});
+
+static const struct echs_fund_s*
+co_appl_adj(const struct adj_in_s *arg, const struct co_appl_adj_initargs_s *ia)
 {
-	const bool totret = CORU_CLOSUR(totret);
-	/* we'll yield a wrr_in_s */
-	static struct echs_fund_s res[1];
+	const bool totret = ia->totret;
+	/* we'll yield a echs_fund_s */
+	struct echs_fund_s res;
 	size_t nf;
 
 	if (UNLIKELY(arg == NULL)) {
 		return 0;
-	} else if ((nf = res->nf = arg->rdr->nf) == 0U || nf > 3U) {
+	} else if ((nf = res.nf = arg->rdr->nf) == 0U || nf > 3U) {
 		return 0;
 	}
 
@@ -339,9 +346,9 @@ DEFCORU(co_appl_adj, {
 
 				assert(c != NULL);
 				adj = ctl_caev_act_mktprc(*c, arg->rdr->f[0U]);
-				res->t = arg->rdr->t;
-				res->f[0U] = adj;
-			} while ((arg = YIELD(res)) != NULL);
+				res.t = arg->rdr->t;
+				res.f[0U] = adj;
+			} while ((arg = yield(res)) != NULL);
 			break;
 		case 2U:
 		case 3U:
@@ -357,11 +364,11 @@ DEFCORU(co_appl_adj, {
 				fnd.outsec = arg->rdr->f[nf - 1U];
 
 				adj = ctl_caev_act(*c, fnd);
-				res->t = arg->rdr->t;
-				res->f[nf - 2U] = adj.nomval;
-				res->f[nf - 1U] = adj.outsec;
-				res->f[0U] = adj.mktprc;
-			} while ((arg = YIELD(res)) != NULL);
+				res.t = arg->rdr->t;
+				res.f[nf - 2U] = adj.nomval;
+				res.f[nf - 1U] = adj.outsec;
+				res.f[0U] = adj.mktprc;
+			} while ((arg = yield(res)) != NULL);
 			break;
 		}
 
@@ -371,22 +378,22 @@ DEFCORU(co_appl_adj, {
 			do {
 				const float fctr = arg->adj_param.f;
 
-				res->t = arg->rdr->t;
-				res->f[0U] = (float)arg->rdr->f[0U] * fctr;
-			} while ((arg = YIELD(res)) != NULL);
+				res.t = arg->rdr->t;
+				res.f[0U] = (float)arg->rdr->f[0U] * fctr;
+			} while ((arg = yield(res)) != NULL);
 			break;
 		case 2U:
 		case 3U:
 			do {
 				const float fctr = arg->adj_param.f;
 
-				res->t = arg->rdr->t;
-				res->f[nf - 2U] =
+				res.t = arg->rdr->t;
+				res.f[nf - 2U] =
 					(float)arg->rdr->f[nf - 2U] / fctr;
-				res->f[nf - 1U] =
+				res.f[nf - 1U] =
 					(float)arg->rdr->f[nf - 1U] / fctr;
-				res->f[0U] = (float)arg->rdr->f[0U] * fctr;
-			} while ((arg = YIELD(res)) != NULL);
+				res.f[0U] = (float)arg->rdr->f[0U] * fctr;
+			} while ((arg = yield(res)) != NULL);
 			break;
 		}
 	}
@@ -410,8 +417,7 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	static ctl_caev_t *caevs;
 	static size_t ncaevs;
 	size_t caevi = 0U;
-	struct cocore *rdr;
-	struct cocore *me;
+	coru_t rdr;
 	FILE *f;
 
 	if (fn == NULL) {
@@ -420,12 +426,12 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		return -1;
 	}
 
-	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
+	init_coru();
+	rdr = make_coru(co_appl_rdr, f);
 	/* initialise sum to some zero */
 	ctx->sum = ctl_zero_caev();
 
-	for (const struct rdr_res_s *ln; (ln = NEXT(rdr));) {
+	for (const struct rdr_res_s *ln; (ln = next(rdr));) {
 		/* try to read the whole shebang */
 		ctl_caev_t c = ctl_caev_rdr(ctx, ln->t, ln->ln);
 		uintptr_t qmsg;
@@ -448,7 +454,7 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
 	fclose(f);
-	UNPREP();
+	fini_coru();
 	return 0;
 }
 
@@ -457,11 +463,10 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
  * format in there is first column is a date, the rest is prices */
-	struct cocore *rdr;
-	struct cocore *pop;
-	struct cocore *adj;
-	struct cocore *wrr;
-	struct cocore *me;
+	coru_t rdr;
+	coru_t pop;
+	coru_t adj;
+	coru_t wrr;
 	ctl_caev_t sum;
 	FILE *f;
 
@@ -471,13 +476,11 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		return -1;
 	}
 
-	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
-	adj = START_PACK(co_appl_adj, .args.totret = false, .next = me);
-	wrr = START_PACK(co_appl_wrr,
-			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
-			 .next = me);
+	init_coru();
+	rdr = make_coru(co_appl_rdr, f);
+	pop = make_coru(co_appl_pop, ctx->q);
+	adj = make_coru(co_appl_adj, .totret = false);
+	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
 	if (!ctx->fwd && !ctx->rev) {
 		sum = ctx->sum;
@@ -491,11 +494,11 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	const struct pop_res_s *ev;
 	const struct rdr_res_s *ln;
-	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
+	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
 		/* sum up caevs in between price lines */
 		for (;
 		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
-		     ev = NEXT(pop)) {
+		     ev = next(pop)) {
 			ctl_caev_t caev;
 
 			caev = *(const ctl_caev_t*)ev->msg;
@@ -518,21 +521,25 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			struct echs_fund_s a;
 
 			with (const struct echs_fund_s *tmp) {
-				tmp = NEXT_PACK(
-					adj, struct adj_in_s,
-					.rdr = &r, .adj_param.c = &sum);
+				tmp = next_with(
+					adj,
+					PACK(struct adj_in_s,
+					     .rdr = &r,
+					     .adj_param.c = &sum));
 				a = massage_adj(tmp);
 			}
 			/* off to the writer */
-			NEXT_PACK(wrr, struct wrr_in_s, .rdr = &r, .adj = &a);
-		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
+			next_with(
+				wrr,
+				PACK(struct wrr_in_s, .rdr = &r, .adj = &a));
+		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
 	/* drain the adjuster, then the writer */
-	(void)NEXT(adj);
-	(void)NEXT(wrr);
+	(void)next(adj);
+	(void)next(wrr);
 
-	UNPREP();
+	fini_coru();
 
 	fclose(f);
 	return 0;
@@ -544,11 +551,10 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 /* wants a const char *fn, the time series
  * format in there is first column is a date, the rest is prices
  * this is the total return forward adjustment */
-	struct cocore *rdr;
-	struct cocore *pop;
-	struct cocore *adj;
-	struct cocore *wrr;
-	struct cocore *me;
+	coru_t rdr;
+	coru_t pop;
+	coru_t adj;
+	coru_t wrr;
 	float prod;
 	int res = 0;
 	FILE *f;
@@ -561,13 +567,11 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		return -1;
 	}
 
-	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
-	adj = START_PACK(co_appl_adj, .args.totret = true, .next = me);
-	wrr = START_PACK(co_appl_wrr,
-			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
-			 .next = me);
+	init_coru();
+	rdr = make_coru(co_appl_rdr, f);
+	pop = make_coru(co_appl_pop, ctx->q);
+	adj = make_coru(co_appl_adj, .totret = true);
+	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
 	/* initialise product */
 	prod = 1.f;
@@ -575,12 +579,12 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	float last = NAN;
 	const struct pop_res_s *ev;
 	const struct rdr_res_s *ln;
-	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
+	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
 
 		/* sum up caevs in between price lines */
 		for (;
 		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
-		     ev = NEXT(pop)) {
+		     ev = next(pop)) {
 			ctl_caev_t caev;
 			float fctr;
 			float aadj;
@@ -615,23 +619,26 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			last = (float)r.f[0U];
 
 			with (const struct echs_fund_s *tmp) {
-				tmp = NEXT_PACK(
-					adj, struct adj_in_s,
-					.rdr = &r, .adj_param.f = prod);
+				tmp = next_with(
+					adj,
+					PACK(struct adj_in_s,
+					     .rdr = &r, .adj_param.f = prod));
 				a = massage_adj(tmp);
 			}
 			/* off to the writer */
-			NEXT_PACK(wrr, struct wrr_in_s, .rdr = &r, .adj = &a);
-		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
+			next_with(
+				wrr,
+				PACK(struct wrr_in_s, .rdr = &r, .adj = &a));
+		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
 	/* unload the writer and adjuster */
-	(void)NEXT(adj);
-	(void)NEXT(wrr);
+	(void)next(adj);
+	(void)next(wrr);
 
 out:
 	/* finished, yay */
-	UNPREP();
+	fini_coru();
 
 	fclose(f);
 	return res;
@@ -649,11 +656,10 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		float aadj;
 		float last;
 	};
-	struct cocore *rdr;
-	struct cocore *pop;
-	struct cocore *adj;
-	struct cocore *wrr;
-	struct cocore *me;
+	coru_t rdr;
+	coru_t pop;
+	coru_t adj;
+	coru_t wrr;
 	struct fa_s *fa = NULL;
 	size_t nfa = 0U;
 	float prod;
@@ -668,9 +674,9 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		return -1;
 	}
 
-	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
-	pop = START_PACK(co_appl_pop, .args.q = ctx->q, .next = me);
+	init_coru();
+	rdr = make_coru(co_appl_rdr, f);
+	pop = make_coru(co_appl_pop, ctx->q);
 
 	/* initialise another wheap and another prod */
 	prod = 1.f;
@@ -678,12 +684,12 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	float last = NAN;
 	const struct pop_res_s *ev;
 	const struct rdr_res_s *ln;
-	for (ln = NEXT(rdr), ev = NEXT(pop); ln != NULL;) {
+	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
 
 		/* sum up caevs in between price lines */
 		for (;
 		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
-		     ev = NEXT(pop)) {
+		     ev = next(pop)) {
 			ctl_caev_t caev;
 			struct fa_s cell;
 
@@ -720,12 +726,12 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		do {
 			/* no need to use the strtod32() reader */
 			last = strtof(ln->ln, NULL);
-		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
+		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
 
 	/* end of first pass */
-	UNPREP();
+	fini_coru();
 
 	if (UNLIKELY(ctx->rev)) {
 		/* massage the factors,
@@ -759,16 +765,14 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	/* last pass */
 	fseek(f, 0, SEEK_SET);
 
-	me = PREP();
-	rdr = START_PACK(co_appl_rdr, .args.f = f, .next = me);
-	adj = START_PACK(co_appl_adj, .args.totret = true, .next = me);
-	wrr = START_PACK(co_appl_wrr,
-			 .args = {.absp = ctx->abs_prec, .prec = ctx->prec},
-			 .next = me);
+	init_coru();
+	rdr = make_coru(co_appl_rdr, .f = f);
+	adj = make_coru(co_appl_adj, .totret = true);
+	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
 	last = NAN;
 	size_t i;
-	for (ln = NEXT(rdr), i = 0U; ln != NULL;) {
+	for (ln = next(rdr), i = 0U; ln != NULL;) {
 		/* mul up factors in between price lines */
 		for (;
 		     LIKELY(i < nfa) && UNLIKELY(!__inst_lt_p(ln->t, fa[i].t));
@@ -791,24 +795,27 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			last = (float)r.f[0U];
 
 			with (const struct echs_fund_s *tmp) {
-				tmp = NEXT_PACK(
-					adj, struct adj_in_s,
-					.rdr = &r, .adj_param.f = prod);
+				tmp = next_with(
+					adj,
+					PACK(struct adj_in_s,
+					     .rdr = &r, .adj_param.f = prod));
 				a = massage_adj(tmp);
 			}
 
 			/* off to the writer */
-			NEXT_PACK(wrr, struct wrr_in_s, .rdr = &r, .adj = &a);
-		} while (LIKELY((ln = NEXT(rdr)) != NULL) &&
+			next_with(
+				wrr,
+				PACK(struct wrr_in_s, .rdr = &r, .adj = &a));
+		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
 	/* unload the writer and adjuster */
-	(void)NEXT(adj);
-	(void)NEXT(wrr);
+	(void)next(adj);
+	(void)next(wrr);
 
 out:
 	/* finished, yay */
-	UNPREP();
+	fini_coru();
 
 	if (nfa > 0U) {
 		assert(fa != NULL);
@@ -996,7 +1003,7 @@ main(int argc, char *argv[])
 	}
 
 	/* get the coroutines going */
-	initialise_cocore();
+	init_coru_core();
 
 	/* check the command */
 	with (const char *cmd = argi->inputs[0U]) {
