@@ -43,13 +43,7 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdint.h>
 #include "dt-strpf.h"
-
-#if !defined LIKELY
-# define LIKELY(_x)	__builtin_expect((_x), 1)
-#endif	/* !LIKELY */
-#if !defined UNLIKELY
-# define UNLIKELY(_x)	__builtin_expect((_x), 0)
-#endif	/* UNLIKELY */
+#include "nifty.h"
 
 static int32_t
 strtoi_lim(const char *str, const char **ep, int32_t llim, int32_t ulim)
@@ -116,32 +110,36 @@ ui32tostr(char *restrict buf, size_t bsz, uint32_t d, int pad)
 
 
 echs_instant_t
-dt_strp(const char *str)
+dt_strp(const char *str, char **on)
 {
 /* code dupe, see __strpd_std() */
-	echs_instant_t nul = {};
+	static echs_instant_t nul;
 	echs_instant_t res = {};
 	const char *sp;
 	int32_t tmp;
 
 	if (UNLIKELY((sp = str) == NULL)) {
-		return nul;
+		res = nul;
+		goto nul;
 	}
 	/* read the year */
 	if ((tmp = strtoi_lim(sp, &sp, 1583, 4095)) < 0 || *sp++ != '-') {
-		return nul;
+		res = nul;
+		goto nul;
 	}
 	res.y = tmp;
 
 	/* read the month */
 	if ((tmp = strtoi_lim(sp, &sp, 0, 12)) < 0 || *sp++ != '-') {
-		return nul;
+		res = nul;
+		goto nul;
 	}
 	res.m = tmp;
 
 	/* read the day or the count */
 	if ((tmp = strtoi_lim(sp, &sp, 0, 31)) < 0) {
-		return nul;
+		res = nul;
+		goto nul;
 	}
 	res.d = tmp;
 
@@ -156,24 +154,28 @@ dt_strp(const char *str)
 	default:
 		/* just the date, make it ECHS_ALL_DAY then aye */
 		res.H = ECHS_ALL_DAY;
-		return res;
+		sp--;
+		goto nul;
 	}
 
 	/* and now parse the time */
 	if ((tmp = strtoi_lim(sp, &sp, 0, 23)) < 0 || *sp++ != ':') {
-		return nul;
+		res = nul;
+		goto nul;
 	}
 	res.H = tmp;
 
 	/* minute */
-	if ((tmp = strtoi_lim(++sp, &sp, 0, 59)) < 0 || *sp++ != ':') {
-		return nul;
+	if ((tmp = strtoi_lim(sp, &sp, 0, 59)) < 0 || *sp++ != ':') {
+		res = nul;
+		goto nul;
 	}
 	res.M = tmp;
 
 	/* second, allow leap second too */
-	if ((tmp = strtoi_lim(++sp, &sp, 0, 60)) < 0) {
-		return nul;
+	if ((tmp = strtoi_lim(sp, &sp, 0, 60)) < 0) {
+		res = nul;
+		goto nul;
 	}
 	res.S = tmp;
 
@@ -181,10 +183,16 @@ dt_strp(const char *str)
 	if (*sp++ != '.') {
 		/* make it ALL_SEC then */
 		tmp = ECHS_ALL_SEC;
+		sp--;
 	} else if ((tmp = strtoi_lim(sp, &sp, 0, 999)) < 0) {
-		return nul;
+		res = nul;
+		goto nul;
 	}
 	res.ms = tmp;
+nul:
+	if (LIKELY(on != NULL)) {
+		*on = deconst(sp);
+	}
 	return res;
 }
 
