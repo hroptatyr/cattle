@@ -56,7 +56,7 @@
 
 typedef struct cocore *coru_t;
 
-static __thread coru_t ____caller;
+static coru_t ____caller;
 
 #define init_coru_core(args...)	initialise_cocore()
 #define init_coru()		____caller = initialise_cocore_thread()
@@ -116,8 +116,8 @@ typedef struct {
 #define init_coru()
 #define fini_coru()
 
-static __thread coru_t ____caller;
-static __thread coru_t ____callee;
+static coru_t ____caller;
+static coru_t ____callee;
 static intptr_t ____glob;
 
 #if !defined _setjmp
