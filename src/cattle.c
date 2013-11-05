@@ -453,6 +453,7 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
+	free_coru(rdr);
 	fclose(f);
 	fini_coru();
 	return 0;
@@ -539,6 +540,10 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	(void)next(adj);
 	(void)next(wrr);
 
+	free_coru(rdr);
+	free_coru(pop);
+	free_coru(adj);
+	free_coru(wrr);
 	fini_coru();
 
 	fclose(f);
@@ -638,6 +643,10 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 out:
 	/* finished, yay */
+	free_coru(pop);
+	free_coru(rdr);
+	free_coru(adj);
+	free_coru(wrr);
 	fini_coru();
 
 	fclose(f);
@@ -731,6 +740,8 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	/* end of first pass */
+	free_coru(rdr);
+	free_coru(pop);
 	fini_coru();
 
 	if (UNLIKELY(ctx->rev)) {
@@ -815,6 +826,9 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 out:
 	/* finished, yay */
+	free_coru(rdr);
+	free_coru(adj);
+	free_coru(wrr);
 	fini_coru();
 
 	if (nfa > 0U) {
