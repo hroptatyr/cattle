@@ -69,8 +69,6 @@ struct ctl_ctx_s {
 	signed int prec;
 };
 
-#define PACK(str, args...)	((str){args})
-
 
 static void
 __attribute__((format(printf, 1, 2)))
@@ -171,28 +169,15 @@ struct echs_fund_s {
 	_Decimal32 f[3U];
 };
 
-struct adj_in_s {
-	const struct echs_fund_s *rdr;
-	union {
-		const ctl_caev_t *c;
-		float f;
-	} adj_param;
-};
-
-struct wrr_in_s {
-	const struct echs_fund_s *rdr;
-	const struct echs_fund_s *adj;
-};
-
 declcoru(co_appl_rdr, {
 		FILE *f;
-	});
+	}, {});
 
 static const struct rdr_res_s {
 	echs_instant_t t;
 	const char *ln;
 	size_t lz;
-} *co_appl_rdr(void *UNUSED(arg), const struct co_appl_rdr_initargs_s *c)
+} *defcoru(co_appl_rdr, c, UNUSED(arg))
 {
 /* coroutine for the reader of the tseries */
 	char *line = NULL;
@@ -242,13 +227,13 @@ massage_rdr(const struct rdr_res_s *msg)
 
 declcoru(co_appl_pop, {
 		ctl_wheap_t q;
-	});
+	}, {});
 
 static const struct pop_res_s {
 	echs_instant_t t;
 	const void *msg;
 	size_t msz;
-} *co_appl_pop(void *UNUSED(arg), const struct co_appl_pop_initargs_s *c)
+} *defcoru(co_appl_pop, c, UNUSED(arg))
 {
 	/* we'll yield a pop_res_s */
 	struct pop_res_s res;
@@ -266,10 +251,13 @@ static const struct pop_res_s {
 declcoru(co_appl_wrr, {
 		bool absp;
 		signed int prec;
+	}, {
+		const struct echs_fund_s *rdr;
+		const struct echs_fund_s *adj;
 	});
 
 static const void*
-co_appl_wrr(const struct wrr_in_s *arg, const struct co_appl_wrr_initargs_s *ia)
+defcoru(co_appl_wrr, ia, arg)
 {
 /* no yield */
 	const bool absp = ia->absp;
@@ -321,10 +309,16 @@ co_appl_wrr(const struct wrr_in_s *arg, const struct co_appl_wrr_initargs_s *ia)
 
 declcoru(co_appl_adj, {
 		bool totret;
+	}, {
+		const struct echs_fund_s *rdr;
+		union {
+			const ctl_caev_t *c;
+			float f;
+		} adj_param;
 	});
 
 static const struct echs_fund_s*
-co_appl_adj(const struct adj_in_s *arg, const struct co_appl_adj_initargs_s *ia)
+defcoru(co_appl_adj, ia, arg)
 {
 	const bool totret = ia->totret;
 	/* we'll yield a echs_fund_s */
@@ -524,15 +518,16 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			with (const struct echs_fund_s *tmp) {
 				tmp = next_with(
 					adj,
-					PACK(struct adj_in_s,
-					     .rdr = &r,
-					     .adj_param.c = &sum));
+					pack_args(
+						co_appl_adj,
+						.rdr = &r,
+						.adj_param.c = &sum));
 				a = massage_adj(tmp);
 			}
 			/* off to the writer */
 			next_with(
 				wrr,
-				PACK(struct wrr_in_s, .rdr = &r, .adj = &a));
+				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -626,14 +621,15 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			with (const struct echs_fund_s *tmp) {
 				tmp = next_with(
 					adj,
-					PACK(struct adj_in_s,
-					     .rdr = &r, .adj_param.f = prod));
+					pack_args(
+						co_appl_adj,
+						.rdr = &r, .adj_param.f = prod));
 				a = massage_adj(tmp);
 			}
 			/* off to the writer */
 			next_with(
 				wrr,
-				PACK(struct wrr_in_s, .rdr = &r, .adj = &a));
+				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
 	}
@@ -808,15 +804,17 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			with (const struct echs_fund_s *tmp) {
 				tmp = next_with(
 					adj,
-					PACK(struct adj_in_s,
-					     .rdr = &r, .adj_param.f = prod));
+					pack_args(
+						co_appl_adj,
+						.rdr = &r,
+						.adj_param.f = prod));
 				a = massage_adj(tmp);
 			}
 
 			/* off to the writer */
 			next_with(
 				wrr,
-				PACK(struct wrr_in_s, .rdr = &r, .adj = &a));
+				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
 	}
