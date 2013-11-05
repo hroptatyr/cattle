@@ -18,6 +18,10 @@ EXTRA_DIST += README.md
 
 DISTCLEANFILES += version.mk
 
+if USE_ASM_CORUS
+DISTCHECK_CONFIGURE_FLAGS = --with-asm-backed-coroutines
+endif  USE_ASM_CORUS
+
 dist-hook:
 	echo $(VERSION) > $(distdir)/version \
 	&& touch -r $(top_builddir)/version.mk $(distdir)/version
