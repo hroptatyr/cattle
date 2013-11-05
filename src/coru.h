@@ -41,7 +41,16 @@
 # include "config.h"
 #endif	/* HAVE_CONFIG_H */
 
-#define declcoru(name, init...)	struct name##_initargs_s init
+#define declcoru(name, ia, in)			\
+	struct name##_initargs_s ia;		\
+	struct name##_args_s in
+#define coru_args(name)		struct name##_args_s
+#define coru_initargs(name)	struct name##_initargs_s
+#define pack_args(name, _args...)	((coru_args(name)){_args})
+#define pack_initargs(name, _args...)	((coru_initargs(name)){_args})
+#define coru_argp(name)		const coru_args(name)*
+#define coru_initargp(name)	const coru_initargs(name)*
+#define defcoru(name, ia, in)	name(coru_argp(name) in, coru_initargp(name) ia)
 
 #if !defined _paste
 # define _paste(x, y)		x ## y
