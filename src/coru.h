@@ -71,6 +71,8 @@ static __thread coru_t ____caller;
 			____caller, 0U, false, 0);			\
 	})								\
 
+#define free_coru(x)
+
 #define next(x)			____next(x, NULL)
 #define next_with(x, val)				\
 	({						\
@@ -102,8 +104,13 @@ static __thread coru_t ____caller;
 /* my own take on things */
 #include <setjmp.h>
 #include <stdint.h>
+#include <ucontext.h>
 
-typedef jmp_buf *coru_t;
+typedef struct {
+	void *stk;
+	size_t ssz;
+	jmp_buf *jb;
+} coru_t;
 
 #define init_coru_core(args...)
 #define init_coru()
@@ -120,18 +127,83 @@ static intptr_t ____glob;
 # define _longjmp		longjmp
 #endif	/* !_longjmp */
 
+struct trampo_s {
+	coru_t *c;
+	jmp_buf *caller;
+	const void*(*action)();
+	void *initargs;
+};
+
+union trampint_u {
+	const struct trampo_s *tr;
+	int i[4U];
+};
+
+static void __attribute__((noreturn))
+trampoline(int i0, int i1, int i2, int i3)
+{
+	union trampint_u ap = {.i[0] = i0, .i[1] = i1, .i[2] = i2, .i[3] = i3};
+	const struct trampo_s *tr = ap.tr;
+
+	/* set up jump environment and yield back to caller */
+	if (!_setjmp(*tr->c->jb)) {
+		_longjmp(*tr->caller, 1);
+	}
+
+	/* and do our thing here */
+	tr->action((void*)____glob, tr->initargs);
+	____glob = (intptr_t)NULL;
+	_longjmp(*____caller.jb, 1);
+	assert(0);
+}
+
 #define make_coru(x, init...)					\
 	({							\
 		static jmp_buf __##x##b;			\
-		struct x##_initargs_s __initargs = {init};	\
-		if (_setjmp(__##x##b)) {			\
-			char *TMP(brth) = alloca(0x4000U);	\
-			asm volatile ("" :: "m" (TMP(brth)));	\
-			x((void*)____glob, &__initargs);	\
-			____glob = (intptr_t)NULL;		\
-			_longjmp(*____caller, 1);		\
+		static jmp_buf __##x##trampo;			\
+		static coru_t TMP(res) = {.jb = &__##x##b};	\
+		static struct trampo_s tr[1];			\
+		struct x##_initargs_s TMP(initargs) = {init};	\
+		ucontext_t ol;					\
+		ucontext_t nu;					\
+		union trampint_u ap = {tr};			\
+								\
+		if (getcontext(&nu) < 0) {			\
+			abort();				\
 		}						\
-		&__##x##b;					\
+								\
+		TMP(res).ssz = 64U * 1024U;			\
+		TMP(res).stk = malloc(TMP(res).ssz);		\
+								\
+		nu.uc_link = &ol;				\
+		nu.uc_stack.ss_sp = TMP(res).stk;		\
+		nu.uc_stack.ss_size = TMP(res).ssz;		\
+		nu.uc_stack.ss_flags = 0;			\
+								\
+		tr->c = &TMP(res);				\
+		tr->caller = &__##x##trampo;			\
+		tr->action = (const void*(*)())&x;		\
+		tr->initargs = &TMP(initargs);			\
+								\
+		makecontext(					\
+			&nu,					\
+			(void(*)())trampoline,			\
+			sizeof(ap) / sizeof(int),		\
+			ap.i[0], ap.i[1], ap.i[2], ap.i[3]);	\
+								\
+		if (!_setjmp(__##x##trampo)) {			\
+			swapcontext(&ol, &nu);			\
+		}						\
+		TMP(res);					\
+	})
+
+#define free_coru(x)				\
+	({					\
+		if (x.stk != NULL) {		\
+			free(x.stk);		\
+		}				\
+		x.stk = NULL;			\
+		x.ssz = 0U;			\
 	})
 
 #define yield(yld)				\
@@ -146,12 +218,12 @@ static intptr_t ____glob;
 								\
 		TMP(res) = yld;					\
 		____glob = (intptr_t)&TMP(res);			\
-		if (!_setjmp(*____callee)) {			\
+		if (!_setjmp(*____callee.jb)) {			\
 			char *TMP(brth) = alloca(0x2000U);	\
 			asm volatile ("" :: "m" (TMP(brth)));	\
 			____caller = ____callee;		\
 			____callee = x;				\
-			_longjmp(*x, 1);			\
+			_longjmp(*x.jb, 1);			\
 		}						\
 		(void*)____glob;				\
 	})
@@ -166,9 +238,9 @@ static intptr_t ____glob;
 		TMP(res) = val;				\
 		____glob = (intptr_t)&TMP(res);		\
 		if (!_setjmp(__##x##sb)) {		\
-			____caller = &__##x##sb;	\
+			____caller.jb = &__##x##sb;	\
 			____callee = x;			\
-			_longjmp(*x, 1);		\
+			_longjmp(*x.jb, 1);		\
 		}					\
 		(void*)____glob;			\
 	})
