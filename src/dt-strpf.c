@@ -154,6 +154,7 @@ dt_strp(const char *str, char **on)
 	default:
 		/* just the date, make it ECHS_ALL_DAY then aye */
 		res.H = ECHS_ALL_DAY;
+		sp--;
 		goto nul;
 	}
 
