@@ -211,9 +211,9 @@ DEFCORU(co_appl_rdr, {
 		if (*line == '#') {
 			continue;
 		} else if (__inst_0_p(res->t = dt_strp(line, &p))) {
-			break;
+			continue;
 		} else if (*p != '\t') {
-			break;
+			continue;
 		}
 		/* pack the result structure */
 		res->ln = p + 1U;
