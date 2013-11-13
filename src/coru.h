@@ -51,6 +51,9 @@
 #define coru_argp(name)		const coru_args(name)*
 #define coru_initargp(name)	const coru_initargs(name)*
 #define defcoru(name, ia, in)	name(coru_argp(name) in, coru_initargp(name) ia)
+#define _defcoru(name, ia, xin)	name(xin, coru_initargp(name) ia)
+
+#define CORU_DEPTH		4U
 
 #if !defined _paste
 # define _paste(x, y)		x ## y
@@ -65,52 +68,96 @@
 
 typedef struct cocore *coru_t;
 
-static coru_t ____caller;
+static size_t ____cdepth;
+static coru_t ____caller[CORU_DEPTH];
 
 #define init_coru_core(args...)	initialise_cocore()
-#define init_coru()		____caller = initialise_cocore_thread()
-#define fini_coru()		terminate_cocore_thread(), ____caller = NULL
+#define init_coru()							\
+	({								\
+		coru_t TMP(current);					\
+									\
+		if (____cdepth == 0U) {					\
+			TMP(current) = initialise_cocore_thread();	\
+		} else {						\
+			TMP(current) = get_current_cocore();		\
+		}							\
+		____caller[____cdepth] = TMP(current);			\
+	})
+#define fini_coru()							\
+	({								\
+		switch (____cdepth) {					\
+		case 0U:						\
+			terminate_cocore_thread();			\
+		default:						\
+			____caller[____cdepth] = NULL;			\
+			break;						\
+		}							\
+	})
 
 #define make_coru(x, init...)						\
 	({								\
 		struct x##_initargs_s TMP(initargs) = {init};		\
+		coru_t TMP(current) = ____caller[____cdepth];		\
 		create_cocore(						\
-			____caller, (cocore_action_t)(x),		\
+			TMP(current), (cocore_action_t)(x),		\
 			&TMP(initargs), sizeof(TMP(initargs)),		\
-			____caller, 0U, false, 0);			\
-	})								\
+			TMP(current), 0U, false, 0);			\
+	})
 
 #define free_coru(x)
 
 #define next(x)			____next(x, NULL)
 #define next_with(x, val)				\
 	({						\
-		static typeof((val)) TMP(res);		\
+		static typeof((val)) TMP(arg);		\
 							\
-		TMP(res) = val;				\
-		____next(x, &TMP(res));			\
+		TMP(arg) = val;				\
+		____next(x, &TMP(arg));			\
 	})
 #define ____next(x, ptr)				\
-	(check_cocore(x)				\
-	 ? switch_cocore((x), ptr)			\
-	 : NULL)
+	({							\
+		const void *TMP(res) = NULL;			\
+								\
+		if (check_cocore(x)) {				\
+			____cdepth++;				\
+			TMP(res) = switch_cocore((x), ptr);	\
+			____cdepth--;				\
+		}						\
+		TMP(res);					\
+	})
 
-#define yield(yld)				\
-	({					\
-		coru_t TMP(tmp) = ____caller;	\
-		yield_to(TMP(tmp), yld);	\
+#define yield(yld)						\
+	({							\
+		coru_t TMP(tmp) = ____caller[____cdepth - 1U];	\
+		yield_to(TMP(tmp), yld);			\
+	})
+#define yield_ptr(ptr)						\
+	({							\
+		coru_t TMP(tmp) = ____caller[____cdepth - 1U];	\
+		____yield(TMP(tmp), (ptr));			\
 	})
 #define yield_to(x, yld)				\
 	({						\
 		static typeof((yld)) TMP(res);		\
 							\
 		TMP(res) = yld;				\
-		switch_cocore((x), (void*)&TMP(res));	\
+		____yield((x), (void*)&TMP(res));	\
 	})
+#define ____yield(x, ptr)	switch_cocore((x), (ptr))
+
 
 
 #else  /* !USE_ASM_CORUS */
 /* my own take on things */
+#if defined _FORTIFY_SOURCE
+/* can't do with glibc's longjmp stack check */
+# undef _FORTIFY_SOURCE
+#endif	/* _FORTIFY_SOURCE */
+#if defined __USE_FORTIFY_LEVEL
+/* can't do with glibc's longjmp stack check */
+# undef __USE_FORTIFY_LEVEL
+# define __USE_FORTIFY_LEVEL 0
+#endif	/* __USE_FORTIFY_LEVEL */
 #include <setjmp.h>
 #include <stdint.h>
 #include <ucontext.h>
@@ -125,8 +172,9 @@ typedef struct {
 #define init_coru()
 #define fini_coru()
 
-static coru_t ____caller;
-static coru_t ____callee;
+static size_t ____cdepth;
+static coru_t ____caller[CORU_DEPTH];
+static coru_t ____callee[CORU_DEPTH];
 static intptr_t ____glob;
 
 #if !defined _setjmp
@@ -162,7 +210,8 @@ trampoline(int i0, int i1, int i2, int i3)
 	/* and do our thing here */
 	tr->action((void*)____glob, tr->initargs);
 	____glob = (intptr_t)NULL;
-	_longjmp(*____caller.jb, 1);
+	____cdepth--;
+	_longjmp(*____caller[____cdepth].jb, 1);
 	assert(0);
 }
 
@@ -215,23 +264,31 @@ trampoline(int i0, int i1, int i2, int i3)
 		x.ssz = 0U;			\
 	})
 
-#define yield(yld)				\
-	({					\
-		coru_t TMP(tmp) = ____caller;	\
-		yield_to(TMP(tmp), yld);	\
+#define yield(yld)						\
+	({							\
+		coru_t TMP(tmp) = ____caller[____cdepth - 1U];	\
+		yield_to(TMP(tmp), yld);			\
 	})
-
+#define yield_ptr(ptr)						\
+	({							\
+		coru_t TMP(tmp) = ____caller[____cdepth - 1U];	\
+		____yield(TMP(tmp), (intptr_t)(ptr));		\
+	})
 #define yield_to(x, yld)					\
 	({							\
 		static typeof((yld)) TMP(res);			\
 								\
 		TMP(res) = yld;					\
-		____glob = (intptr_t)&TMP(res);			\
-		if (!_setjmp(*____callee.jb)) {			\
-			char *TMP(brth) = alloca(0x2000U);	\
-			asm volatile ("" :: "m" (TMP(brth)));	\
-			____caller = ____callee;		\
-			____callee = x;				\
+		____yield(x, (intptr_t)&TMP(res));		\
+	})
+#define ____yield(x, ptr)					\
+	({							\
+		____glob = (ptr);				\
+		--____cdepth;					\
+		if (!_setjmp(*____callee[____cdepth].jb)) {	\
+			____caller[____cdepth] =		\
+				____callee[____cdepth];		\
+			____callee[____cdepth] = x;		\
 			_longjmp(*x.jb, 1);			\
 		}						\
 		(void*)____glob;				\
@@ -252,8 +309,10 @@ trampoline(int i0, int i1, int i2, int i3)
 							\
 		____glob = (intptr_t)ptr;		\
 		if (!_setjmp(__##x##sb)) {		\
-			____caller.jb = &__##x##sb;	\
-			____callee = x;			\
+			____caller[____cdepth].jb =	\
+				&__##x##sb;		\
+			____callee[____cdepth] = x;	\
+			____cdepth++;			\
 			_longjmp(*x.jb, 1);		\
 		}					\
 		(void*)____glob;			\
