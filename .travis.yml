@@ -14,8 +14,12 @@ install:
 before_script:
   - autoreconf -vfi
 
+env:
+  - CONFOPTS="--enable-asm-backed-coroutines"
+  - CONFOPTS="--disable-asm-backed-coroutines"
+
 script: 
-  - ./configure --with-asm-backed-coroutines || (cat config.log; false)
+  - ./configure "${CONFOPTS}" || (cat config.log; false)
   - make clean all check distcheck || (cat test/test-suite.log; false)
 
 ## whitelist
