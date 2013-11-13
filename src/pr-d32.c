@@ -277,7 +277,11 @@ dpd32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 int
 d32tostr(char *restrict buf, size_t bsz, _Decimal32 x)
 {
+#if defined HAVE_DFP754_BID_LITERALS
 	return bid32tostr(buf, bsz, x);
+#elif defined HAVE_DFP754_DPD_LITERALS
+	return dpd32tostr(buf, bsz, x);
+#endif	 /* HAVE_DFP754_*_LITERALS */
 }
 
 /* pr-d32.c ends here */

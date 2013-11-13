@@ -278,7 +278,11 @@ strtodpd32(const char *src, char **on)
 _Decimal32
 strtod32(const char *src, char **on)
 {
+# if defined HAVE_DFP754_BID_LITERALS
 	return strtobid32(src, on);
+# elif defined HAVE_DFP754_DPD_LITERALS
+	return strtodpd32(src, on);
+# endif	 /* HAVE_DFP754_*_LITERALS */
 }
 #endif	/* !HAVE_STRTOD32 */
 
