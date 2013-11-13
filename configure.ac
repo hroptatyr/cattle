@@ -37,6 +37,8 @@ SXE_CHECK_CFLAGS
 AC_CHECK_TOOLS([AR], [xiar ar], [false])
 AC_C_BIGENDIAN
 
+SXE_CHECK_DFP754
+
 AC_CHECK_HEADERS([dfp754.h])
 AM_CONDITIONAL([HAVE_DFP754], [test "${ac_cv_header_dfp754_h}" = "yes"])
 
