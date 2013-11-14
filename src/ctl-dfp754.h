@@ -40,6 +40,10 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#if !defined HAVE_DFP754_BID_LITERALS && !defined HAVE_DFP754_DPD_LITERALS
+# error need to know whether dfp literals are bid or dpd
+#endif	/* !HAVE_DFP754_*_LITERALS */
+
 #define NAND32_U		(0x7c000000U)
 
 extern int d32tostr(char *restrict buf, size_t bsz, _Decimal32);
