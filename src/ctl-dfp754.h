@@ -40,6 +40,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#define NAND32_U		(0x7c000000U)
+
 extern int d32tostr(char *restrict buf, size_t bsz, _Decimal32);
 extern _Decimal32 strtod32(const char*, char**);
 
@@ -63,6 +65,8 @@ inline __attribute__((pure, const)) _Decimal32 bobs(uint32_t u);
 inline __attribute__((pure, const)) int quantexpbid32(_Decimal32 x);
 inline __attribute__((pure, const)) int quantexpdpd32(_Decimal32 x);
 inline __attribute__((pure, const)) int quantexpd32(_Decimal32 x);
+inline __attribute__((pure, const)) _Decimal32 nand32(char *__tagp);
+#define isnand32		__builtin_isnand32
 
 inline __attribute__((pure, const)) uint32_t
 bits(_Decimal32 x)
@@ -119,6 +123,12 @@ quantexpd32(_Decimal32 x)
 #elif defined HAVE_DFP754_DPD_LITERALS
 	return quantexpdpd32(x);
 #endif	/* HAVE_DFP754_*_LITERALS */
+}
+
+inline __attribute__((pure, const)) _Decimal32
+nand32(char *__tagp __attribute__((unused)))
+{
+	return bobs(NAND32_U);
 }
 
 #endif	/* INCLUDED_ctl_dfp754_h_ */
