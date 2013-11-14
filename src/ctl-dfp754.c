@@ -422,7 +422,7 @@ quantizedpd32(_Decimal32 x, _Decimal32 r)
 	m = mant_bid(x);
 	/* unpack the declets and TTT, TTT first, then MH, then ML */
 	b = (m & 0xf00000U);
-	b <<= 12U;
+	b >>= 8U;
 	b |= unpack_declet((m >> 10U) & 0x3ffU);
 	b <<= 12U;
 	b |= unpack_declet((m >> 0U) & 0x3ffU);
@@ -659,7 +659,7 @@ dpd32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 		s = sign_dpd(x);
 		/* get us a proper bcd version of M */
 		b = (m & 0xf00000U);
-		b <<= 12U;
+		b >>= 8U;
 		b |= unpack_declet((m >> 10U) & 0x3ffU);
 		b <<= 12U;
 		b |= unpack_declet((m >> 0U) & 0x3ffU);
