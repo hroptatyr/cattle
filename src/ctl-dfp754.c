@@ -151,6 +151,7 @@ pack_declet(unsigned int x)
 		break;
 	case 0b010U:
 		/* this is d2(gh)d1(101)(i) for d0 = ghi */
+		res &= ~0b1110U;
 		res |= (0b101U << 1U) | ((d0 & 0b110U) << 4U);
 		break;
 	case 0b011U:
@@ -159,14 +160,17 @@ pack_declet(unsigned int x)
 		break;
 	case 0b100U:
 		/* this goes to (gh)d2d1(110)(i) for d0 = ghi */
+		res &= ~0b1110U;
 		res |= ((d0 & 0b110U) << 7U) | (0b110U << 1U);
 		break;
 	case 0b101U:
 		/* this will be (de)d2(01)f(111)d0 for d1 = def */
+		res &= ~0b1100000U;
 		res |= ((d1 & 0b110U) << 7U) | (0b010U << 4U) | (0b111U << 1U);
 		break;
 	case 0b110U:
 		/* goes to (gh)d2(00)d1(111)(i) for d0 = ghi */
+		res &= ~0b1110U;
 		res |= ((d0 & 0b110U) << 7U) | (0b111U << 1U);
 		break;
 	case 0b111U:
