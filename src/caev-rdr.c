@@ -98,7 +98,7 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		char *pp;
 		_Decimal32 p;
 
-		p = strtobid32(vp, &pp);
+		p = strtod32(vp, &pp);
 		if (*pp != '"' && *pp != '\'') {
 			break;
 		}
@@ -115,7 +115,7 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		signed int p;
 		unsigned int q;
 
-		v = strtobid32(vp, &pp);
+		v = strtod32(vp, &pp);
 		if (*pp != '+' && *pp != '-') {
 			break;
 		}

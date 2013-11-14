@@ -40,14 +40,17 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-extern int d32tostr(char *restrict buf, size_t bsz, _Decimal32);
-extern _Decimal32 strtod32(const char*, char**);
+#define NAND32_U		(0x7c000000U)
 
 extern int bid32tostr(char *restrict buf, size_t bsz, _Decimal32);
 extern _Decimal32 strtobid32(const char*, char**);
 
 extern int dpd32tostr(char *restrict buf, size_t bsz, _Decimal32);
 extern _Decimal32 strtodpd32(const char*, char**);
+
+#if defined HAVE_DFP754_BID_LITERALS || defined HAVE_DFP754_DPD_LITERALS
+extern int d32tostr(char *restrict buf, size_t bsz, _Decimal32);
+extern _Decimal32 strtod32(const char*, char**);
 
 /**
  * Round X to the quantum of R. */
@@ -56,6 +59,7 @@ extern _Decimal32 quantized32(_Decimal32 x, _Decimal32 r);
 /**
  * Return X*10^N. */
 extern _Decimal32 scalbnd32(_Decimal32 x, int n);
+#endif	/* !HAVE_DFP754_*_LITERALS */
 
 
 inline __attribute__((pure, const)) uint32_t bits(_Decimal32 x);
@@ -63,6 +67,8 @@ inline __attribute__((pure, const)) _Decimal32 bobs(uint32_t u);
 inline __attribute__((pure, const)) int quantexpbid32(_Decimal32 x);
 inline __attribute__((pure, const)) int quantexpdpd32(_Decimal32 x);
 inline __attribute__((pure, const)) int quantexpd32(_Decimal32 x);
+inline __attribute__((pure, const)) _Decimal32 nand32(char *__tagp);
+#define isnand32		__builtin_isnand32
 
 inline __attribute__((pure, const)) uint32_t
 bits(_Decimal32 x)
@@ -111,10 +117,22 @@ quantexpdpd32(_Decimal32 x)
 	return tmp - 101;
 }
 
+#if defined HAVE_DFP754_BID_LITERALS || defined HAVE_DFP754_DPD_LITERALS
 inline __attribute__((pure, const)) int
 quantexpd32(_Decimal32 x)
 {
+#if defined HAVE_DFP754_BID_LITERALS
 	return quantexpbid32(x);
+#elif defined HAVE_DFP754_DPD_LITERALS
+	return quantexpdpd32(x);
+#endif	/* HAVE_DFP754_*_LITERALS */
+}
+#endif	/* !HAVE_DFP754_*_LITERALS */
+
+inline __attribute__((pure, const)) _Decimal32
+nand32(char *__tagp __attribute__((unused)))
+{
+	return bobs(NAND32_U);
 }
 
 #endif	/* INCLUDED_ctl_dfp754_h_ */

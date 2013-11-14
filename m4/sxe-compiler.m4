@@ -324,6 +324,10 @@ AC_DEFUN([SXE_WARNFLAGS], [dnl
 	SXE_CHECK_COMPILER_FLAG([-diag-enable remark,vec,par], [
 		warnflags="${warnflags} -diag-enable remark,vec,par"])
 
+	## for dfp754
+	SXE_CHECK_COMPILER_FLAG([-Wunsuffixed-float-constants], [
+		warnflags="$warnflags -Wunsuffixed-float-constants"])
+
 	AC_MSG_CHECKING([for preferred warning flags])
 	AC_MSG_RESULT([${warnflags}])
 ])dnl SXE_WARNFLAGS
