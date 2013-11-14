@@ -1,4 +1,7 @@
 /* just some routines for caev_t printing */
+#if defined HAVE_CONFIG_H
+# include "config.h"
+#endif	/* HAVE_CONFIG_H */
 #include <stdint.h>
 #include <stdio.h>
 #include "cattle-ratio.h"
