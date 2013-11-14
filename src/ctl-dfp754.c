@@ -119,22 +119,24 @@ pack_declet(unsigned int x)
 	unsigned int d2;
 	unsigned int c = 0U;
 
-	if (UNLIKELY((d2 = (x >> 8U) & 0xfU) >= 8U)) {
-		/* d2 is large, 8 or 9, 0b1000 or 0b1001, store only low bit */
-		d2 &= 0x1U;
-		c |= 0b100U;
+	if (UNLIKELY((d0 = x & 0xfU) >= 8U)) {
+		/* d0 is large, 8 or 9, 0b1000 or 0b1001, store only low bit */
+		d0 &= 0x1U;
+		c |= 0b001U;
 	}
+	x >>= 4U;
 
-	if (UNLIKELY((d1 = (x >> 4U) & 0xfU) >= 8U)) {
+	if (UNLIKELY((d1 = x & 0xfU) >= 8U)) {
 		/* d1 is large, 8 or 9, 0b1000 or 0b1001, store only low bit */
 		d1 &= 0x1U;
 		c |= 0b010U;
 	}
+	x >>= 4U;
 
-	if (UNLIKELY((d0 = (x >> 0U) & 0xfU) >= 8U)) {
-		/* d0 is large, 8 or 9, 0b1000 or 0b1001, store only low bit */
-		d0 &= 0x1U;
-		c |= 0b001U;
+	if (UNLIKELY((d2 = x & 0xfU) >= 8U)) {
+		/* d2 is large, 8 or 9, 0b1000 or 0b1001, store only low bit */
+		d2 &= 0x1U;
+		c |= 0b100U;
 	}
 
 	/* generally the low bits in the large case coincide */
@@ -197,7 +199,7 @@ unpack_declet(unsigned int x)
 	if (!(x & 0b1000U)) {
 		goto trivial;
 	} else {
-		switch ((x & 0b1110U) >> 1U) {
+		switch ((x >> 1U) & 0b111U) {
 		case 0b100U:
 		trivial:
 			res |= x & 0b1111U;
@@ -218,7 +220,7 @@ unpack_declet(unsigned int x)
 			break;
 		case 0b111U:
 			/* grrr */
-			switch ((x & 0b1100000U) >> 5U) {
+			switch ((x >> 5U) & 0b11U) {
 			case 0b10U:
 				res |= (0b1110000000U << 1U);
 				res |= (0b1000U << 4U) | (x & 0b0000010000U);
