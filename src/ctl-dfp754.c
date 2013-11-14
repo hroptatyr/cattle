@@ -149,7 +149,7 @@ pack_declet(unsigned int x)
 		break;
 	case 0b010U:
 		/* this is d2(gh)d1(101)(i) for d0 = ghi */
-		res |= (0b100U << 1U) | ((d0 & 0b110U) << 4U);
+		res |= (0b101U << 1U) | ((d0 & 0b110U) << 4U);
 		break;
 	case 0b011U:
 		/* this goes to d2(10)d1(111)d0 */
