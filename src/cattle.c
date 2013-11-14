@@ -98,7 +98,7 @@ static int
 pr_d32(_Decimal32 x)
 {
 	char bf[32U];
-	return fwrite(bf, sizeof(*bf), bid32tostr(bf, sizeof(bf), x), stdout);
+	return fwrite(bf, sizeof(*bf), d32tostr(bf, sizeof(bf), x), stdout);
 }
 
 static float
@@ -134,19 +134,19 @@ ctl_caev_wr(char *restrict buf, size_t bsz, ctl_caev_t c)
 	*bp++ = '{';
 	bp += BANG_LIT(bp, ep, mkti);
 	*bp++ = '"';
-	bp += bid32tostr(bp, ep - bp, c.mktprc.a);
+	bp += d32tostr(bp, ep - bp, c.mktprc.a);
 	bp += snprintf(bp, ep - bp, "%+d<-%u", c.mktprc.r.p, c.mktprc.r.q);
 	*bp++ = '"';
 	*bp++ = ' ';
 	bp += BANG_LIT(bp, ep, nomi);
 	*bp++ = '"';
-	bp += bid32tostr(bp, ep - bp, c.nomval.a);
+	bp += d32tostr(bp, ep - bp, c.nomval.a);
 	bp += snprintf(bp, ep - bp, "%+d<-%u", c.nomval.r.p, c.nomval.r.q);
 	*bp++ = '"';
 	*bp++ = ' ';
 	bp += BANG_LIT(bp, ep, outi);
 	*bp++ = '"';
-	bp += bid32tostr(bp, ep - bp, c.outsec.a);
+	bp += d32tostr(bp, ep - bp, c.outsec.a);
 	bp += snprintf(bp, ep - bp, "%+d<-%u", c.outsec.r.p, c.outsec.r.q);
 	*bp++ = '"';
 	*bp++ = '}';
