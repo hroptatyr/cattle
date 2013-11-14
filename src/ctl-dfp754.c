@@ -480,7 +480,7 @@ quantizedpd32(_Decimal32 x, _Decimal32 r)
 	}
 	/* the lowest 4 bits could be 0xa, so flip them over to 0 */
 	with (size_t i) {
-		for (i = 0U; (b & 0xfU) >= 10U; b >>= 4U, i++);
+		for (i = 0U; (b & 0xfU) >= 10U; b >>= 4U, b++, i++);
 		/* fix them up by shifting by 4i */
 		b <<= 4U * i;
 	}
