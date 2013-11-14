@@ -250,6 +250,69 @@ unpack_declet(unsigned int x)
 	return res;
 }
 
+static _Decimal32
+assemble_bid(uint32_t m, uint32_t ex, uint32_t s)
+{
+	uint32_t u = s << 31U;
+
+	/* check if 24th bit of mantissa is set */
+	if (UNLIKELY(m & (1U << 23U))) {
+		u |= 0b11U << 29U;
+		u |= ex << 21U;
+		/* just use 21 bits of the mantissa */
+		m &= 0x1fffffU;
+	} else {
+		u |= ex << 23U;
+		/* use all 23 bits */
+		m &= 0x7fffffU;
+	}
+	u |= m;
+	return bobs(u);
+}
+
+static _Decimal32
+bcd32tobid(bcd32_t b)
+{
+	uint32_t m = 0U;
+
+	/* massage the mantissa, first mirror it, so the most significant
+	 * nibble is the lowest */
+	b.mant = (b.mant & 0xffff0000U) >> 16U | (b.mant & 0x0000ffffU) << 16U;
+	b.mant = (b.mant & 0xff00ff00U) >> 8U | (b.mant & 0x00ff00ffU) << 8U;
+	b.mant = (b.mant & 0xf0f0f0f0U) >> 4U | (b.mant & 0x0f0f0f0fU) << 4U;
+	b.mant >>= 4U;
+	for (size_t i = 7U; i > 0U; b.mant >>= 4U, i--) {
+		m *= 10U;
+		m += b.mant & 0b1111U;
+	}
+
+	return assemble_bid(m, b.expo + 101, b.sign);
+}
+
+static _Decimal32
+bcd32todpd(bcd32_t b)
+{
+	uint32_t m = b.mant;
+	uint32_t u = b.sign << 31U;
+	unsigned int rex = b.expo + 101;
+
+        /* assemble the d32 */
+	u |= pack_declet(m & 0xfffU);
+	m >>= 12U;
+	u |= pack_declet(m & 0xfffU) << 10U;
+	if (UNLIKELY((m >>= 12U) >= 8U)) {
+		rex = (rex & 0b11000000U) << 1U | (rex & 0b00111111U);
+		rex |= 0b11000000000U;
+	} else {
+		rex = (rex & 0b11000000U) << 3U | (rex & 0b00111111U);
+	}
+	/* the beef bits from the expo */
+	u |= rex << 20U;
+	/* the TTT bits (or T) */
+	u |= (m & 0x7U) << 26U;
+	return bobs(u);
+}
+
 static uint_least32_t
 round_bcd32(uint_least32_t mant, int roff)
 {
@@ -358,7 +421,6 @@ bcd32tostr(char *restrict buf, size_t bsz, uint_least32_t mant, int e, int s)
 	return bp - buf;
 }
 
-
 #if defined HAVE_DFP754_BID_LITERALS
 static _Decimal32
 quantizebid32(_Decimal32 x, _Decimal32 r)
@@ -385,23 +447,8 @@ quantizebid32(_Decimal32 x, _Decimal32 r)
 		m *= 10U;
 	}
 
-	/* assemble the d32 */
-	with (uint32_t u = sign_bid(x) << 31U) {
-		/* check if 24th bit of mantissa is set */
-		if (UNLIKELY(m & (1U << 23U))) {
-			u |= 0b11U << 29U;
-			u |= (unsigned int)(ex + 101) << 21U;
-			/* just use 21 bits of the mantissa */
-			m &= 0x1fffffU;
-		} else {
-			u |= (unsigned int)(ex + 101) << 23U;
-			/* use all 23 bits */
-			m &= 0x7fffffU;
-		}
-		u |= m;
-		x = bobs(u);
-	}
-	return x;
+	/* assemble the bid32 */
+	return assemble_bid(m, ex + 101, sign_bid(x));
 }
 #elif defined HAVE_DFP754_DPD_LITERALS
 static _Decimal32
@@ -419,7 +466,7 @@ quantizedpd32(_Decimal32 x, _Decimal32 r)
 	ex = quantexpdpd32(x);
 
 	/* get the mantissa TTT MH ML, with MH, ML being declets */
-	m = mant_bid(x);
+	m = mant_dpd(x);
 	/* unpack the declets and TTT, TTT first, then MH, then ML */
 	b = (m & 0xf00000U);
 	b >>= 8U;
@@ -444,23 +491,7 @@ quantizedpd32(_Decimal32 x, _Decimal32 r)
 	}
 
 	/* assemble the d32 */
-	with (uint32_t u = sign_bid(x) << 31U) {
-		u |= pack_declet(b & 0xfffU);
-		b >>= 12U;
-		u |= pack_declet(b & 0xfffU) << 10U;
-		if (UNLIKELY((b >>= 12U) >= 8U)) {
-			u |= 0b11U << 29U;
-			u |= (unsigned int)(ex + 101) << 21U;
-		} else {
-			u |= (unsigned int)(ex + 101) << 23U;
-		}
-		/* the beef bits from the expo */
-		u |= (ex & 0b00111111U) << 20U;
-		/* the TTT bits (or T) */
-		u |= (b & 0x7U) << 26U;
-		x = bobs(u);
-	}
-	return x;
+	return bcd32todpd((bcd32_t){b, ex, sign_dpd(x)});
 }
 #endif	/* HAVE_DFP754_*_LITERALS */
 
@@ -532,39 +563,7 @@ strtobid32(const char *src, char **on)
  * and the decimal is (-1 * s) * m * 10^(e - 101),
  * this implementation is very minimal serving only the cattle use cases */
 	bcd32_t b = strtobcd32(src, on);
-	uint_least32_t mant = 0U;
-	_Decimal32 res;
-
-	/* massage the mantissa, first mirror it, so the most significant
-	 * nibble is the lowest */
-	b.mant = (b.mant & 0xffff0000U) >> 16U | (b.mant & 0x0000ffffU) << 16U;
-	b.mant = (b.mant & 0xff00ff00U) >> 8U | (b.mant & 0x00ff00ffU) << 8U;
-	b.mant = (b.mant & 0xf0f0f0f0U) >> 4U | (b.mant & 0x0f0f0f0fU) << 4U;
-	b.mant >>= 4U;
-	for (size_t i = 7U; i > 0U; b.mant >>= 4U, i--) {
-		mant *= 10U;
-		mant += b.mant & 0b1111U;
-	}
-
-	/* assemble the d32 */
-	with (uint32_t u) {
-		u = b.sign << 31U;
-
-		/* check if 24th bit of mantissa is set */
-		if (UNLIKELY(mant & (1U << 23U))) {
-			u |= 0b11U << 29U;
-			u |= (unsigned int)(b.expo + 101) << 21U;
-			/* just use 21 bits of the mantissa */
-			mant &= 0x1fffffU;
-		} else {
-			u |= (unsigned int)(b.expo + 101) << 23U;
-			/* use all 23 bits */
-			mant &= 0x7fffffU;
-		}
-		u |= mant;
-		res = bobs(u);
-	}
-	return res;
+	return bcd32tobid(b);
 }
 
 _Decimal32
@@ -574,31 +573,7 @@ strtodpd32(const char *src, char **on)
  * and the decimal is (-1 * s) * m * 10^(e - 101),
  * this implementation is very minimal serving only the cattle use cases */
 	bcd32_t b = strtobcd32(src, on);
-	_Decimal32 res;
-
-	/* assemble the d32 */
-	with (uint32_t u = b.sign << 31U, m = b.mant) {
-		unsigned int rexp = b.expo + 101;
-
-		/* lower 3 digits */
-		u |= pack_declet(m & 0xfffU);
-		m >>= 12U;
-		/* upper 3 digits */
-		u |= pack_declet(m & 0xfffU) << 10U;
-		if (UNLIKELY((m >>= 12U) >= 8U)) {
-			/* special exponent */
-			u |= 0b11U << 29U;
-			u |= (rexp & 0b11000000U) << 21U;
-		} else {
-			u |= (rexp & 0b11000000U) << 23U;
-		}
-		/* rexp's beef bits */
-		u |= (rexp & 0b00111111U) << 20U;
-		/* the TTT bits (or T) */
-		u |= (m & 0x7U) << 26U;
-		res = bobs(u);
-	}
-	return res;
+	return bcd32todpd(b);
 }
 
 #if !defined HAVE_STRTOD32
