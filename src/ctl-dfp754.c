@@ -222,7 +222,7 @@ unpack_declet(unsigned int x)
 			/* grrr */
 			switch ((x >> 5U) & 0b11U) {
 			case 0b10U:
-				res |= (0b1110000000U << 1U);
+				res |= (x & 0b1110000000U) << 1U;
 				res |= (0b1000U << 4U) | (x & 0b0000010000U);
 				res |= (0b1000U << 0U) | (x & 0b0000000001U);
 				break;
