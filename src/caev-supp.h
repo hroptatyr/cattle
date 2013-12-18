@@ -353,7 +353,7 @@ extern ctl_caev_t make_caev(const ctl_fld_t msg[static 1], size_t nflds);
 static inline __attribute__((pure, const)) ctl_fld_type_t
 ctl_fld_type(ctl_fld_key_t code)
 {
-	switch (code.unk) {
+	switch ((unsigned int)code.unk) {
 	case CTL_FLD_ADMIN_FIRST ... CTL_FLD_ADMIN_LAST:
 		return CTL_FLD_TYPE_ADMIN;
 	case CTL_FLD_DATE_FIRST ... CTL_FLD_DATE_LAST:
