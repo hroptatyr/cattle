@@ -1,0 +1,46 @@
+Usage: cattle [OPTION]... COMMAND [ARG]...
+
+Tool to apply corporate actions to time series.
+
+Corporate actions are specified as ASCIIfied ISO 15022 messages in a
+format that resembles JSON.
+
+Time series are given as DATE/PRICE or DATE/QUOTE tab-separated text
+files.
+
+Usage: cattle apply TIME-SERIES-FILE [CAEV-FILE]...
+
+Apply series of corporate action events to (price) time series.
+
+  -R, --reverse         Consider time-series file to be adjusted,
+                        produce the original (raw) form.
+  -F, --forward         Forward-adjust the time series, i.e. current
+                        prices are modified to match past prices.
+                        Default: backward adjustment
+  -T, --total-return    Reinvest any distributed capital, or assume
+                        you can do so.
+                        Default is total payout, i.e. not to reinvest
+                        anything unless mandatory
+  -p, --precision=N     Output adjusted data in this precision instead
+                        of deriving the precision from input data.
+                        If an absolute number N is given use N digits
+                        for the fraction all throughout the output.
+                        If specified as +N use N more digits for the
+                        fraction than the default.
+                        If specified as -N use N less digits for the
+                        fraction than the default.
+                        Default is +0.
+
+Usage: cattle print [CAEV-FILE]...
+
+Print resulting actors of caev echse messages.
+
+  -S, --summary         Roll all CA events into one.
+  -u, --unique          Assume tahat only one CA event will occur at any
+                        one date/time.
+
+## Local variables:
+## mode: auto-fill
+## fill-column: 72
+## filladapt-mode: t
+## End:

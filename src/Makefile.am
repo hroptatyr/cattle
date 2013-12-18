@@ -72,6 +72,7 @@ endif  USE_ASM_CORUS
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
 cattle_SOURCES += cattle.ggo
+cattle_SOURCES += cattle.yuck
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
 cattle_CPPFLAGS += -DSTANDALONE
 cattle_LDADD = libcattle.la
@@ -79,6 +80,7 @@ if USE_ASM_CORUS
 cattle_LDADD += libcoru.la
 endif  USE_ASM_CORUS
 BUILT_SOURCES += cattle.x cattle.xh
+BUILT_SOURCES += cattle.yucc
 
 
 analysis: $(libcattle_la_SOURCES:%.c=%.sa)
