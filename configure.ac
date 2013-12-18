@@ -70,6 +70,7 @@ if test "${use_asm_corus}" = "yes"; then
 	AC_DEFINE([USE_ASM_CORUS], [1], [Whether to use asm backed coroutines])
 fi
 
+AX_CHECK_YUCK
 
 ## libtool goddess^Wgoodness
 ## has to be down here as we're turning -Werror'ing off
