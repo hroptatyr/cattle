@@ -56,8 +56,6 @@ AM_CONDITIONAL([HAVE_SCALBND32], [test "${ac_cv_func_scalbnd32}" = "yes"])
 
 SXE_CHECK_ASM_CORUS
 
-AM_MISSING_PROG([HELP2MAN], [help2man], ["${missing_dir}"])
-
 AM_MISSING_PROG([GPERF], [gperf])
 AM_CONDITIONAL([HAVE_GPERF], [test -n "${GPERF}"])
 if test -n "${GPERF}"; then
@@ -70,6 +68,7 @@ if test "${use_asm_corus}" = "yes"; then
 	AC_DEFINE([USE_ASM_CORUS], [1], [Whether to use asm backed coroutines])
 fi
 
+AX_CHECK_YUCK
 
 ## libtool goddess^Wgoodness
 ## has to be down here as we're turning -Werror'ing off
@@ -78,6 +77,7 @@ SXE_CHECK_LIBTOOL
 
 
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([build-aux/Makefile])
 AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([info/Makefile])
 AC_CONFIG_FILES([test/Makefile])

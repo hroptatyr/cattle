@@ -840,33 +840,28 @@ out:
 
 
 #if defined STANDALONE
-#if defined __INTEL_COMPILER
-# pragma warning (disable:593)
-#endif	/* __INTEL_COMPILER */
-#include "cattle.xh"
-#include "cattle.x"
-#if defined __INTEL_COMPILER
-# pragma warning (default:593)
-#endif	/* __INTEL_COMPILER */
+#include "cattle.yucc"
 
 static int
-cmd_print(struct ctl_args_info argi[static 1U])
+cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 {
-	static const char usg[] = "Usage: cattle print [CAEVs...]\n";
 	static struct ctl_ctx_s ctx[1];
 	int res = 0;
 
-	if (argi->inputs_num < 1U) {
-		fputs(usg, stderr);
-		res = 1;
-		goto out;
-	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+	if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
 		res = 1;
 		goto out;
 	}
 
-	for (unsigned int i = 1U; i < argi->inputs_num; i++) {
-		const char *fn = argi->inputs[i];
+	if (argi->nargs == 0U) {
+		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
+			error("cannot read from stdin");
+			res = 1;
+			goto out;
+		}
+	}
+	for (size_t i = 0U; i < argi->nargs; i++) {
+		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
 			error("cannot open file `%s'", fn);
@@ -884,12 +879,12 @@ cmd_print(struct ctl_args_info argi[static 1U])
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
-		if (argi->unique_given && !memcmp(this, prev, sizeof(*this))) {
+		if (argi->unique_flag && !memcmp(this, prev, sizeof(*this))) {
 			/* completely identical */
 			continue;
 		}
 
-		if (!argi->summary_given) {
+		if (!argi->summary_flag) {
 			bp += dt_strf(bp, ep - bp, t);
 			*bp++ = '\t';
 			bp += ctl_caev_wr(bp, ep - bp, *this);
@@ -901,7 +896,7 @@ cmd_print(struct ctl_args_info argi[static 1U])
 			sum = ctl_caev_add(sum, *this);
 		}
 	}
-	if (argi->summary_given) {
+	if (argi->summary_flag) {
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
@@ -920,14 +915,13 @@ out:
 }
 
 static int
-cmd_apply(struct ctl_args_info argi[static 1U])
+cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 {
-	static const char usg[] = "Usage: cattle apply PRICES [CAEV]\n";
 	static struct ctl_ctx_s ctx[1];
 	int res = 0;
 
-	if (argi->inputs_num < 2U) {
-		fputs(usg, stderr);
+	if (argi->nargs < 1U) {
+		yuck_auto_help((const void*)argi);
 		res = 1;
 		goto out;
 	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
@@ -935,13 +929,13 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 		goto out;
 	}
 
-	if (argi->reverse_given) {
+	if (argi->reverse_flag) {
 		ctx->rev = 1U;
 	}
-	if (argi->forward_given) {
+	if (argi->forward_flag) {
 		ctx->fwd = 1U;
 	}
-	if (argi->precision_given) {
+	if (argi->precision_arg) {
 		const char *p = argi->precision_arg;
 		char *on;
 
@@ -957,19 +951,27 @@ cmd_apply(struct ctl_args_info argi[static 1U])
 		}
 	}
 
-	/* open caev file and read */
-	with (const char *caev_fn =
-	      argi->inputs_num > 2U ? argi->inputs[2U] : NULL) {
-		if (UNLIKELY(ctl_read_caev_file(ctx, caev_fn) < 0)) {
-			error("cannot open caev file `%s'", caev_fn);
+	/* open caev files and read */
+	if (argi->nargs <= 1U) {
+		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
+			error("cannot read from stdin");
+			res = 1;
+			goto out;
+		}
+	}
+	for (size_t i = 1U; i < argi->nargs; i++) {
+		const char *fn = argi->args[i];
+
+		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
+			error("cannot open caev file `%s'", fn);
 			res = 1;
 			goto out;
 		}
 	}
 
 	/* open time series file */
-	with (const char *tser_fn = argi->inputs[1U]) {
-		if (argi->total_return_given && !ctx->fwd) {
+	with (const char *tser_fn = argi->args[0U]) {
+		if (argi->total_return_flag && !ctx->fwd) {
 			/* total return back adjustment needs 2 scans */
 			if (UNLIKELY(ctl_badj_caev_file(ctx, tser_fn) < 0)) {
 				error("\
@@ -977,7 +979,7 @@ cannot deduce factors for total return adjustment from `%s'", tser_fn);
 				res = 1;
 				goto out;
 			}
-		} else if (argi->total_return_given/* && ctx->fwd */) {
+		} else if (argi->total_return_flag/* && ctx->fwd */) {
 			if (UNLIKELY(ctl_fadj_caev_file(ctx, tser_fn) < 0)) {
 				error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
@@ -1002,14 +1004,14 @@ out:
 int
 main(int argc, char *argv[])
 {
-	struct ctl_args_info argi[1];
+	yuck_t argi[1U];
 	int res = 0;
 
-	if (ctl_parser(argc, argv, argi)) {
-		res = 1;
+	if (yuck_parse(argi, argc, argv)) {
+		res = 99;
 		goto out;
-	} else if (argi->inputs_num < 1) {
-		ctl_parser_print_help();
+	} else if (!argi->nargs) {
+		yuck_auto_help(argi);
 		res = 1;
 		goto out;
 	}
@@ -1018,23 +1020,27 @@ main(int argc, char *argv[])
 	init_coru_core();
 
 	/* check the command */
-	with (const char *cmd = argi->inputs[0U]) {
-		if (!strcmp(cmd, "apply")) {
-			res = cmd_apply(argi);
-		} else if (!strcmp(cmd, "print")) {
-			res = cmd_print(argi);
-		} else {
-			error("No command specified.\n\
+	switch (argi->cmd) {
+	default:
+	case CATTLE_CMD_NONE:
+		error("No valid command specified.\n\
 See --help to obtain a list of available commands.");
-			res = 1;
-			goto out;
-		}
+		res = 1;
+		break;
+
+	case CATTLE_CMD_APPLY:
+		res = cmd_apply((const void*)argi);
+		break;
+
+	case CATTLE_CMD_PRINT:
+		res = cmd_print((const void*)argi);
+		break;
 	}
 
 out:
 	/* just to make sure */
 	fflush(stdout);
-	ctl_parser_free(argi);
+	yuck_free(argi);
 	return res;
 }
 #endif	/* STANDALONE */

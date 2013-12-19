@@ -4,6 +4,7 @@ include $(top_builddir)/version.mk
 AM_CFLAGS = $(EXTRA_CFLAGS)
 AM_CPPFLAGS = -D_GNU_SOURCE -D_POSIX_C_SOURCE=201001L -D_XOPEN_SOURCE=800 -D_BSD_SOURCE
 AM_CPPFLAGS += -D__STDC_WANT_DEC_FP__
+AM_CPPFLAGS += -DHAVE_VERSION_H
 AM_LDFLAGS = $(XCCLDFLAGS)
 
 bin_PROGRAMS =
@@ -70,14 +71,14 @@ endif  USE_ASM_CORUS
 
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
-cattle_SOURCES += cattle.ggo
+cattle_SOURCES += cattle.yuck
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
 cattle_CPPFLAGS += -DSTANDALONE
 cattle_LDADD = libcattle.la
 if USE_ASM_CORUS
 cattle_LDADD += libcoru.la
 endif  USE_ASM_CORUS
-BUILT_SOURCES += cattle.x cattle.xh
+BUILT_SOURCES += cattle.yucc
 
 
 analysis: $(libcattle_la_SOURCES:%.c=%.sa)
@@ -89,15 +90,9 @@ version.c: version.c.in $(top_builddir)/version.mk
 %.c: %.erf
 	$(AM_V_GEN) $(GPERF) -L ANSI-C $< --output-file $@
 
-## gengetopt rule with sed hack to avoid using VERSION and config.h
-## depend on Makefile.am to survive a git pull
-%.x %.xh: %.ggo Makefile.am
-	$(AM_V_GEN) gengetopt -l -c x -H xh -i $< -F $* \
-	&& sed \
-	  -e 's,config.h,version.h,g' \
-	  -e 's,\(.*\)_PARSER_VERSION VERSION,\1_PARSER_VERSION $(PACKAGE)_version_string,g' \
-	  $*.xh >$*.xh-t \
-	&& mv $*.xh-t $*.xh
+%.yucc: %.yuck $(top_builddir)/version.mk
+	$(AM_V_GEN) PATH=$(top_builddir)/build-aux:"$${PATH}" \
+		yuck$(EXEEXT) gen -o $@ $<
 
 ## for dist or dist check we need binaries, so help2man can work
 dist-hook: $(bin_PROGRAMS)
