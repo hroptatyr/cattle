@@ -427,7 +427,7 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 /* wants a const char *fn */
 	static ctl_caev_t *caevs;
 	static size_t ncaevs;
-	size_t caevi = 0U;
+	static size_t caevi;
 	coru_t rdr;
 	FILE *f;
 
