@@ -18,16 +18,8 @@ BUILT_SOURCES += cattle.man
 EXTRA_DIST += cattle.name
 EXTRA_DIST += author.h2m
 
-my_bld_man = $(__bld_man_$(V))
-__bld_man_ = $(__bld_man_$(AM_DEFAULT_VERBOSITY))
-__bld_man_0 = @echo "  H2M" $@;
-cattle.man: $(top_srcdir)/src/cattle.yuck \
-		$(top_builddir)/version.mk \
-		cattle.name
-	$(my_bld_man) $(HELP2MAN) -S "$(PACKAGE_STRING)" -p "($(PACKAGE))$*" \
-		-I "$(srcdir)/author.h2m" \
-		-I "$(srcdir)/cattle.name" \
-		-N \
-		-o $@ $(top_builddir)/src/cattle
+%.man: $(top_srcdir)/src/%.yuck $(top_srcdir)/configure $(top_builddir)/version.mk
+	$(AM_V_GEN) PATH=$(top_builddir)/build-aux:"$${PATH}" \
+		yuck$(EXEEXT) genman --version=$(VERSION) -o $@ $<
 
 ## Makefile.am ends here
