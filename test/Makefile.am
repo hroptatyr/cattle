@@ -368,14 +368,13 @@ clitoris_CPPFLAGS = $(AM_CPPFLAGS)
 clitoris_CPPFLAGS += -D_GNU_SOURCE
 clitoris_LDFLAGS = $(AM_LDFLAGS) -static
 clitoris_LDADD = -lutil
-BUILT_SOURCES += clitoris.x clitoris.xh
+BUILT_SOURCES += clitoris.yucc
 
 
-## ggo rule
-%.x %.xh: %.ggo
-	$(AM_V_GEN) gengetopt -F $* -c x -H xh -i $<
-	@sed -e 's,_PARSER_VERSION VERSION,_PARSER_VERSION "$(VERSION)",g' \
-	     $*.xh > $*.xh-t \
-	&& mv $*.xh-t $*.xh
+## yuck rule
+SUFFIXES = .yucc .yuck
+.yuck.yucc:
+	$(AM_V_GEN) PATH=$(top_builddir)/build-aux:"$${PATH}" \
+		yuck$(EXEEXT) gen -o $@ $<
 
 ## Makefile.am ends here
