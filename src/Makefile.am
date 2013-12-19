@@ -34,7 +34,6 @@ libcattle_la_SOURCES += caev.c caev.h
 libcattle_la_SOURCES += dt-strpf.c dt-strpf.h
 libcattle_la_SOURCES += instant.h
 libcattle_la_SOURCES += wheap.c wheap.h
-libcattle_la_SOURCES += version.c version.h
 libcattle_la_SOURCES += nifty.h
 libcattle_la_SOURCES += coru.h
 ## actual mt564 events
@@ -75,6 +74,7 @@ endif  USE_ASM_CORUS
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
 cattle_SOURCES += cattle.yuck
+cattle_SOURCES += version.c version.h
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
 cattle_CPPFLAGS += -DSTANDALONE
 cattle_LDADD = libcattle.la
