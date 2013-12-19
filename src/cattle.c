@@ -439,8 +439,6 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	init_coru();
 	rdr = make_coru(co_appl_rdr, f);
-	/* initialise sum to some zero */
-	ctx->sum = ctl_zero_caev();
 
 	for (const struct rdr_res_s *ln; (ln = next(rdr));) {
 		/* try to read the whole shebang */
@@ -459,8 +457,6 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		caevs[caevi++] = c;
 		/* insert to heap */
 		ctl_wheap_add_deferred(ctx->q, ln->t, qmsg);
-		/* also sum them up */
-		ctx->sum = ctl_caev_add(ctx->sum, c);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
