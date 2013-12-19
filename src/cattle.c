@@ -58,7 +58,6 @@
 
 struct ctl_ctx_s {
 	ctl_wheap_t q;
-	ctl_caev_t sum;
 
 	unsigned int rev:1;
 	unsigned int fwd:1;
@@ -159,6 +158,30 @@ mkscal(signed int nd)
 {
 /* produce a d32 with -ND fractional digits */
 	return scalbnd32(1.df, nd);
+}
+
+/* smaller wheap decl */
+struct ctl_wheap_s {
+	/** number of cells on the heap */
+	size_t n;
+	/** the cells themselves, with < defined by __inst_lt_p() */
+	echs_instant_t *cells;
+	uintptr_t *colours;
+};
+
+static ctl_caev_t
+ctl_caev_sum(ctl_wheap_t q)
+{
+	ctl_caev_t sum = ctl_zero_caev();
+
+	ctl_wheap_sort(q);
+	for (size_t i = 0; i < q->n; i++) {
+		uintptr_t tmp = q->colours[i];
+		const ctl_caev_t *this = (const ctl_caev_t*)tmp;
+
+		sum = ctl_caev_add(sum, *this);
+	}
+	return sum;
 }
 
 
@@ -490,13 +513,12 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	adj = make_coru(co_appl_adj, .totret = false);
 	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
-	if (!ctx->fwd && !ctx->rev) {
-		sum = ctx->sum;
-	} else if (!ctx->rev/* && ctx->fwd */) {
-		sum = ctl_zero_caev();
-	} else if (!ctx->fwd/* && ctx->rev */) {
-		sum = ctl_caev_inv(ctx->sum);
-	} else /*if (ctx->fwd && ctx->rev)*/ {
+	if (!ctx->fwd) {
+		sum = ctl_caev_sum(ctx->q);
+		if (ctx->rev) {
+			sum = ctl_caev_inv(sum);
+		}
+	} else {
 		sum = ctl_zero_caev();
 	}
 
