@@ -17,8 +17,8 @@ env:
   - CONFOPTS="--disable-asm-backed-coroutines"
 
 script: 
-  - ./configure "${CONFOPTS}" || (cat config.log; false)
-  - make clean all check distcheck || (cat test/test-suite.log; false)
+  - ./configure "${CONFOPTS}" || { cat config.log; false; }
+  - make clean all check distcheck || { cat test/test-suite.log; false; }
 
 ## whitelist
 branches:
