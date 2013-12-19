@@ -21,7 +21,7 @@ EXTRA_DIST += author.h2m
 my_bld_man = $(__bld_man_$(V))
 __bld_man_ = $(__bld_man_$(AM_DEFAULT_VERBOSITY))
 __bld_man_0 = @echo "  H2M" $@;
-cattle.man: $(top_srcdir)/src/cattle.ggo \
+cattle.man: $(top_srcdir)/src/cattle.yuck \
 		$(top_builddir)/version.mk \
 		cattle.name
 	$(my_bld_man) $(HELP2MAN) -S "$(PACKAGE_STRING)" -p "($(PACKAGE))$*" \
