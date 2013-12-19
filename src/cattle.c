@@ -182,11 +182,11 @@ static const struct rdr_res_s {
 /* coroutine for the reader of the tseries */
 	char *line = NULL;
 	size_t llen = 0UL;
-	ssize_t nrd;
 	/* we'll yield a rdr_res */
 	struct rdr_res_s res;
 
-	while ((nrd = getline(&line, &llen, c->f)) > 0) {
+#if defined HAVE_GETLINE
+	for (ssize_t nrd; (nrd = getline(&line, &llen, c->f)) > 0;) {
 		char *p;
 
 		if (*line == '#') {
@@ -201,6 +201,23 @@ static const struct rdr_res_s {
 		res.lz = nrd - (p + 1U - line);
 		yield(res);
 	}
+#elif defined HAVE_FGETLN
+	while ((line = fgetln(c->f, &llen)) != NULL) {
+		char *p;
+
+		if (*line == '#') {
+			continue;
+		} else if (__inst_0_p(res.t = dt_strp(line, &p))) {
+			continue;
+		} else if (*p != '\t') {
+			continue;
+		}
+		/* pack the result structure */
+		res.ln = p + 1U;
+		res.lz = llen - (p + 1U - line);
+		yield(res);
+	}
+#endif	/* HAVE_FGETLN */
 
 	free(line);
 	line = NULL;
