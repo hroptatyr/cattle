@@ -1010,10 +1010,6 @@ main(int argc, char *argv[])
 	if (yuck_parse(argi, argc, argv)) {
 		res = 99;
 		goto out;
-	} else if (!argi->nargs) {
-		yuck_auto_help(argi);
-		res = 1;
-		goto out;
 	}
 
 	/* get the coroutines going */
