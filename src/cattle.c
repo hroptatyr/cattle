@@ -58,7 +58,6 @@
 
 struct ctl_ctx_s {
 	ctl_wheap_t q;
-	ctl_caev_t sum;
 
 	unsigned int rev:1;
 	unsigned int fwd:1;
@@ -161,6 +160,30 @@ mkscal(signed int nd)
 	return scalbnd32(1.df, nd);
 }
 
+/* smaller wheap decl */
+struct ctl_wheap_s {
+	/** number of cells on the heap */
+	size_t n;
+	/** the cells themselves, with < defined by __inst_lt_p() */
+	echs_instant_t *cells;
+	uintptr_t *colours;
+};
+
+static ctl_caev_t
+ctl_caev_sum(ctl_wheap_t q)
+{
+	ctl_caev_t sum = ctl_zero_caev();
+
+	ctl_wheap_sort(q);
+	for (size_t i = 0; i < q->n; i++) {
+		uintptr_t tmp = q->colours[i];
+		const ctl_caev_t *this = (const ctl_caev_t*)tmp;
+
+		sum = ctl_caev_add(sum, *this);
+	}
+	return sum;
+}
+
 
 /* coroutines */
 struct echs_fund_s {
@@ -182,11 +205,11 @@ static const struct rdr_res_s {
 /* coroutine for the reader of the tseries */
 	char *line = NULL;
 	size_t llen = 0UL;
-	ssize_t nrd;
 	/* we'll yield a rdr_res */
 	struct rdr_res_s res;
 
-	while ((nrd = getline(&line, &llen, c->f)) > 0) {
+#if defined HAVE_GETLINE
+	for (ssize_t nrd; (nrd = getline(&line, &llen, c->f)) > 0;) {
 		char *p;
 
 		if (*line == '#') {
@@ -201,6 +224,23 @@ static const struct rdr_res_s {
 		res.lz = nrd - (p + 1U - line);
 		yield(res);
 	}
+#elif defined HAVE_FGETLN
+	while ((line = fgetln(c->f, &llen)) != NULL) {
+		char *p;
+
+		if (*line == '#') {
+			continue;
+		} else if (__inst_0_p(res.t = dt_strp(line, &p))) {
+			continue;
+		} else if (*p != '\t') {
+			continue;
+		}
+		/* pack the result structure */
+		res.ln = p + 1U;
+		res.lz = llen - (p + 1U - line);
+		yield(res);
+	}
+#endif	/* HAVE_FGETLN */
 
 	free(line);
 	line = NULL;
@@ -410,7 +450,7 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 /* wants a const char *fn */
 	static ctl_caev_t *caevs;
 	static size_t ncaevs;
-	size_t caevi = 0U;
+	static size_t caevi;
 	coru_t rdr;
 	FILE *f;
 
@@ -422,8 +462,6 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	init_coru();
 	rdr = make_coru(co_appl_rdr, f);
-	/* initialise sum to some zero */
-	ctx->sum = ctl_zero_caev();
 
 	for (const struct rdr_res_s *ln; (ln = next(rdr));) {
 		/* try to read the whole shebang */
@@ -442,8 +480,6 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		caevs[caevi++] = c;
 		/* insert to heap */
 		ctl_wheap_add_deferred(ctx->q, ln->t, qmsg);
-		/* also sum them up */
-		ctx->sum = ctl_caev_add(ctx->sum, c);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
@@ -477,13 +513,12 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	adj = make_coru(co_appl_adj, .totret = false);
 	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
-	if (!ctx->fwd && !ctx->rev) {
-		sum = ctx->sum;
-	} else if (!ctx->rev/* && ctx->fwd */) {
-		sum = ctl_zero_caev();
-	} else if (!ctx->fwd/* && ctx->rev */) {
-		sum = ctl_caev_inv(ctx->sum);
-	} else /*if (ctx->fwd && ctx->rev)*/ {
+	if (!ctx->fwd) {
+		sum = ctl_caev_sum(ctx->q);
+		if (ctx->rev) {
+			sum = ctl_caev_inv(sum);
+		}
+	} else {
 		sum = ctl_zero_caev();
 	}
 
@@ -1009,10 +1044,6 @@ main(int argc, char *argv[])
 
 	if (yuck_parse(argi, argc, argv)) {
 		res = 99;
-		goto out;
-	} else if (!argi->nargs) {
-		yuck_auto_help(argi);
-		res = 1;
 		goto out;
 	}
 

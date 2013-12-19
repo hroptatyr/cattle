@@ -56,6 +56,9 @@ AM_CONDITIONAL([HAVE_SCALBND32], [test "${ac_cv_func_scalbnd32}" = "yes"])
 
 SXE_CHECK_ASM_CORUS
 
+AC_CHECK_FUNCS([getline])
+AC_CHECK_FUNCS([fgetln])
+
 AM_MISSING_PROG([GPERF], [gperf])
 AM_CONDITIONAL([HAVE_GPERF], [test -n "${GPERF}"])
 if test -n "${GPERF}"; then
