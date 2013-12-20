@@ -38,23 +38,31 @@
 #define INCLUDED_wheap_h_
 
 #include <stdlib.h>
+#include <stdint.h>
 #include "instant.h"
+#if defined WHEAP_COLOUR_H
+# include WHEAP_COLOUR_H
+#endif	/* WHEAP_COLOUR_H */
 
 typedef struct ctl_wheap_s *ctl_wheap_t;
+
+#if !defined WHEAP_COLOUR_H && !defined WHEAP_COLOUR_T
+typedef uintptr_t colour_t;
+#endif	/* !WHEAP_COLOUR_H && !WHEAP_COLOUR_T */
 
 
 extern ctl_wheap_t make_ctl_wheap(void);
 extern void free_ctl_wheap(ctl_wheap_t);
 
 extern echs_instant_t ctl_wheap_top_rank(ctl_wheap_t);
-extern uintptr_t ctl_wheap_top(ctl_wheap_t);
-extern uintptr_t ctl_wheap_pop(ctl_wheap_t);
+extern colour_t ctl_wheap_top(ctl_wheap_t);
+extern colour_t ctl_wheap_pop(ctl_wheap_t);
 
-extern void ctl_wheap_add(ctl_wheap_t, echs_instant_t, uintptr_t);
+extern void ctl_wheap_add(ctl_wheap_t, echs_instant_t, colour_t);
 
 /**
  * Bulk inserts. */
-extern void ctl_wheap_add_deferred(ctl_wheap_t, echs_instant_t, uintptr_t);
+extern void ctl_wheap_add_deferred(ctl_wheap_t, echs_instant_t, colour_t);
 /**
  * Recreate the heap property after deferred inserts. */
 extern void ctl_wheap_fix_deferred(ctl_wheap_t);
