@@ -202,6 +202,7 @@ TESTS += caev-supp.14.clit
 
 noinst_LIBRARIES += libwheap.a
 libwheap_a_SOURCES = ../src/wheap.c ../src/wheap.h
+libwheap_a_SOURCES += ../src/dt-strpf.c ../src/dt-strpf.h
 
 check_PROGRAMS += wheap_01
 wheap_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
