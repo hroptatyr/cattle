@@ -1,6 +1,6 @@
-/*** wheap.h -- weak heaps, as stolen from sxemacs
+/*** caev-series.c -- time series of caevs
  *
- * Copyright (C) 2007-2013 Sebastian Freundt
+ * Copyright (C) 2013 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -34,41 +34,32 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  **/
-#if !defined INCLUDED_wheap_h_
-#define INCLUDED_wheap_h_
+#if defined HAVE_CONFIG_H
+# include "config.h"
+#endif	/* HAVE_CONFIG_H */
+#include "caev.h"
+#include "wheap.h"
 
-#include <stdlib.h>
-#include <stdint.h>
-#include "instant.h"
-#if defined WHEAP_COLOUR_H
-# include WHEAP_COLOUR_H
-#endif	/* WHEAP_COLOUR_H */
-
-typedef struct ctl_wheap_s *ctl_wheap_t;
-
-#if !defined WHEAP_COLOUR_H && !defined WHEAP_COLOUR_T
-typedef uintptr_t colour_t;
-#endif	/* !WHEAP_COLOUR_H && !WHEAP_COLOUR_T */
+/* lightweight wheap decl */
+struct ctl_wheap_s {
+	/** number of cells on the heap */
+	size_t n;
+	/** the cells themselves, with < defined by __inst_lt_p() */
+	echs_instant_t *cells;
+	colour_t *colours;
+};
 
 
-extern ctl_wheap_t make_ctl_wheap(void);
-extern void free_ctl_wheap(ctl_wheap_t);
+ctl_caev_t
+ctl_caev_sum(ctl_caevs_t cs)
+{
+	ctl_caev_t sum = ctl_zero_caev();
 
-extern echs_instant_t ctl_wheap_top_rank(ctl_wheap_t);
-extern colour_t ctl_wheap_top(ctl_wheap_t);
-extern colour_t ctl_wheap_pop(ctl_wheap_t);
+	ctl_wheap_sort(cs);
+	for (size_t i = 0; i < cs->n; i++) {
+		sum = ctl_caev_add(sum, cs->colours[i]);
+	}
+	return sum;
+}
 
-extern void ctl_wheap_add(ctl_wheap_t, echs_instant_t, colour_t);
-
-/**
- * Bulk inserts. */
-extern void ctl_wheap_add_deferred(ctl_wheap_t, echs_instant_t, colour_t);
-/**
- * Recreate the heap property after deferred inserts. */
-extern void ctl_wheap_fix_deferred(ctl_wheap_t);
-
-/**
- * Sort the entire heap. */
-extern void ctl_wheap_sort(ctl_wheap_t);
-
-#endif	/* INCLUDED_wheap_h_ */
+/* caev-series.c ends here */

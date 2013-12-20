@@ -44,7 +44,6 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <string.h>
 #include "instant.h"
 #include "wheap.h"
@@ -57,7 +56,7 @@ struct ctl_wheap_s {
 	size_t n;
 	/** the cells themselves, with < defined by __inst_lt_p() */
 	echs_instant_t *cells;
-	uintptr_t *colours;
+	colour_t *colours;
 	rbitset_t *rbits;
 #define RBITS_WIDTH	(sizeof(rbitset_t) * 8U)
 
@@ -67,6 +66,8 @@ struct ctl_wheap_s {
 	/** allocated size */
 	size_t z;
 };
+
+static colour_t nul_colour;
 
 
 #define recalloc(p, ol, nu)						\
@@ -279,7 +280,7 @@ __wheapify_dfr(ctl_wheap_t h)
 }
 
 static size_t
-wheap_add_dfr(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
+wheap_add_dfr(ctl_wheap_t h, echs_instant_t inst, colour_t msg)
 {
 	size_t idx;
 
@@ -298,7 +299,7 @@ wheap_add_dfr(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 }
 
 static size_t
-wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
+wheap_add(ctl_wheap_t h, echs_instant_t inst, colour_t msg)
 {
 	size_t idx;
 
@@ -326,14 +327,14 @@ wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
 	return idx;
 }
 
-static uintptr_t
+static colour_t
 wheap_pop(ctl_wheap_t h)
 {
-	uintptr_t res;
+	colour_t res;
 	size_t end_idx;
 
 	if (UNLIKELY(h->n == 0U)) {
-		return 0U;
+		return nul_colour;
 #if defined AUTO_FIXUP_BULK_OPS
 	} else if (UNLIKELY(h->ndfr > 0U)) {
 		/* fix up bulk inserts? */
@@ -349,7 +350,7 @@ wheap_pop(ctl_wheap_t h)
 	h->cells[end_idx] = (echs_instant_t){};
 
 	h->colours[0U] = h->colours[end_idx];
-	h->colours[end_idx] = (uintptr_t)NULL;
+	h->colours[end_idx] = nul_colour;
 
 	if (LIKELY(end_idx > 1)) {
 		__wheapify_sift_down(h, 0U);
@@ -357,11 +358,11 @@ wheap_pop(ctl_wheap_t h)
 	return res;
 }
 
-static uintptr_t
+static colour_t
 wheap_top(ctl_wheap_t h)
 {
 	if (UNLIKELY(h->n == 0U)) {
-		return 0U;
+		return nul_colour;
 #if defined AUTO_FIXUP_BULK_OPS
 	} else if (UNLIKELY(h->ndfr > 0U)) {
 		/* fix up bulk inserts? */
@@ -457,27 +458,27 @@ ctl_wheap_top_rank(ctl_wheap_t h)
 	return wheap_top_rank(h);
 }
 
-uintptr_t
+colour_t
 ctl_wheap_top(ctl_wheap_t h)
 {
 	return wheap_top(h);
 }
 
-uintptr_t
+colour_t
 ctl_wheap_pop(ctl_wheap_t h)
 {
 	return wheap_pop(h);
 }
 
 void
-ctl_wheap_add(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
+ctl_wheap_add(ctl_wheap_t h, echs_instant_t inst, colour_t msg)
 {
 	wheap_add(h, inst, msg);
 	return;
 }
 
 void
-ctl_wheap_add_deferred(ctl_wheap_t h, echs_instant_t inst, uintptr_t msg)
+ctl_wheap_add_deferred(ctl_wheap_t h, echs_instant_t inst, colour_t msg)
 {
 	wheap_add_dfr(h, inst, msg);
 	return;
