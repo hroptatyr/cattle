@@ -53,11 +53,11 @@
 #include "ctl-dfp754.h"
 #include "nifty.h"
 #include "dt-strpf.h"
-#include "wheap.h"
+#include "caev-series.h"
 #include "coru.h"
 
 struct ctl_ctx_s {
-	ctl_wheap_t q;
+	ctl_caevs_t q;
 
 	unsigned int rev:1;
 	unsigned int fwd:1;
@@ -266,7 +266,7 @@ massage_rdr(const struct rdr_res_s *msg)
 }
 
 declcoru(co_appl_pop, {
-		ctl_wheap_t q;
+		ctl_caevs_t q;
 	}, {});
 
 static const struct pop_res_s {
@@ -276,12 +276,13 @@ static const struct pop_res_s {
 } *defcoru(co_appl_pop, c, UNUSED(arg))
 {
 	/* we'll yield a pop_res_s */
+	static ctl_caev_t this[1U];
 	struct pop_res_s res;
 
 	while (!__inst_0_p(res.t = ctl_wheap_top_rank(c->q))) {
 		/* assume it's a ctl-caev_t */
-		uintptr_t tmp = ctl_wheap_pop(c->q);
-		res.msg = (const ctl_caev_t*)tmp;
+		*this = ctl_wheap_pop(c->q);
+		res.msg = this;
 		res.msz = sizeof(ctl_caev_t);
 		yield(res);
 	}
@@ -466,7 +467,6 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	for (const struct rdr_res_s *ln; (ln = next(rdr));) {
 		/* try to read the whole shebang */
 		ctl_caev_t c = ctl_caev_rdr(ctx, ln->t, ln->ln);
-		uintptr_t qmsg;
 
 		/* resize check */
 		if (caevi >= ncaevs) {
@@ -475,11 +475,8 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			ncaevs = nu;
 		}
 
-		/* `clone' C */
-		qmsg = (uintptr_t)(caevs + caevi);
-		caevs[caevi++] = c;
 		/* insert to heap */
-		ctl_wheap_add_deferred(ctx->q, ln->t, qmsg);
+		ctl_wheap_add_deferred(ctx->q, ln->t, c);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
@@ -906,15 +903,14 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	}
 
 	ctl_caev_t sum = ctl_zero_caev();
-	const ctl_caev_t *prev = &sum;
+	ctl_caev_t prev = sum;
 	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
-		uintptr_t tmp = ctl_wheap_pop(ctx->q);
-		const ctl_caev_t *this = (const void*)tmp;
+		ctl_caev_t this = ctl_wheap_pop(ctx->q);
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
-		if (argi->unique_flag && !memcmp(this, prev, sizeof(*this))) {
+		if (argi->unique_flag && !memcmp(&this, &prev, sizeof(this))) {
 			/* completely identical */
 			continue;
 		}
@@ -922,13 +918,13 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 		if (!argi->summary_flag) {
 			bp += dt_strf(bp, ep - bp, t);
 			*bp++ = '\t';
-			bp += ctl_caev_wr(bp, ep - bp, *this);
+			bp += ctl_caev_wr(bp, ep - bp, this);
 			*bp++ = '\n';
 			*bp = '\0';
 			fputs(buf, stdout);
 			prev = this;
 		} else {
-			sum = ctl_caev_add(sum, *this);
+			sum = ctl_caev_add(sum, this);
 		}
 	}
 	if (argi->summary_flag) {
