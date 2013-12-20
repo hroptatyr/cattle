@@ -49,15 +49,22 @@
 #include "instant.h"
 #include "wheap.h"
 #include "nifty.h"
+#if defined WHEAP_COLOUR_H
+# include WHEAP_COLOUR_H
+#endif	/* WHEAP_COLOUR_H */
 
 typedef uint_fast32_t rbitset_t;
+
+#if !defined WHEAP_COLOUR_H && !defined WHEAP_COLOUR_T
+typedef uintptr_t colour_t;
+#endif	/* !WHEAP_COLOUR_H && !WHEAP_COLOUR_T */
 
 struct ctl_wheap_s {
 	/** number of cells on the heap */
 	size_t n;
 	/** the cells themselves, with < defined by __inst_lt_p() */
 	echs_instant_t *cells;
-	uintptr_t *colours;
+	colour_t *colours;
 	rbitset_t *rbits;
 #define RBITS_WIDTH	(sizeof(rbitset_t) * 8U)
 
