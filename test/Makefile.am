@@ -267,6 +267,15 @@ TESTS += cattle_print_04.clit
 EXTRA_DIST += cattle_01.tser
 EXTRA_DIST += cattle_01.echs
 
+TESTS += cattle_print_05.clit
+TESTS += cattle_print_06.clit
+TESTS += cattle_print_07.clit
+TESTS += cattle_print_08.clit
+TESTS += cattle_print_09.clit
+TESTS += cattle_print_10.clit
+TESTS += cattle_print_11.clit
+TESTS += cattle_print_12.clit
+
 TESTS += cattle_apply_01.clit
 TESTS += cattle_apply_02.clit
 TESTS += cattle_apply_03.clit
