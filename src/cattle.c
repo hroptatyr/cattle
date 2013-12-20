@@ -425,9 +425,6 @@ static int
 ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn */
-	static ctl_caev_t *caevs;
-	static size_t ncaevs;
-	static size_t caevi;
 	coru_t rdr;
 	FILE *f;
 
@@ -443,13 +440,6 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	for (const struct rdr_res_s *ln; (ln = next(rdr));) {
 		/* try to read the whole shebang */
 		ctl_caev_t c = ctl_caev_rdr(ctx, ln->t, ln->ln);
-
-		/* resize check */
-		if (caevi >= ncaevs) {
-			size_t nu = ncaevs + 64U;
-			caevs = realloc(caevs, nu * sizeof(*caevs));
-			ncaevs = nu;
-		}
 
 		/* insert to heap */
 		ctl_wheap_add_deferred(ctx->q, ln->t, c);
