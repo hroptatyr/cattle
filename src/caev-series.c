@@ -40,4 +40,26 @@
 #include "caev.h"
 #include "wheap.h"
 
+/* lightweight wheap decl */
+struct ctl_wheap_s {
+	/** number of cells on the heap */
+	size_t n;
+	/** the cells themselves, with < defined by __inst_lt_p() */
+	echs_instant_t *cells;
+	colour_t *colours;
+};
+
+
+ctl_caev_t
+ctl_caev_sum(ctl_caevs_t cs)
+{
+	ctl_caev_t sum = ctl_zero_caev();
+
+	ctl_wheap_sort(cs);
+	for (size_t i = 0; i < cs->n; i++) {
+		sum = ctl_caev_add(sum, cs->colours[i]);
+	}
+	return sum;
+}
+
 /* caev-series.c ends here */

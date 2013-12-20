@@ -46,4 +46,9 @@ typedef struct ctl_wheap_s *ctl_caevs_t;
 /* must be included after we've def'd WHEAP_COLOUR_T */
 #include "wheap.h"
 
+
+/**
+ * Return a sum of corporate actions without changing the contents of CS. */
+extern ctl_caev_t ctl_caev_sum(ctl_caevs_t cs);
+
 #endif	/* INCLUDED_caev_series_h_ */

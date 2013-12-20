@@ -160,30 +160,6 @@ mkscal(signed int nd)
 	return scalbnd32(1.df, nd);
 }
 
-/* smaller wheap decl */
-struct ctl_wheap_s {
-	/** number of cells on the heap */
-	size_t n;
-	/** the cells themselves, with < defined by __inst_lt_p() */
-	echs_instant_t *cells;
-	uintptr_t *colours;
-};
-
-static ctl_caev_t
-ctl_caev_sum(ctl_wheap_t q)
-{
-	ctl_caev_t sum = ctl_zero_caev();
-
-	ctl_wheap_sort(q);
-	for (size_t i = 0; i < q->n; i++) {
-		uintptr_t tmp = q->colours[i];
-		const ctl_caev_t *this = (const ctl_caev_t*)tmp;
-
-		sum = ctl_caev_add(sum, *this);
-	}
-	return sum;
-}
-
 
 /* coroutines */
 struct echs_fund_s {
