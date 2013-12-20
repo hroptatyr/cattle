@@ -34,6 +34,7 @@ libcattle_la_SOURCES += caev.c caev.h
 libcattle_la_SOURCES += dt-strpf.c dt-strpf.h
 libcattle_la_SOURCES += instant.h
 libcattle_la_SOURCES += wheap.c wheap.h
+libcattle_la_SOURCES += caev-series.c caev-series.h
 libcattle_la_SOURCES += nifty.h
 libcattle_la_SOURCES += coru.h
 ## actual mt564 events
@@ -51,6 +52,8 @@ libcattle_la_SOURCES += caev-rdr-gp.erf
 libcattle_la_SOURCES += caev-fld-gp.erf
 ## dfp754 utils
 libcattle_la_SOURCES += ctl-dfp754.c ctl-dfp754.h
+libcattle_la_CPPFLAGS = $(AM_CPPFLAGS)
+libcattle_la_CPPFLAGS += -DWHEAP_COLOUR_H='"caev-series.h"'
 BUILT_SOURCES += caev-rdr-gp.c
 BUILT_SOURCES += caev-fld-gp.c
 
