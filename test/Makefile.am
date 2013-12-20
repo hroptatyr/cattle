@@ -20,6 +20,7 @@ bin_tests =
 batch_tests =
 check_PROGRAMS =
 CLEANFILES = $(check_PROGRAMS)
+noinst_LIBRARIES =
 
 TEST_EXTENSIONS += .clit
 TESTS_ENVIRONMENT = root=$(top_srcdir)
@@ -199,9 +200,13 @@ caev_supp_14_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 caev_supp_14_LDADD = $(cattle_LIBS)
 TESTS += caev-supp.14.clit
 
+noinst_LIBRARIES += libwheap.a
+libwheap_a_SOURCES = ../src/wheap.c ../src/wheap.h
+libwheap_a_SOURCES += ../src/dt-strpf.c ../src/dt-strpf.h
+
 check_PROGRAMS += wheap_01
 wheap_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
-wheap_01_LDADD = $(cattle_LIBS)
+wheap_01_LDADD = libwheap.a
 TESTS += wheap_01.clit
 TESTS += wheap_02.clit
 TESTS += wheap_03.clit
@@ -213,7 +218,7 @@ TESTS += wheap_08.clit
 
 check_PROGRAMS += wheap_09
 wheap_09_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
-wheap_09_LDADD = $(cattle_LIBS)
+wheap_09_LDADD = libwheap.a
 TESTS += wheap_09.clit
 TESTS += wheap_10.clit
 TESTS += wheap_11.clit
@@ -223,7 +228,7 @@ TESTS += wheap_14.clit
 TESTS += wheap_15.clit
 TESTS += wheap_16.clit
 
-noinst_LIBRARIES = libdfp754.a
+noinst_LIBRARIES += libdfp754.a
 libdfp754_a_SOURCES = ../src/ctl-dfp754.c ../src/ctl-dfp754.h
 
 check_PROGRAMS += pr-d32_01
