@@ -10,6 +10,7 @@ AM_CFLAGS = $(EXTRA_CFLAGS)
 AM_CPPFLAGS = -D_POSIX_C_SOURCE=200112L -D_XOPEN_SOURCE=600 -D_BSD_SOURCE
 AM_CPPFLAGS += -DTEST
 AM_CPPFLAGS += -D__STDC_WANT_DEC_FP__
+AM_CPPFLAGS += -I$(top_srcdir)/src
 
 EXTRA_DIST = $(BUILT_SOURCES) $(TESTS)
 TESTS =
@@ -201,8 +202,8 @@ caev_supp_14_LDADD = $(cattle_LIBS)
 TESTS += caev-supp.14.clit
 
 noinst_LIBRARIES += libwheap.a
-libwheap_a_SOURCES = ../src/wheap.c ../src/wheap.h
-libwheap_a_SOURCES += ../src/dt-strpf.c ../src/dt-strpf.h
+libwheap_a_SOURCES = wheap.c wheap.h
+libwheap_a_SOURCES += dt-strpf.c dt-strpf.h
 
 check_PROGRAMS += wheap_01
 wheap_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
@@ -229,7 +230,7 @@ TESTS += wheap_15.clit
 TESTS += wheap_16.clit
 
 noinst_LIBRARIES += libdfp754.a
-libdfp754_a_SOURCES = ../src/ctl-dfp754.c ../src/ctl-dfp754.h
+libdfp754_a_SOURCES = ctl-dfp754.c ctl-dfp754.h
 
 check_PROGRAMS += pr-d32_01
 pr_d32_01_SOURCES = pr-d32_01.c
