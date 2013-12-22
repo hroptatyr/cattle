@@ -393,4 +393,13 @@ SUFFIXES = .yucc .yuck
 	$(AM_V_GEN) PATH=$(top_builddir)/build-aux:"$${PATH}" \
 		yuck$(EXEEXT) gen -o $@ $<
 
+wheap.c: $(top_srcdir)/src/wheap.c
+	cp $< $@
+
+dt-strpf.c: $(top_srcdir)/src/dt-strpf.c
+	cp $< $@
+
+ctl-dfp754.c: $(top_srcdir)/src/ctl-dfp754.c
+	cp $< $@
+
 ## Makefile.am ends here
