@@ -84,13 +84,6 @@ AC_CONFIG_FILES([build-aux/Makefile])
 AC_CONFIG_FILES([src/Makefile])
 AC_CONFIG_FILES([info/Makefile])
 AC_CONFIG_FILES([test/Makefile])
-## for the test suite (hack due to automake's new subdir object)
-AC_CONFIG_LINKS([test/ctl-dfp754.c:src/ctl-dfp754.c])
-AC_CONFIG_LINKS([test/ctl-dfp754.h:src/ctl-dfp754.h])
-AC_CONFIG_LINKS([test/wheap.c:src/wheap.c])
-AC_CONFIG_LINKS([test/wheap.h:src/wheap.h])
-AC_CONFIG_LINKS([test/dt-strpf.c:src/dt-strpf.c])
-AC_CONFIG_LINKS([test/dt-strpf.h:src/dt-strpf.h])
 AC_OUTPUT
 
 ## trivial, no special stuff needed
