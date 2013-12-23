@@ -202,8 +202,8 @@ caev_supp_14_LDADD = $(cattle_LIBS)
 TESTS += caev-supp.14.clit
 
 noinst_LIBRARIES += libwheap.a
-libwheap_a_SOURCES = wheap.c wheap.h
-libwheap_a_SOURCES += dt-strpf.c dt-strpf.h
+libwheap_a_SOURCES = wheap.c
+libwheap_a_SOURCES += dt-strpf.c
 
 check_PROGRAMS += wheap_01
 wheap_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
@@ -230,7 +230,7 @@ TESTS += wheap_15.clit
 TESTS += wheap_16.clit
 
 noinst_LIBRARIES += libdfp754.a
-libdfp754_a_SOURCES = ctl-dfp754.c ctl-dfp754.h
+libdfp754_a_SOURCES = ctl-dfp754.c
 
 check_PROGRAMS += pr-d32_01
 pr_d32_01_SOURCES = pr-d32_01.c
