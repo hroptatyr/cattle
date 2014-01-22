@@ -884,7 +884,9 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 		if (!argi->summary_flag) {
 			bp += dt_strf(bp, ep - bp, t);
 			*bp++ = '\t';
-			bp += ctl_caev_wr(bp, ep - bp, this);
+			if (argi->raw_flag) {
+				bp += ctl_caev_wr(bp, ep - bp, this);
+			}
 			*bp++ = '\n';
 			*bp = '\0';
 			fputs(buf, stdout);
@@ -898,7 +900,9 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
-		bp += ctl_caev_wr(bp, ep - bp, sum);
+		if (argi->raw_flag) {
+			bp += ctl_caev_wr(bp, ep - bp, sum);
+		}
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(buf, stdout);

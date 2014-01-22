@@ -36,6 +36,7 @@ Usage: cattle print [CAEV-FILE]...
 Print resulting actors of caev echse messages.
 
   -S, --summary         Roll all CA events into one.
+  -r, --raw             Print raw actors.
   -u, --unique          Assume that only one CA event will occur at any
                         one date/time.
 
