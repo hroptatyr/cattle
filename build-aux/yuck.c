@@ -51,6 +51,9 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <time.h>
+#if defined WITH_SCMVER
+# include <yuck-scmver.h>
+#endif	/* WITH_SCMVER */
 
 #if !defined LIKELY
 # define LIKELY(_x)	__builtin_expect((_x), 1)
@@ -96,6 +99,18 @@ struct opt_s {
 	unsigned int oarg:1U;
 	unsigned int marg:1U;
 };
+
+#if !defined BOOTSTRAP && defined WITH_SCMVER
+static const char *yscm_strs[] = {
+	[YUCK_SCM_TARBALL] = "tarball",
+	[YUCK_SCM_GIT] = "git",
+	[YUCK_SCM_BZR] = "bzr",
+	[YUCK_SCM_HG] = "hg",
+};
+#elif !defined BOOTSTRAP
+/* just forward declare this type so function signatures will work */
+struct yuck_version_s;
+#endif	/* WITH_SCMVER */
 
 
 static __attribute__((format(printf, 1, 2))) void
@@ -253,6 +268,43 @@ unmassage_buf(char *restrict buf, size_t bsz)
 	}
 	return;
 }
+
+static FILE*
+mkftempps(char *restrict tmpl[static 1U], int prefixlen, int suffixlen)
+{
+	char *bp = *tmpl + prefixlen;
+	char *ep = *tmpl + strlen(*tmpl) - suffixlen;
+	int fd;
+
+	if (ep[-6] != 'X' || ep[-5] != 'X' || ep[-4] != 'X' ||
+	    ep[-3] != 'X' || ep[-2] != 'X' || ep[-1] != 'X') {
+		if ((fd = open(bp, O_RDWR | O_CREAT | O_EXCL, 0666)) < 0 &&
+		    (bp -= prefixlen,
+		     fd = open(bp, O_RDWR | O_CREAT | O_EXCL, 0666)) < 0) {
+			/* fuck that then */
+			return NULL;
+		}
+	} else if (UNLIKELY((fd = mkstemps(bp, suffixlen)) < 0) &&
+		   UNLIKELY((bp -= prefixlen,
+			     /* reset to XXXXXX */
+			     memset(ep - 6, 'X', 6U),
+			     fd = mkstemps(bp, suffixlen)) < 0)) {
+		/* at least we tried */
+		return NULL;
+	}
+	/* store result */
+	*tmpl = bp;
+	return fdopen(fd, "w");
+}
+
+# if defined WITH_SCMVER
+static bool
+regfilep(const char *fn)
+{
+	struct stat st[1U];
+	return stat(fn, st) == 0 && S_ISREG(st->st_mode);
+}
+# endif	/* WITH_SCMVER */
 #endif	/* !BOOTSTRAP */
 
 
@@ -390,7 +442,7 @@ overread:
 	if (cur_usg.cmd && !strncasecmp(cur_usg.cmd, cp, sp - cp)) {
 		/* nothing new and fresh */
 		;
-	} else if ((*cp != '<' || cp[--sp - cp++] == '>') &&
+	} else if ((*cp != '<' || (cp++, *--sp == '>')) &&
 		   !strncasecmp(cp, "command", sp - cp)) {
 		/* special command COMMAND or <command> */
 		cur_usg.cmd = NULL;
@@ -443,6 +495,9 @@ yield:
 	memset(&cur_opt, 0, sizeof(cur_opt));
 	if (sp - line < 2) {
 		/* can't be an option, can it? */
+		return 0;
+	} else if (!*sp) {
+		/* not an option either */
 		return 0;
 	}
 
@@ -996,8 +1051,8 @@ unmassage_fd(int tgtfd, int srcfd)
 static __attribute__((noinline)) int
 run_m4(const char *outfn, ...)
 {
-	static char *m4_cmdline[6U] = {
-		"m4", dslfn,
+	static char *m4_cmdline[16U] = {
+		"m4",
 	};
 	va_list vap;
 	pid_t m4p;
@@ -1043,6 +1098,8 @@ run_m4(const char *outfn, ...)
 		if (WIFEXITED(st)) {
 			rc = WEXITSTATUS(st);
 		}
+		/* clean up the rest of the pipe */
+		close(intfd[0]);
 		return rc;
 
 	case 0:;
@@ -1058,7 +1115,7 @@ run_m4(const char *outfn, ...)
 	}
 	/* child code here */
 	va_start(vap, outfn);
-	for (size_t i = 2U;
+	for (size_t i = 1U;
 	     i < countof(m4_cmdline) &&
 		     (m4_cmdline[i] = va_arg(vap, char*)) != NULL; i++);
 	va_end(vap);
@@ -1073,13 +1130,29 @@ bollocks:
 }
 
 static int
+wr_pre(void)
+{
+	fputs("\
+changequote`'changequote([,])dnl\n\
+divert([-1])\n", outf);
+	return 0;
+}
+
+static int
+wr_suf(void)
+{
+	fputs("\n\
+changequote`'dnl\n\
+divert`'dnl\n", outf);
+	return 0;
+}
+
+static int
 wr_intermediary(char *const args[], size_t nargs)
 {
 	int rc = 0;
 
-	fputs("\
-changequote([,])dnl\n\
-divert([-1])\n", outf);
+	wr_pre();
 
 	if (nargs == 0U) {
 		if (snarf_f(stdin) < 0) {
@@ -1103,10 +1176,8 @@ divert([-1])\n", outf);
 		/* clean up */
 		fclose(yf);
 	}
-	/* make sure we close the outfile */
-	fputs("\n\
-changecom([//])\n\
-divert[]dnl\n", outf);
+	/* reset to sane values */
+	wr_suf();
 	return rc;
 }
 
@@ -1123,7 +1194,9 @@ wr_header(const char hdr[static 1U])
 		} else {
 			hp++;
 		};
+		wr_pre();
 		fprintf(outf, "define([YUCK_HEADER], [%s])dnl\n", hp);
+		wr_suf();
 	}
 	return 0;
 }
@@ -1143,15 +1216,73 @@ wr_man_date(void)
 	} else if (!strftime(buf, sizeof(buf), "%B %Y", tp)) {
 		rc = -1;
 	} else {
+		wr_pre();
 		fprintf(outf, "define([YUCK_MAN_DATE], [%s])dnl\n", buf);
+		wr_suf();
 	}
 	return rc;
 }
 
 static int
-wr_version(const char ver[static 1U])
+wr_version(const struct yuck_version_s *v, const char *vlit)
 {
-	fprintf(outf, "define([YUCK_VER], [%s])dnl\n", ver);
+	wr_pre();
+
+	if (v != NULL) {
+#if defined WITH_SCMVER
+		const char *yscm = yscm_strs[v->scm];
+
+		fprintf(outf, "define([YUCK_SCMVER_VTAG], [%s])\n", v->vtag);
+		fprintf(outf, "define([YUCK_SCMVER_SCM], [%s])\n", yscm);
+		fprintf(outf, "define([YUCK_SCMVER_DIST], [%u])\n", v->dist);
+		fprintf(outf, "define([YUCK_SCMVER_RVSN], [%08x])\n", v->rvsn);
+		if (!v->dirty) {
+			fputs("define([YUCK_SCMVER_FLAG_CLEAN])\n", outf);
+		} else {
+			fputs("define([YUCK_SCMVER_FLAG_DIRTY])\n", outf);
+		}
+
+		/* for convenience */
+		fputs("define([YUCK_SCMVER_VERSION], [", outf);
+		fputs(v->vtag, outf);
+		if (v->scm > YUCK_SCM_TARBALL && v->dist) {
+			fputc('.', outf);
+			fputs(yscm_strs[v->scm], outf);
+			fprintf(outf, "%u.%08x", v->dist, v->rvsn);
+		}
+		if (v->dirty) {
+			fputs(".dirty", outf);
+		}
+		fputs("])\n", outf);
+#else  /* !WITH_SCMVER */
+		errno = 0;
+		error("\
+scmver support not built in but ptr %p given to wr_version()", v);
+#endif	/* WITH_SCMVER */
+	}
+	if (vlit != NULL) {
+		fputs("define([YUCK_VERSION], [", outf);
+		fputs(vlit, outf);
+		fputs("])\n", outf);
+	}
+	wr_suf();
+	return 0;
+}
+
+static int
+rm_intermediary(const char *fn, int keepp)
+{
+	if (!keepp) {
+		if (unlink(fn) < 0) {
+			error("cannot remove intermediary `%s'", fn);
+			return -1;
+		}
+	} else {
+		/* otherwise print a nice message so users know
+		 * the file we created */
+		errno = 0;
+		error("intermediary `%s' kept", fn);
+	}
 	return 0;
 }
 #endif	/* !BOOTSTRAP */
@@ -1163,9 +1294,10 @@ wr_version(const char ver[static 1U])
 static int
 cmd_gen(const struct yuck_cmd_gen_s argi[static 1U])
 {
-	static const char deffn[] = "yuck.m4i";
+	static char _deffn[] = P_tmpdir "/" "yuck_XXXXXX.m4i";
 	static char gencfn[PATH_MAX];
 	static char genhfn[PATH_MAX];
+	char *deffn = _deffn;
 	int rc = 0;
 
 	if (argi->no_auto_flags_flag) {
@@ -1176,7 +1308,7 @@ cmd_gen(const struct yuck_cmd_gen_s argi[static 1U])
 	}
 
 	/* deal with the output first */
-	if (UNLIKELY((outf = fopen(deffn, "w")) == NULL)) {
+	if (UNLIKELY((outf = mkftempps(&deffn, sizeof(P_tmpdir), 4)) == NULL)) {
 		error("cannot open intermediate file `%s'", deffn);
 		return -1;
 	}
@@ -1184,7 +1316,7 @@ cmd_gen(const struct yuck_cmd_gen_s argi[static 1U])
 	rc = wr_intermediary(argi->args, argi->nargs);
 	/* deal with hard wired version numbers */
 	if (argi->version_arg) {
-		rc += wr_version(argi->version_arg);
+		rc += wr_version(NULL, argi->version_arg);
 	}
 	/* special directive for the header or is it */
 	if (argi->header_arg != NULL) {
@@ -1211,39 +1343,54 @@ cmd_gen(const struct yuck_cmd_gen_s argi[static 1U])
 	with (const char *outfn = argi->output_arg, *hdrfn) {
 		if ((hdrfn = argi->header_arg) != NULL) {
 			/* run a special one for the header */
-			if ((rc = run_m4(hdrfn, deffn, genhfn, NULL))) {
+			if ((rc = run_m4(hdrfn, dslfn, deffn, genhfn, NULL))) {
 				break;
 			}
 			/* now run the whole shebang for the beef code */
-			rc = run_m4(outfn, deffn, gencfn, NULL);
+			rc = run_m4(outfn, dslfn, deffn, gencfn, NULL);
 			break;
 		}
 		/* standard case: pipe directives, then header, then code */
-		rc = run_m4(outfn, deffn, genhfn, gencfn, NULL);
+		rc = run_m4(outfn, dslfn, deffn, genhfn, gencfn, NULL);
 	}
 out:
-	if (!0/*argi->keep_intermediate*/) {
-		unlink(deffn);
-	}
+	rm_intermediary(deffn, argi->keep_flag);
 	return rc;
 }
 
 static int
 cmd_genman(const struct yuck_cmd_genman_s argi[static 1U])
 {
-	static const char deffn[] = "yuck.m4i";
+	static char _deffn[] = P_tmpdir "/" "yuck_XXXXXX.m4i";
 	static char genmfn[PATH_MAX];
+	char *deffn = _deffn;
 	int rc = 0;
 
 	/* deal with the output first */
-	if (UNLIKELY((outf = fopen(deffn, "w")) == NULL)) {
+	if (UNLIKELY((outf = mkftempps(&deffn, sizeof(P_tmpdir), 4)) == NULL)) {
 		error("cannot open intermediate file `%s'", deffn);
 		return -1;
 	}
 	/* write up our findings in DSL language */
 	rc = wr_intermediary(argi->args, argi->nargs);
-	if (argi->version_arg) {
-		rc += wr_version(argi->version_arg);
+	if (argi->version_string_arg) {
+		rc += wr_version(NULL, argi->version_string_arg);
+	} else if (argi->version_file_arg) {
+#if defined WITH_SCMVER
+		struct yuck_version_s v[1U];
+		const char *verfn = argi->version_file_arg;
+
+		if (yuck_version_read(v, verfn) < 0) {
+			error("cannot read version number from `%s'", verfn);
+			rc--;
+		} else {
+			rc += wr_version(v, NULL);
+		}
+#else  /* !WITH_SCMVER */
+		errno = 0;
+		error("\
+scmver support not built in, --version-file cannot be used");
+#endif	/* WITH_SCMVER */
 	}
 	/* at least give the man page template an idea for YUCK_MAN_DATE */
 	rc += wr_man_date();
@@ -1266,12 +1413,10 @@ cmd_genman(const struct yuck_cmd_genman_s argi[static 1U])
 	/* now route that stuff through m4 */
 	with (const char *outfn = argi->output_arg) {
 		/* standard case: pipe directives, then header, then code */
-		rc = run_m4(outfn, deffn, genmfn, NULL);
+		rc = run_m4(outfn, dslfn, deffn, genmfn, NULL);
 	}
 out:
-	if (!0/*argi->keep_intermediate*/) {
-		unlink(deffn);
-	}
+	rm_intermediary(deffn, argi->keep_flag);
 	return rc;
 }
 
@@ -1287,13 +1432,110 @@ cmd_gendsl(const struct yuck_cmd_gendsl_s argi[static 1U])
 		global_tweaks.no_auto_action = 1U;
 	}
 
-	/* bang to stdout */
-	outf = stdout;
+	/* bang to stdout or argi->output_arg */
+	with (const char *outfn = argi->output_arg) {
+		if (outfn == NULL) {
+			outf = stdout;
+		} else if ((outf = fopen(outfn, "w")) == NULL) {
+			error("cannot open outfile `%s'", outfn);
+			return 1;
+		}
+	}
 	rc += wr_intermediary(argi->args, argi->nargs);
 	if (argi->version_arg) {
-		rc += wr_version(argi->version_arg);
+		rc += wr_version(NULL, argi->version_arg);
 	}
 	return rc;
+}
+
+static int
+cmd_scmver(const struct yuck_cmd_scmver_s argi[static 1U])
+{
+#if defined WITH_SCMVER
+	struct yuck_version_s v[1U];
+	struct yuck_version_s ref[1U];
+	const char *const reffn = argi->reference_arg;
+	const char *const infn = argi->args[0U];
+	int rc = 0;
+
+	/* read the reference file before it goes out of fashion */
+	if (reffn && yuck_version_read(ref, reffn) < 0 &&
+	    /* only be fatal if we actually want to use the reference file */
+	    argi->use_reference_flag) {
+		error("cannot read reference file `%s'", reffn);
+		return 1;
+	} else if (reffn == NULL && argi->use_reference_flag) {
+		errno = 0, error("\
+flag -n|--use-reference requires -r|--reference parameter");
+		return 1;
+	} else if (!argi->use_reference_flag && yuck_version(v, infn) < 0) {
+		if (argi->ignore_noscm_flag) {
+			/* allow graceful exit through --ignore-noscm */
+			return 0;
+		}
+		error("cannot determine SCM");
+		return 1;
+	}
+
+	if (reffn && argi->use_reference_flag) {
+		/* must populate v then */
+		*v = *ref;
+	} else if (reffn && yuck_version_cmp(v, ref)) {
+		if (argi->verbose_flag) {
+			errno = 0;
+			error("scm version differs from reference");
+		}
+		/* version stamps differ */
+		yuck_version_write(argi->reference_arg, v);
+		/* reserve exit code 3 for `updated reference file' */
+		rc = 3;
+	} else if (reffn && !argi->force_flag) {
+		/* don't worry about anything then */
+		return 0;
+	}
+
+	if (infn != NULL && regfilep(infn)) {
+		static char _scmvfn[] = P_tmpdir "/" "yscm_XXXXXX.m4i";
+		static char tmplfn[PATH_MAX];
+		char *scmvfn = _scmvfn;
+
+		/* try the local dir first */
+		if ((outf = mkftempps(&scmvfn, sizeof(P_tmpdir), 4)) == NULL) {
+			error("cannot open intermediate file `%s'", scmvfn);
+			rc = 1;
+		} else if (find_aux(tmplfn, sizeof(tmplfn),
+				    "yuck-scmver.m4") < 0) {
+			error("cannot find yuck template for version strings");
+			rc = 1;
+		} else {
+			const char *outfn = argi->output_arg;
+
+			/* write the actual version info */
+			rc += wr_version(v, NULL);
+			/* and we're finished with the intermediary */
+			fclose(outf);
+			/* macro massage, vtmpfn is the template file */
+			rc = run_m4(outfn, scmvfn, tmplfn, infn, NULL);
+
+			rm_intermediary(scmvfn, argi->keep_flag);
+		}
+	} else {
+		fputs(v->vtag, stdout);
+		if (v->scm > YUCK_SCM_TARBALL && v->dist) {
+			fputc('.', stdout);
+			fputs(yscm_strs[v->scm], stdout);
+			fprintf(stdout, "%u.%08x", v->dist, v->rvsn);
+		}
+		if (v->dirty) {
+			fputs(".dirty", stdout);
+		}
+		fputc('\n', stdout);
+	}
+	return rc;
+#else  /* !WITH_SCMVER */
+	fputs("scmver support not built in\n", stderr);
+	return argi->cmd == YUCK_CMD_SCMVER;
+#endif	/* WITH_SCMVER */
 }
 
 int
@@ -1326,6 +1568,11 @@ See --help to obtain a list of available commands.\n", stderr);
 		break;
 	case YUCK_CMD_GENMAN:
 		if ((rc = cmd_genman((const void*)argi)) < 0) {
+			rc = 1;
+		}
+		break;
+	case YUCK_CMD_SCMVER:
+		if ((rc = cmd_scmver((const void*)argi)) < 0) {
 			rc = 1;
 		}
 		break;
