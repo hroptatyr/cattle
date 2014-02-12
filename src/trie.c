@@ -157,7 +157,7 @@ deinit_trie(struct trie_s *restrict t)
 		/* append all children */
 		for (size_t i = 0U; i < countof(n->next); i++) {
 			if (n->next[i] != NULL) {
-				node_list_push(&free_nodes, n);
+				node_list_push(&free_nodes, n->next[i]);
 			}
 		}
 		/* finally free the node */
