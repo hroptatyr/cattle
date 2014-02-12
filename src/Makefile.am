@@ -35,6 +35,7 @@ libcattle_la_SOURCES += dt-strpf.c dt-strpf.h
 libcattle_la_SOURCES += instant.h
 libcattle_la_SOURCES += wheap.c wheap.h
 libcattle_la_SOURCES += trie.c trie.h
+libcattle_la_SOURCES += intern.c intern.h
 libcattle_la_SOURCES += caev-series.c caev-series.h
 libcattle_la_SOURCES += nifty.h
 libcattle_la_SOURCES += coru.h
