@@ -41,8 +41,25 @@
 #include "instant.h"
 #include "caev-supp.h"
 
+typedef struct ctl_kvv_s *ctl_kvv_t;
+
+struct ctl_kv_s {
+	const char *key;
+	const char *val;
+};
+
+struct ctl_kvv_s {
+	size_t nkvv;
+	struct ctl_kv_s kvv[];
+};
+
 
 extern ctl_caev_t
 ctl_caev_rdr(struct ctl_ctx_s *ctx, echs_instant_t x, const char *msg);
+
+extern ctl_kvv_t
+ctl_kv_rdr(struct ctl_ctx_s *ctx, const char *msg);
+
+extern void free_kvv(ctl_kvv_t);
 
 #endif	/* INCLUDED_caev_rdr_h_ */
