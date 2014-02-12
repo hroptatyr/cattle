@@ -163,6 +163,7 @@ deinit_trie(struct trie_s *restrict t)
 		/* finally free the node */
 		free(n);
 	}
+	t->root = NULL;
 	return;
 }
 
