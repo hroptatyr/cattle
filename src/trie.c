@@ -129,24 +129,20 @@ __find(trie_t t, const char *key)
 }
 
 
-trie_t
-make_trie(void)
+void
+init_trie(struct trie_s *restrict t)
 {
-	trie_t res;
-
-	if ((res = calloc(1U, sizeof(*res))) == NULL) {
-		return NULL;
-	}
-	return res;
+	t->root = NULL;
+	return;
 }
 
 void
-free_trie(trie_t t)
+deinit_trie(struct trie_s *restrict t)
 {
 	node_t free_nodes = NULL;
 
 	if (t->root == NULL) {
-		goto out;
+		return;
 	}
 
 	if (t->root != NULL) {
@@ -167,8 +163,24 @@ free_trie(trie_t t)
 		/* finally free the node */
 		free(n);
 	}
-out:
-	/* hand back memory */
+	return;
+}
+
+trie_t
+make_trie(void)
+{
+	trie_t res;
+
+	if ((res = calloc(1U, sizeof(*res))) == NULL) {
+		return NULL;
+	}
+	return res;
+}
+
+void
+free_trie(trie_t t)
+{
+	deinit_trie(t);
 	free(t);
 	return;
 }

@@ -49,6 +49,14 @@ extern trie_t make_trie(void);
 extern void free_trie(trie_t);
 
 /**
+ * Initialiser for statically alloc'd tries. */
+extern void init_trie(struct trie_s *restrict);
+
+/**
+ * Deinitialiser for statically alloc'd tries. */
+extern void deinit_trie(struct trie_s *restrict);
+
+/**
  * Associate KEY with VAL in trie T, don't check if KEY is already in there. */
 extern int trie_put(trie_t t, const char *key, void *val);
 
