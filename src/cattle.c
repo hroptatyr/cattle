@@ -955,14 +955,14 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	ctl_caev_t sum = ctl_zero_caev();
 	ctl_caev_t prev = sum;
 	echs_instant_t prev_t = {.u = 0U};
-	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
+	for (echs_instant_t t;
+	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
 		colour_t this = ctl_wheap_pop(ctx->q);
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
 		if (argi->unique_flag && __inst_eq_p(prev_t, t)) {
-			prev_t = t;
 			if (rawp && !memcmp(&this, &prev, sizeof(this.c))) {
 				/* completely identical */
 				continue;
