@@ -172,10 +172,10 @@ ctl_kvv_wr(char *restrict buf, size_t bsz, ctl_kvv_t flds)
 	const char *const ep = buf + bsz;
 
 	for (size_t i = 0U; i < flds->nkvv && bp + 4U < ep; i++) {
-		bp += xstrlcpy(bp, flds->kvv[i].key, ep - bp);
+		bp += xstrlcpy(bp, obint_name(flds->kvv[i].key), ep - bp);
 		*bp++ = '=';
 		*bp++ = '"';
-		bp += xstrlcpy(bp, flds->kvv[i].val, ep - bp);
+		bp += xstrlcpy(bp, obint_name(flds->kvv[i].val), ep - bp);
 		*bp++ = '"';
 		*bp++ = ' ';
 	}
