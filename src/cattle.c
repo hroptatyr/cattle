@@ -257,7 +257,7 @@ static const struct pop_res_s {
 
 	while (!__inst_0_p(res.t = ctl_wheap_top_rank(c->q))) {
 		/* assume it's a ctl-caev_t */
-		*this = ctl_wheap_pop(c->q);
+		*this = ctl_wheap_pop(c->q).c;
 		res.msg = this;
 		res.msz = sizeof(ctl_caev_t);
 		yield(res);
@@ -442,7 +442,7 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		ctl_caev_t c = ctl_caev_rdr(ctx, ln->t, ln->ln);
 
 		/* insert to heap */
-		ctl_wheap_add_deferred(ctx->q, ln->t, c);
+		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){c});
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
@@ -871,7 +871,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	ctl_caev_t sum = ctl_zero_caev();
 	ctl_caev_t prev = sum;
 	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
-		ctl_caev_t this = ctl_wheap_pop(ctx->q);
+		colour_t this = ctl_wheap_pop(ctx->q);
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
@@ -885,14 +885,14 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 			bp += dt_strf(bp, ep - bp, t);
 			*bp++ = '\t';
 			if (argi->raw_flag) {
-				bp += ctl_caev_wr(bp, ep - bp, this);
+				bp += ctl_caev_wr(bp, ep - bp, this.c);
+				prev = this.c;
 			}
 			*bp++ = '\n';
 			*bp = '\0';
 			fputs(buf, stdout);
-			prev = this;
-		} else {
-			sum = ctl_caev_add(sum, this);
+		} else if (argi->raw_flag) {
+			sum = ctl_caev_add(sum, this.c);
 		}
 	}
 	if (argi->summary_flag) {

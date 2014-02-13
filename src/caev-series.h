@@ -38,7 +38,10 @@
 #define INCLUDED_caev_series_h_
 #include "caev.h"
 
-typedef struct ctl_caev_s colour_t;
+typedef union {
+	ctl_caev_t c;
+	void *flds;
+} colour_t;
 #define WHEAP_COLOUR_T
 
 typedef struct ctl_wheap_s *ctl_caevs_t;
