@@ -250,34 +250,38 @@ ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
 	char *cp;
 	size_t fldi = 0U;
 
-	if (*s == '.') {
-		s++;
-	}
+	do {
+		for (; *s && *s <= ' '; s++);
+		if (!*s) {
+			break;
+		} else if (*s == '.') {
+			s++;
+		}
 
-	for (cp = cache; *s != '='; *cp++ = *s++);
-	*cp = '\0';
+		for (cp = cache; *s != '='; *cp++ = *s++);
+		*cp = '\0';
 
-	/* use CHECK_FLDS from above */
-	CHECK_FLDS;
+		/* use CHECK_FLDS from above */
+		CHECK_FLDS;
 
-	/* get interned field */
-	flds[fldi].key = intern(cache);
+		/* get interned field */
+		flds[fldi].key = intern(cache);
 
-	/* otherwise try and read the code */
-	switch (*s) {
-	case '"':
-	case '\'':
-		s++;
-		break;
-	default:
-		/* no quotes :/ wish me luck */
-		break;
-	}
-	for (cp = cache; *s > ' ' && *s != '"' && *s != '\''; *cp++ = *s++);
-	*cp = '\0';
-	/* get interned value */
-	flds[fldi++].val = intern(cache);
-
+		/* otherwise try and read the code */
+		switch (*++s) {
+		case '"':
+		case '\'':
+			s++;
+			break;
+		default:
+			/* no quotes :/ wish me luck */
+			break;
+		}
+		for (cp = cache; *s > ' ' && *s != '"' && *s != '\''; *cp++ = *s++);
+		*cp = '\0';
+		/* get interned value */
+		flds[fldi++].val = intern(cache);
+	} while (*s++);
 	return make_kvv(flds, fldi);
 }
 
