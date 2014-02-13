@@ -1,6 +1,6 @@
 #!/usr/bin/clitoris ## -*- shell-script -*-
 
-$ cat "${srcdir}/cattle_12.echs" "${srcdir}/cattle_13.echs" | cattle print
+$ cat "${srcdir}/cattle_12.echs" "${srcdir}/cattle_13.echs" | cattle print --raw
 2013-10-04	caev=CTL1 {.xmkt="-2.00+0<-0" .xnom="0+0<-0" .xout="0+0<-0"}
 2013-10-04	caev=CTL1 {.xmkt="-2.00+0<-0" .xnom="0+0<-0" .xout="0+0<-0"}
 2013-10-07	caev=CTL1 {.xmkt="-2.00+0<-0" .xnom="0+0<-0" .xout="0+0<-0"}
