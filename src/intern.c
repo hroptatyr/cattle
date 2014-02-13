@@ -37,6 +37,7 @@
 #if defined HAVE_CONFIG_H
 # include "config.h"
 #endif	/* HAVE_CONFIG_H */
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include "trie.h"
@@ -54,13 +55,13 @@ static size_t intp;
 static size_t intz;
 
 
-const char*
+obint_t
 intern(const char *str)
 {
-	char *res;
+	obint_t res;
 	size_t ztr;
 
-	if ((res = trie_get(intt, str)) != NULL) {
+	if ((res = (uintptr_t)trie_get(intt, str))) {
 		return res;
 	}
 	/* otherwise intern the string */
@@ -74,15 +75,21 @@ intern(const char *str)
 	}
 
 	/* make the unique copy of STR */
-	memcpy(res = ints + intp, str, ztr);
+	memcpy(ints + (res = intp), str, ztr);
 	/* up our admin pointers */
 	intp += ztr;
 	/* finalise string */
 	ints[intp++] = '\0';
 
 	/* and finally leave a not in the trie */
-	trie_put(intt, str, res);
+	trie_put(intt, str, (void*)res);
 	return res;
+}
+
+const char*
+obint_name(obint_t ob)
+{
+	return ints + (ptrdiff_t)ob;
 }
 
 void

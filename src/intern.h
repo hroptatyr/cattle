@@ -37,9 +37,17 @@
 #if !defined INCLUDED_intern_h_
 #define INCLUDED_intern_h_
 
+#include <inttypes.h>
+
+typedef uintptr_t obint_t;
+
 /**
  * Return the interned representation of STR. */
-extern const char *intern(const char *str);
+extern obint_t intern(const char *str);
+
+/**
+ * Return the string representation of OBI. */
+extern const char *obint_name(obint_t);
 
 /**
  * Clean up resources used by the interning system. */
