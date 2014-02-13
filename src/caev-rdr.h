@@ -40,12 +40,13 @@
 #include "cattle.h"
 #include "instant.h"
 #include "caev-supp.h"
+#include "intern.h"
 
 typedef struct ctl_kvv_s *ctl_kvv_t;
 
 struct ctl_kv_s {
-	const char *key;
-	const char *val;
+	obint_t key;
+	obint_t val;
 };
 
 struct ctl_kvv_s {
