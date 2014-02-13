@@ -974,6 +974,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 			*bp++ = '\t';
 			if (!rawp) {
 				bp += ctl_kvv_wr(bp, ep - bp, this.flds);
+				free_kvv(this.flds);
 			} else {
 				bp += ctl_caev_wr(bp, ep - bp, this.c);
 				prev = this.c;
