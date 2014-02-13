@@ -40,9 +40,27 @@
 #include "cattle.h"
 #include "instant.h"
 #include "caev-supp.h"
+#include "intern.h"
+
+typedef struct ctl_kvv_s *ctl_kvv_t;
+
+struct ctl_kv_s {
+	obint_t key;
+	obint_t val;
+};
+
+struct ctl_kvv_s {
+	size_t nkvv;
+	struct ctl_kv_s kvv[];
+};
 
 
 extern ctl_caev_t
 ctl_caev_rdr(struct ctl_ctx_s *ctx, echs_instant_t x, const char *msg);
+
+extern ctl_kvv_t
+ctl_kv_rdr(struct ctl_ctx_s *ctx, const char *msg);
+
+extern void free_kvv(ctl_kvv_t);
 
 #endif	/* INCLUDED_caev_rdr_h_ */

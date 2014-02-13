@@ -57,7 +57,7 @@ ctl_caev_sum(ctl_caevs_t cs)
 
 	ctl_wheap_sort(cs);
 	for (size_t i = 0; i < cs->n; i++) {
-		sum = ctl_caev_add(sum, cs->colours[i]);
+		sum = ctl_caev_add(sum, cs->colours[i].c);
 	}
 	return sum;
 }

@@ -1,6 +1,6 @@
-/*** caev-series.h -- time series of caevs
+/*** intern.c -- interning system
  *
- * Copyright (C) 2013 Sebastian Freundt
+ * Copyright (C) 2013-2014 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -33,25 +33,73 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- **/
-#if !defined INCLUDED_caev_series_h_
-#define INCLUDED_caev_series_h_
-#include "caev.h"
+ ***/
+#if defined HAVE_CONFIG_H
+# include "config.h"
+#endif	/* HAVE_CONFIG_H */
+#include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+#include "trie.h"
+#include "intern.h"
 
-typedef union {
-	ctl_caev_t c;
-	void *flds;
-} colour_t;
-#define WHEAP_COLOUR_T
+typedef struct node_s *node_t;
 
-typedef struct ctl_wheap_s *ctl_caevs_t;
+struct trie_s {
+	node_t root;
+};
 
-/* must be included after we've def'd WHEAP_COLOUR_T */
-#include "wheap.h"
+static struct trie_s intt[1U];
+static char *restrict ints;
+static size_t intp;
+static size_t intz;
 
 
-/**
- * Return a sum of corporate actions without changing the contents of CS. */
-extern ctl_caev_t ctl_caev_sum(ctl_caevs_t cs);
+obint_t
+intern(const char *str)
+{
+	obint_t res;
+	size_t ztr;
 
-#endif	/* INCLUDED_caev_series_h_ */
+	if ((res = (uintptr_t)trie_get(intt, str))) {
+		return res;
+	}
+	/* otherwise intern the string */
+	ztr = strlen(str);
+
+	/* resize? */
+	if (intp + ztr >= intz) {
+		/* time to resize again */
+		intz = (intz * 2U) ?: 256U;
+		ints = realloc(ints, intz);
+	}
+
+	/* make the unique copy of STR */
+	memcpy(ints + (res = intp), str, ztr);
+	/* up our admin pointers */
+	intp += ztr;
+	/* finalise string */
+	ints[intp++] = '\0';
+
+	/* and finally leave a not in the trie */
+	trie_put(intt, str, (void*)res);
+	return res;
+}
+
+const char*
+obint_name(obint_t ob)
+{
+	return ints + (ptrdiff_t)ob;
+}
+
+void
+clear_interns(void)
+{
+	deinit_trie(intt);
+	free(ints);
+	ints = NULL;
+	intz = 0U;
+	return;
+}
+
+/* intern.c ends here */

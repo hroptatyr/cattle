@@ -42,6 +42,7 @@
 #include "caev-supp.h"
 #include "caev-rdr.h"
 #include "ctl-dfp754.h"
+#include "intern.h"
 #include "nifty.h"
 
 /* gperf gen'd goodness */
@@ -133,6 +134,15 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 	default:
 		return res;
 	}
+	return res;
+}
+
+static ctl_kvv_t
+make_kvv(const struct ctl_kv_s *f, size_t n)
+{
+	ctl_kvv_t res = malloc(sizeof(*res) + n * sizeof(*res->kvv));
+
+	memcpy(res->kvv, f, (res->nkvv = n) * sizeof(*res->kvv));
 	return res;
 }
 
@@ -229,6 +239,60 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 	res = make_caev(flds, fldi);
 out:
 	return res;
+}
+
+ctl_kvv_t
+ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
+{
+	static struct ctl_kv_s *flds;
+	static size_t nflds;
+	char cache[256U];
+	char *cp;
+	size_t fldi = 0U;
+
+	do {
+		char ep = ' ';
+
+		for (; *s && *s <= ' '; s++);
+		if (!*s) {
+			break;
+		} else if (*s == '.') {
+			s++;
+		}
+
+		for (cp = cache; *s != '='; *cp++ = *s++);
+		*cp = '\0';
+
+		/* use CHECK_FLDS from above */
+		CHECK_FLDS;
+
+		/* get interned field */
+		flds[fldi].key = intern(cache);
+
+		/* otherwise try and read the code */
+		switch (*++s) {
+		case '"':
+		case '\'':
+			ep = *s;
+			s++;
+			break;
+		default:
+			/* no quotes :/ wish me luck */
+			break;
+		}
+		for (cp = cache; *s >= ' ' && *s != ep; *cp++ = *s++);
+		*cp = '\0';
+		/* get interned value */
+		flds[fldi++].val = intern(cache);
+	} while (*s++);
+	return make_kvv(flds, fldi);
+}
+
+void
+free_kvv(ctl_kvv_t f)
+{
+	free(f);
+	return;
 }
 
 /* caev-rdr.c ends here */

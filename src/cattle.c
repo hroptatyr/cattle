@@ -86,6 +86,18 @@ error(const char *fmt, ...)
 	return;
 }
 
+static size_t
+xstrlcpy(char *restrict dst, const char *src, size_t dsz)
+{
+	size_t ssz = strlen(src);
+	if (ssz > dsz) {
+		ssz = dsz - 1U;
+	}
+	memcpy(dst, src, ssz);
+	dst[ssz] = '\0';
+	return ssz;
+}
+
 static int
 pr_ei(echs_instant_t t)
 {
@@ -149,6 +161,28 @@ ctl_caev_wr(char *restrict buf, size_t bsz, ctl_caev_t c)
 	bp += snprintf(bp, ep - bp, "%+d<-%u", c.outsec.r.p, c.outsec.r.q);
 	*bp++ = '"';
 	*bp++ = '}';
+	*bp = '\0';
+	return bp - buf;
+}
+
+static size_t
+ctl_kvv_wr(char *restrict buf, size_t bsz, ctl_kvv_t flds)
+{
+	char *restrict bp = buf;
+	const char *const ep = buf + bsz;
+
+	for (size_t i = 0U; i < flds->nkvv && bp + 4U < ep; i++) {
+		bp += xstrlcpy(bp, obint_name(flds->kvv[i].key), ep - bp);
+		*bp++ = '=';
+		*bp++ = '"';
+		bp += xstrlcpy(bp, obint_name(flds->kvv[i].val), ep - bp);
+		*bp++ = '"';
+		*bp++ = ' ';
+	}
+	if (bp[-1] == ' ') {
+		/* don't want no dangling space, do we? */
+		bp--;
+	}
 	*bp = '\0';
 	return bp - buf;
 }
@@ -257,7 +291,7 @@ static const struct pop_res_s {
 
 	while (!__inst_0_p(res.t = ctl_wheap_top_rank(c->q))) {
 		/* assume it's a ctl-caev_t */
-		*this = ctl_wheap_pop(c->q);
+		*this = ctl_wheap_pop(c->q).c;
 		res.msg = this;
 		res.msz = sizeof(ctl_caev_t);
 		yield(res);
@@ -442,7 +476,38 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		ctl_caev_t c = ctl_caev_rdr(ctx, ln->t, ln->ln);
 
 		/* insert to heap */
-		ctl_wheap_add_deferred(ctx->q, ln->t, c);
+		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){c});
+	}
+	/* now sort the guy */
+	ctl_wheap_fix_deferred(ctx->q);
+	free_coru(rdr);
+	fclose(f);
+	fini_coru();
+	return 0;
+}
+
+static int
+ctl_read_kv_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
+{
+/* wants a const char *fn */
+	coru_t rdr;
+	FILE *f;
+
+	if (fn == NULL) {
+		f = stdin;
+	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+		return -1;
+	}
+
+	init_coru();
+	rdr = make_coru(co_appl_rdr, f);
+
+	for (const struct rdr_res_s *ln; (ln = next(rdr));) {
+		/* try to read the whole shebang */
+		ctl_kvv_t v = ctl_kv_rdr(ctx, ln->ln);
+
+		/* insert to heap */
+		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){.flds = v});
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
@@ -844,21 +909,40 @@ static int
 cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 {
 	static struct ctl_ctx_s ctx[1];
+	bool rawp = argi->raw_flag;
 	int res = 0;
 
 	if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
 		res = 1;
 		goto out;
+	} else if (argi->summary_flag) {
+		/* --summary implies --raw */
+		rawp = true;
 	}
 
-	if (argi->nargs == 0U) {
+	if (argi->nargs == 0U && !rawp) {
+		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
+			error("cannot read from stdin");
+			res = 1;
+			goto out;
+		}
+	} else if (argi->nargs == 0U) {
 		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
 			error("cannot read from stdin");
 			res = 1;
 			goto out;
 		}
 	}
-	for (size_t i = 0U; i < argi->nargs; i++) {
+	for (size_t i = 0U; i < argi->nargs && !rawp; i++) {
+		const char *fn = argi->args[i];
+
+		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
+			error("cannot open file `%s'", fn);
+			res = 1;
+			goto out;
+		}
+	}
+	for (size_t i = 0U; i < argi->nargs && rawp; i++) {
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
@@ -870,27 +954,36 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 
 	ctl_caev_t sum = ctl_zero_caev();
 	ctl_caev_t prev = sum;
-	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
-		ctl_caev_t this = ctl_wheap_pop(ctx->q);
+	echs_instant_t prev_t = {.u = 0U};
+	for (echs_instant_t t;
+	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
+		colour_t this = ctl_wheap_pop(ctx->q);
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
-		if (argi->unique_flag && !memcmp(&this, &prev, sizeof(this))) {
-			/* completely identical */
-			continue;
+		if (argi->unique_flag && __inst_eq_p(prev_t, t)) {
+			if (rawp && !memcmp(&this, &prev, sizeof(this.c))) {
+				/* completely identical */
+				continue;
+			}
 		}
 
 		if (!argi->summary_flag) {
 			bp += dt_strf(bp, ep - bp, t);
 			*bp++ = '\t';
-			bp += ctl_caev_wr(bp, ep - bp, this);
+			if (!rawp) {
+				bp += ctl_kvv_wr(bp, ep - bp, this.flds);
+				free_kvv(this.flds);
+			} else {
+				bp += ctl_caev_wr(bp, ep - bp, this.c);
+				prev = this.c;
+			}
 			*bp++ = '\n';
 			*bp = '\0';
 			fputs(buf, stdout);
-			prev = this;
-		} else {
-			sum = ctl_caev_add(sum, this);
+		} else if (rawp) {
+			sum = ctl_caev_add(sum, this.c);
 		}
 	}
 	if (argi->summary_flag) {

@@ -377,6 +377,12 @@ TESTS += cattle_apply_prec_10.clit
 TESTS += cattle_apply_prec_11.clit
 TESTS += cattle_apply_prec_12.clit
 
+check_PROGRAMS += intern.01
+intern_01_SOURCES = intern.01.c
+intern_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+intern_01_LDADD = $(cattle_LIBS)
+TESTS += intern.01.clit
+
 
 ## our friendly helpers
 check_PROGRAMS += clitoris

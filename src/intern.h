@@ -1,6 +1,6 @@
-/*** caev-series.h -- time series of caevs
+/*** intern.h -- interning system
  *
- * Copyright (C) 2013 Sebastian Freundt
+ * Copyright (C) 2013-2014 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -33,25 +33,24 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- **/
-#if !defined INCLUDED_caev_series_h_
-#define INCLUDED_caev_series_h_
-#include "caev.h"
+ ***/
+#if !defined INCLUDED_intern_h_
+#define INCLUDED_intern_h_
 
-typedef union {
-	ctl_caev_t c;
-	void *flds;
-} colour_t;
-#define WHEAP_COLOUR_T
+#include <inttypes.h>
 
-typedef struct ctl_wheap_s *ctl_caevs_t;
+typedef uintptr_t obint_t;
 
-/* must be included after we've def'd WHEAP_COLOUR_T */
-#include "wheap.h"
-
-
 /**
- * Return a sum of corporate actions without changing the contents of CS. */
-extern ctl_caev_t ctl_caev_sum(ctl_caevs_t cs);
+ * Return the interned representation of STR. */
+extern obint_t intern(const char *str);
 
-#endif	/* INCLUDED_caev_series_h_ */
+/**
+ * Return the string representation of OBI. */
+extern const char *obint_name(obint_t);
+
+/**
+ * Clean up resources used by the interning system. */
+extern void clear_interns(void);
+
+#endif	/* INCLUDED_intern_h_ */

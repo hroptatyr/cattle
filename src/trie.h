@@ -1,6 +1,6 @@
-/*** caev-series.h -- time series of caevs
+/*** trie.h -- string lookups
  *
- * Copyright (C) 2013 Sebastian Freundt
+ * Copyright (C) 2013-2014 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -33,25 +33,39 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- **/
-#if !defined INCLUDED_caev_series_h_
-#define INCLUDED_caev_series_h_
-#include "caev.h"
+ ***/
+#if !defined INCLUDED_trie_h_
+#define INCLUDED_trie_h_
 
-typedef union {
-	ctl_caev_t c;
-	void *flds;
-} colour_t;
-#define WHEAP_COLOUR_T
+/* forward decl */
+typedef struct trie_s *trie_t;
 
-typedef struct ctl_wheap_s *ctl_caevs_t;
-
-/* must be included after we've def'd WHEAP_COLOUR_T */
-#include "wheap.h"
-
-
 /**
- * Return a sum of corporate actions without changing the contents of CS. */
-extern ctl_caev_t ctl_caev_sum(ctl_caevs_t cs);
+ * Ctor for trie_t objects. */
+extern trie_t make_trie(void);
 
-#endif	/* INCLUDED_caev_series_h_ */
+/**
+ * Dtor for trie_t objects. */
+extern void free_trie(trie_t);
+
+/**
+ * Initialiser for statically alloc'd tries. */
+extern void init_trie(struct trie_s *restrict);
+
+/**
+ * Deinitialiser for statically alloc'd tries. */
+extern void deinit_trie(struct trie_s *restrict);
+
+/**
+ * Associate KEY with VAL in trie T, don't check if KEY is already in there. */
+extern int trie_put(trie_t t, const char *key, void *val);
+
+/**
+ * Retrieve the value associated with KEY in trie T. */
+extern void *trie_get(trie_t t, const char *key);
+
+/**
+ * Dissociate any values from KEY in trie T, return VAL. */
+extern void *trie_del(trie_t t, const char *key);
+
+#endif	/* INCLUDED_trie_h_ */
