@@ -251,6 +251,8 @@ ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
 	size_t fldi = 0U;
 
 	do {
+		char ep = ' ';
+
 		for (; *s && *s <= ' '; s++);
 		if (!*s) {
 			break;
@@ -271,13 +273,14 @@ ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
 		switch (*++s) {
 		case '"':
 		case '\'':
+			ep = *s;
 			s++;
 			break;
 		default:
 			/* no quotes :/ wish me luck */
 			break;
 		}
-		for (cp = cache; *s > ' ' && *s != '"' && *s != '\''; *cp++ = *s++);
+		for (cp = cache; *s >= ' ' && *s != ep; *cp++ = *s++);
 		*cp = '\0';
 		/* get interned value */
 		flds[fldi++].val = intern(cache);
