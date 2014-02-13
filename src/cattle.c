@@ -453,6 +453,37 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 }
 
 static int
+ctl_read_kv_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
+{
+/* wants a const char *fn */
+	coru_t rdr;
+	FILE *f;
+
+	if (fn == NULL) {
+		f = stdin;
+	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+		return -1;
+	}
+
+	init_coru();
+	rdr = make_coru(co_appl_rdr, f);
+
+	for (const struct rdr_res_s *ln; (ln = next(rdr));) {
+		/* try to read the whole shebang */
+		ctl_kvv_t v = ctl_kv_rdr(ctx, ln->ln);
+
+		/* insert to heap */
+		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){.flds = v});
+	}
+	/* now sort the guy */
+	ctl_wheap_fix_deferred(ctx->q);
+	free_coru(rdr);
+	fclose(f);
+	fini_coru();
+	return 0;
+}
+
+static int
 ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
