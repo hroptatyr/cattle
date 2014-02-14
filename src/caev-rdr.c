@@ -39,6 +39,7 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "caev-supp.h"
 #include "caev-rdr.h"
 #include "ctl-dfp754.h"
@@ -60,14 +61,6 @@ static ctl_fld_val_t
 snarf_fv(ctl_fld_key_t fc, const char *s)
 {
 	ctl_fld_val_t res = {};
-	const char *vp = *s == '=' ? s : strchr(s, '=');
-
-	if (UNLIKELY(vp++ == NULL)) {
-		return res;
-	} else if (*vp == '"' || *vp == '\'') {
-		/* dequote */
-		vp++;
-	}
 
 	switch (ctl_fld_type(fc)) {
 	case CTL_FLD_TYPE_ADMIN:
@@ -83,12 +76,10 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		signed int p;
 		unsigned int q;
 
-		p = strtol(vp, &pp, 10);
+		p = strtol(s, &pp, 10);
 		if (*pp != ':' && *pp != '/') {
 			break;
 		} else if (!(q = strtoul(pp + 1U, &pp, 10))) {
-			break;
-		} else if (*pp != '"' && *pp != '\'') {
 			break;
 		}
 		/* otherwise ass */
@@ -99,10 +90,7 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		char *pp;
 		_Decimal32 p;
 
-		p = strtod32(vp, &pp);
-		if (*pp != '"' && *pp != '\'') {
-			break;
-		}
+		p = strtod32(s, &pp);
 		res.price = (ctl_price_t)p;
 		break;
 	}
@@ -116,17 +104,15 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		signed int p;
 		unsigned int q;
 
-		v = strtod32(vp, &pp);
+		v = strtod32(s, &pp);
 		if (*pp != '+' && *pp != '-') {
 			break;
 		}
 		p = strtol(pp, &pp, 10);
 		if (pp[0] != '<' || pp[1] != '-') {
 			break;
-		} else if (!(q = strtoul(pp + 2U, &pp, 10),
-			     *pp == '"' || *pp == '\'')) {
-			break;
 		}
+		q = strtoul(pp + 2U, &pp, 10),
 		/* otherwise ass */
 		res.custm = (ctl_custm_t){.r = (ctl_ratio_t){p, q}, .a = v};
 		break;
@@ -148,7 +134,7 @@ make_kvv(const struct ctl_kv_s *f, size_t n)
 
 
 ctl_caev_t
-ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
+ctl_caev_rdr(echs_instant_t t, const char *s)
 {
 	static struct ctl_fld_s *flds;
 	static size_t nflds;
@@ -219,7 +205,19 @@ ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
 			}
 			/* otherwise we've got the code */
 			fc = (ctl_fld_unk_t)f->fc;
-			fv = snarf_fv(fc, sp += 5U);
+			with (const char *vp = sp += 5U) {
+				if (*vp++ != '=') {
+					if ((vp = strchr(vp, '=')) == NULL) {
+						continue;
+					}
+					vp++;
+				}
+				if (*vp == '"' || *vp == '\'') {
+					/* dequote */
+					vp++;
+				}
+				fv = snarf_fv(fc, vp);
+			}
 
 			/* bang to array */
 			if (fldi >= nflds) {
@@ -241,8 +239,76 @@ out:
 	return res;
 }
 
+ctl_caev_t
+ctl_kvv_get_caev(ctl_kvv_t fldv)
+{
+	static struct ctl_fld_s *flds;
+	static size_t nflds;
+	ctl_caev_code_t ccod;
+	ctl_caev_t res = ctl_zero_caev();
+	size_t fldi;
+
+	if (UNLIKELY(fldv->nkvv == 0U)) {
+		goto out;
+	}
+	/* assume first field is the caev indicator */
+	with (ctl_fld_rdr_t f) {
+		const char *k0 = obint_name(fldv->kvv[0].key);
+
+		if ((f = __ctl_fldify(k0, 4U)) == NULL) {
+			/* not a caev message */
+			goto out;
+		} else if ((ctl_fld_admin_t)f->fc != CTL_FLD_CAEV) {
+			/* a field but not a caev message */
+			goto out;
+		}
+	}
+	/* otherwise try and read the code */
+	with (ctl_caev_rdr_t m) {
+		const char *v0 = obint_name(fldv->kvv[0].val);
+
+		if (UNLIKELY((m = __ctl_caev_codify(v0, 4U)) == NULL)) {
+			/* not a caev message */
+			goto out;
+		}
+		/* otherwise assign the caev code */
+		ccod = m->code;
+	}
+
+	/* reset field counter */
+	fldi = 0U;
+	/* add the instant passed onto us as ex-date */
+	CHECK_FLDS;
+	flds[fldi++] = MAKE_CTL_FLD(admin, CTL_FLD_CAEV, ccod);
+	/* go through all them fields then */
+	for (size_t i = 1U; i < fldv->nkvv; i++) {
+		const char *k = obint_name(fldv->kvv[i].key);
+		const char *v = obint_name(fldv->kvv[i].val);
+		ctl_fld_rdr_t f;
+		ctl_fld_unk_t fc;
+		ctl_fld_val_t fv;
+
+		if ((f = __ctl_fldify(k, 4U)) == NULL) {
+			/* not a field then aye */
+			continue;
+		}
+		/* otherwise we've got the code */
+		fc = (ctl_fld_unk_t)f->fc;
+		fv = snarf_fv(fc, v);
+
+		/* bang to array */
+		CHECK_FLDS;
+		/* actually add the field now */
+		flds[fldi++] = (ctl_fld_t){{fc}, fv};
+	}
+	/* just let the actual mt564 support figure everything out */
+	res = make_caev(flds, fldi);
+out:
+	return res;
+}
+
 ctl_kvv_t
-ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
+ctl_kv_rdr(const char *s)
 {
 	static struct ctl_kv_s *flds;
 	static size_t nflds;
@@ -252,13 +318,13 @@ ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
 	do {
 		char ep = ' ';
 
-		for (; *s && *s <= ' '; s++);
+		/* fast forward to a field */
+		for (; *s && !isalpha(*s); s++);
 		if (!*s) {
 			break;
-		} else if (*s == '.') {
-			s++;
 		}
 
+		/* fast forward to the assignment */
 		for (cp = s; *s != '='; s++);
 
 		/* use CHECK_FLDS from above */
@@ -281,7 +347,7 @@ ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
 		for (cp = s; *s >= ' ' && *s != ep; s++);
 		/* get interned value */
 		flds[fldi++].val = intern(cp, s - cp);
-	} while (*s++);
+	} while (1);
 	return make_kvv(flds, fldi);
 }
 

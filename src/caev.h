@@ -37,6 +37,8 @@
 #if !defined INCLUDED_caev_h_
 #define INCLUDED_caev_h_
 
+#include <stdbool.h>
+#include <string.h>
 #include "cattle.h"
 
 /**
@@ -145,6 +147,14 @@ ctl_zero_caev(void)
 		ctl_zero_price_actor(),
 		ctl_zero_quant_actor(),
 	};
+}
+
+/**
+ * Return true iff C1 and C2 act equally. */
+static inline __attribute__((const, pure)) bool
+ctl_caev_eq_p(ctl_caev_t c1, ctl_caev_t c2)
+{
+	return !memcmp(&c1, &c2, sizeof(ctl_caev_t));
 }
 
 #endif	/* INCLUDED_caev_h_ */

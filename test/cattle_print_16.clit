@@ -1,0 +1,20 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle print -u "${srcdir}/SVT.echs"
+1997-08-11	caev="SPLR" crdb//debt/secu="SVT" crdb//debt/exch="XLON" crdb//debt/name="Severn Trent PLC" crdb//cred/secu="SVT" crdb//cred/exch="XLON" crdb//cred/name="Severn Trent PLC" xdte="1997-08-11" newo="19:20"
+2006-10-09	caev="SPLR" crdb//debt/secu="SVT" crdb//debt/exch="XLON" crdb//debt/name="Severn Trent PLC" crdb//cred/secu="SVT" crdb//cred/exch="XLON" crdb//cred/name="Severn Trent PLC" xdte="2006-10-09" newo="2:3"
+2008-12-03	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2008-12-03" anou="2008-11-25" rdte="2008-12-05" payd="2009-01-16" nett/GBX="26.29"
+2009-12-02	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2009-12-02" anou="2009-11-24" rdte="2009-12-04" payd="2010-01-15" nett/GBX="26.71"
+2010-06-16	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2010-06-16" anou="2010-05-28" rdte="2010-06-18" payd="2010-07-30" nett/GBX="45.61"
+2010-12-01	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2010-12-01" anou="2010-11-23" rdte="2010-12-03" payd="2011-01-14" nett/GBX="26.04"
+2011-06-22	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2011-06-22" anou="2011-05-27" rdte="2011-06-24" payd="2011-07-29" nett/GBX="39.05"
+2011-11-30	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2011-11-30" anou="2011-11-25" rdte="2011-12-02" payd="2012-01-13" nett/GBX="28.04"
+2012-06-20	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2012-06-20" anou="2012-05-30" rdte="2012-06-22" payd="2012-07-27" nett/GBX="63.00"
+2012-06-20	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2012-06-20" anou="2012-05-30" rdte="2012-06-22" payd="2012-07-27" nett/GBX="42.06"
+2012-06-20	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2012-06-20" anou="2012-05-30" rdte="2012-06-22" payd="2012-07-27" nett/GBX="63.00"
+2012-12-05	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2012-12-05" anou="2012-11-27" rdte="2012-12-07" payd="2013-01-11" nett/GBX="30.34"
+2013-06-19	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2013-06-19" anou="2013-05-30" rdte="2013-06-21" payd="2013-07-26" nett/GBX="45.51"
+2013-12-04	caev="DVCA" secu="SVT" exch="XLON" name="Severn Trent PLC" xdte="2013-12-04" anou="2013-11-26" rdte="2013-12-06" payd="2014-01-10" nett/GBX="32.16"
+$
+
+## cattle_print_16.clit ends here

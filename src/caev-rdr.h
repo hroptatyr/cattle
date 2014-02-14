@@ -55,12 +55,19 @@ struct ctl_kvv_s {
 };
 
 
+/**
+ * Return a caev actor object from MSG at instant X. */
 extern ctl_caev_t
-ctl_caev_rdr(struct ctl_ctx_s *ctx, echs_instant_t x, const char *msg);
+ctl_caev_rdr(echs_instant_t x, const char *msg);
 
-extern ctl_kvv_t
-ctl_kv_rdr(struct ctl_ctx_s *ctx, const char *msg);
+/**
+ * Return a key/val vector object from MSG. */
+extern ctl_kvv_t ctl_kv_rdr(const char *msg);
 
 extern void free_kvv(ctl_kvv_t);
+
+/**
+ * Parse a key/val vector and return its acting caev. */
+extern ctl_caev_t ctl_kvv_get_caev(ctl_kvv_t k);
 
 #endif	/* INCLUDED_caev_rdr_h_ */
