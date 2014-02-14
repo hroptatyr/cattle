@@ -910,16 +910,18 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
+	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
 		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
-		if (uniqp && __inst_eq_p(prev_t, t) &&
-		    ctl_caev_eq_p(this, prev)) {
-			/* completely identical */
-			continue;
+		if (uniqp) {
+			if (__inst_eq_p(prev_t, t) &&
+			    (prev_t = t, ctl_caev_eq_p(this, prev))) {
+				/* completely identical */
+				continue;
+			}
 		}
 
 		bp += dt_strf(bp, ep - bp, t);
@@ -945,9 +947,12 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
 		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
 
-		if (uniqp && __inst_eq_p(prev_t, t) && ctl_caev_eq_p(this, prev)) {
-			/* completely identical */
-			continue;
+		if (uniqp) {
+			if (__inst_eq_p(prev_t, t) &&
+			    (prev_t = t, ctl_caev_eq_p(this, prev))) {
+				/* completely identical */
+				continue;
+			}
 		}
 		/* just sum them up here */
 		sum = ctl_caev_add(sum, this);
@@ -970,28 +975,29 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 static int
 ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 {
-	ctl_caev_t prev = ctl_zero_caev();
+	ctl_caev_t prev_c = ctl_zero_caev();
 	echs_instant_t prev_t = {.u = 0U};
+	ctl_kvv_t prev = NULL;
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
-		colour_t this = ctl_wheap_pop(ctx->q);
+	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
+		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
-		if (uniqp && __inst_eq_p(prev_t, t)) {
-			if (!memcmp(&this, &prev, sizeof(this.c))) {
-				/* completely identical */
-				continue;
+		if (uniqp) {
+			if (__inst_eq_p(prev_t, t) &&
+			    (prev_t = t, 1)) {
+				;
 			}
 		}
 
 		bp += dt_strf(bp, ep - bp, t);
 		*bp++ = '\t';
-		bp += ctl_kvv_wr(bp, ep - bp, this.flds);
-		free_kvv(this.flds);
+		bp += ctl_kvv_wr(bp, ep - bp, this);
+		free_kvv(this);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(buf, stdout);
