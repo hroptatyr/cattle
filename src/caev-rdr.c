@@ -148,7 +148,7 @@ make_kvv(const struct ctl_kv_s *f, size_t n)
 
 
 ctl_caev_t
-ctl_caev_rdr(struct ctl_ctx_s *UNUSED(ctx), echs_instant_t t, const char *s)
+ctl_caev_rdr(echs_instant_t t, const char *s)
 {
 	static struct ctl_fld_s *flds;
 	static size_t nflds;
@@ -242,7 +242,7 @@ out:
 }
 
 ctl_caev_t
-ctl_kvv_get_caev(struct ctl_ctx_s *UNUSED(ctx), ctl_kvv_t fldv)
+ctl_kvv_get_caev(ctl_kvv_t fldv)
 {
 	static struct ctl_fld_s *flds;
 	static size_t nflds;
@@ -310,7 +310,7 @@ out:
 }
 
 ctl_kvv_t
-ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
+ctl_kv_rdr(const char *s)
 {
 	static struct ctl_kv_s *flds;
 	static size_t nflds;
