@@ -282,6 +282,8 @@ TESTS += cattle_print_09.clit
 TESTS += cattle_print_10.clit
 TESTS += cattle_print_11.clit
 TESTS += cattle_print_12.clit
+TESTS += cattle_print_13.clit
+TESTS += cattle_print_14.clit
 
 TESTS += cattle_apply_01.clit
 TESTS += cattle_apply_02.clit
