@@ -246,8 +246,7 @@ ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
 {
 	static struct ctl_kv_s *flds;
 	static size_t nflds;
-	char cache[256U];
-	char *cp;
+	const char *cp;
 	size_t fldi = 0U;
 
 	do {
@@ -260,17 +259,16 @@ ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
 			s++;
 		}
 
-		for (cp = cache; *s != '='; *cp++ = *s++);
-		*cp = '\0';
+		for (cp = s; *s != '='; s++);
 
 		/* use CHECK_FLDS from above */
 		CHECK_FLDS;
 
 		/* get interned field */
-		flds[fldi].key = intern(cache);
+		flds[fldi].key = intern(cp, s++ - cp);
 
 		/* otherwise try and read the code */
-		switch (*++s) {
+		switch (*s) {
 		case '"':
 		case '\'':
 			ep = *s;
@@ -280,10 +278,9 @@ ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
 			/* no quotes :/ wish me luck */
 			break;
 		}
-		for (cp = cache; *s >= ' ' && *s != ep; *cp++ = *s++);
-		*cp = '\0';
+		for (cp = s; *s >= ' ' && *s != ep; s++);
 		/* get interned value */
-		flds[fldi++].val = intern(cache);
+		flds[fldi++].val = intern(cp, s - cp);
 	} while (*s++);
 	return make_kvv(flds, fldi);
 }

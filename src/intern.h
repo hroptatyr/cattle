@@ -37,20 +37,46 @@
 #if !defined INCLUDED_intern_h_
 #define INCLUDED_intern_h_
 
-#include <inttypes.h>
+#include <stdint.h>
 
-typedef uintptr_t obint_t;
+/**
+ * obints are length+offset integers, at least 32 bits wide, always even.
+ *
+ * LLLLLLLL OOOOOOOOOOOOOOOOOOOOOO00
+ * ^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^||
+ * length   offset                divisible by 4
+ **/
+typedef uint_fast32_t obint_t;
 
 /**
  * Return the interned representation of STR. */
-extern obint_t intern(const char *str);
+extern obint_t intern(const char *str, size_t len);
 
 /**
- * Return the string representation of OBI. */
+ * Unintern the OBINT object. */
+extern void unintern(obint_t);
+
+/**
+ * Return the string representation of an OBINT object. */
 extern const char *obint_name(obint_t);
 
 /**
  * Clean up resources used by the interning system. */
 extern void clear_interns(void);
+
+
+static inline size_t
+obint_off(obint_t ob)
+{
+	/* mask out the length bit */
+	return ob & ((1ULL << ((sizeof(ob) - 1U) * 8U)) - 1U);
+}
+
+static inline size_t
+obint_len(obint_t ob)
+{
+	/* mask out the offset bit */
+	return ob >> ((sizeof(ob) - 1U) * 8U);
+}
 
 #endif	/* INCLUDED_intern_h_ */
