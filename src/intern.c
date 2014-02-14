@@ -153,8 +153,10 @@ intern(const char *str, size_t len)
 			}
 		}
 		/* quite a lot of collisions, resize then */
-		sstk = recalloc(sstk, zstk, 2U * zstk, sizeof(*sstk));
-		zstk *= 2U;
+		with (size_t nu = (zstk * 2U) ?: SSTK_MINZ) {
+			sstk = recalloc(sstk, zstk, nu, sizeof(*sstk));
+			zstk = nu;
+		}
 	}
 	/* not reached */
 }
