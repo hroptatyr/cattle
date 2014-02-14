@@ -910,7 +910,7 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
+	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
 		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
 		char buf[256U];
 		char *bp = buf;
@@ -918,7 +918,7 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 
 		if (uniqp) {
 			if (__inst_eq_p(prev_t, t) &&
-			    (prev_t = t, ctl_caev_eq_p(this, prev))) {
+			    ctl_caev_eq_p(this, prev)) {
 				/* completely identical */
 				continue;
 			}
@@ -949,7 +949,7 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 
 		if (uniqp) {
 			if (__inst_eq_p(prev_t, t) &&
-			    (prev_t = t, ctl_caev_eq_p(this, prev))) {
+			    ctl_caev_eq_p(this, prev)) {
 				/* completely identical */
 				continue;
 			}
@@ -977,21 +977,25 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 {
 	ctl_caev_t prev_c = ctl_zero_caev();
 	echs_instant_t prev_t = {.u = 0U};
-	ctl_kvv_t prev = NULL;
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q));) {
+	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
 		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
 		if (uniqp) {
+			ctl_caev_t this_c;
+
 			if (__inst_eq_p(prev_t, t) &&
-			    (prev_t = t, 1)) {
-				;
+			    (this_c = ctl_kvv_get_caev(this),
+			     ctl_caev_eq_p(this_c, prev_c))) {
+				continue;
 			}
+			/* store actor representation for the next round */
+			prev_c = this_c;
 		}
 
 		bp += dt_strf(bp, ep - bp, t);
