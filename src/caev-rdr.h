@@ -63,4 +63,8 @@ ctl_kv_rdr(struct ctl_ctx_s *ctx, const char *msg);
 
 extern void free_kvv(ctl_kvv_t);
 
+/**
+ * Parse a key/val vector and return its acting caev. */
+extern ctl_caev_t ctl_kvv_get_caev(struct ctl_ctx_s *ctx, ctl_kvv_t k);
+
 #endif	/* INCLUDED_caev_rdr_h_ */

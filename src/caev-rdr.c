@@ -241,6 +241,74 @@ out:
 	return res;
 }
 
+ctl_caev_t
+ctl_kvv_get_caev(struct ctl_ctx_s *UNUSED(ctx), ctl_kvv_t fldv)
+{
+	static struct ctl_fld_s *flds;
+	static size_t nflds;
+	ctl_caev_code_t ccod;
+	ctl_caev_t res = ctl_zero_caev();
+	size_t fldi;
+
+	if (UNLIKELY(fldv->nkvv == 0U)) {
+		goto out;
+	}
+	/* assume first field is the caev indicator */
+	with (ctl_fld_rdr_t f) {
+		const char *k0 = obint_name(fldv->kvv[0].key);
+
+		if ((f = __ctl_fldify(k0, 4U)) == NULL) {
+			/* not a caev message */
+			goto out;
+		} else if ((ctl_fld_admin_t)f->fc != CTL_FLD_CAEV) {
+			/* a field but not a caev message */
+			goto out;
+		}
+	}
+	/* otherwise try and read the code */
+	with (ctl_caev_rdr_t m) {
+		const char *v0 = obint_name(fldv->kvv[0].val);
+
+		if (UNLIKELY((m = __ctl_caev_codify(v0, 4U)) == NULL)) {
+			/* not a caev message */
+			goto out;
+		}
+		/* otherwise assign the caev code */
+		ccod = m->code;
+	}
+
+	/* reset field counter */
+	fldi = 0U;
+	/* add the instant passed onto us as ex-date */
+	CHECK_FLDS;
+	flds[fldi++] = MAKE_CTL_FLD(admin, CTL_FLD_CAEV, ccod);
+	/* go through all them fields then */
+	for (size_t i = 1U; i < fldv->nkvv; i++) {
+		const char *k = obint_name(fldv->kvv[i].key);
+		const char *v = obint_name(fldv->kvv[i].val);
+		ctl_fld_rdr_t f;
+		ctl_fld_unk_t fc;
+		ctl_fld_val_t fv;
+
+		if ((f = __ctl_fldify(k, 4U)) == NULL) {
+			/* not a field then aye */
+			continue;
+		}
+		/* otherwise we've got the code */
+		fc = (ctl_fld_unk_t)f->fc;
+		fv = snarf_fv(fc, v);
+
+		/* bang to array */
+		CHECK_FLDS;
+		/* actually add the field now */
+		flds[fldi++] = (ctl_fld_t){{fc}, fv};
+	}
+	/* just let the actual mt564 support figure everything out */
+	res = make_caev(flds, fldi);
+out:
+	return res;
+}
+
 ctl_kvv_t
 ctl_kv_rdr(struct ctl_ctx_s *UNUSED(ctx), const char *s)
 {
