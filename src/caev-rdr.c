@@ -61,14 +61,6 @@ static ctl_fld_val_t
 snarf_fv(ctl_fld_key_t fc, const char *s)
 {
 	ctl_fld_val_t res = {};
-	const char *vp = *s == '=' ? s : strchr(s, '=');
-
-	if (UNLIKELY(vp++ == NULL)) {
-		return res;
-	} else if (*vp == '"' || *vp == '\'') {
-		/* dequote */
-		vp++;
-	}
 
 	switch (ctl_fld_type(fc)) {
 	case CTL_FLD_TYPE_ADMIN:
@@ -84,7 +76,7 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		signed int p;
 		unsigned int q;
 
-		p = strtol(vp, &pp, 10);
+		p = strtol(s, &pp, 10);
 		if (*pp != ':' && *pp != '/') {
 			break;
 		} else if (!(q = strtoul(pp + 1U, &pp, 10))) {
@@ -100,7 +92,7 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		char *pp;
 		_Decimal32 p;
 
-		p = strtod32(vp, &pp);
+		p = strtod32(s, &pp);
 		if (*pp != '"' && *pp != '\'') {
 			break;
 		}
@@ -117,7 +109,7 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		signed int p;
 		unsigned int q;
 
-		v = strtod32(vp, &pp);
+		v = strtod32(s, &pp);
 		if (*pp != '+' && *pp != '-') {
 			break;
 		}
@@ -220,7 +212,19 @@ ctl_caev_rdr(echs_instant_t t, const char *s)
 			}
 			/* otherwise we've got the code */
 			fc = (ctl_fld_unk_t)f->fc;
-			fv = snarf_fv(fc, sp += 5U);
+			with (const char *vp = sp += 5U) {
+				if (*vp++ != '=') {
+					if ((vp = strchr(vp, '=')) == NULL) {
+						continue;
+					}
+					vp++;
+				}
+				if (*vp == '"' || *vp == '\'') {
+					/* dequote */
+					vp++;
+				}
+				fv = snarf_fv(fc, vp);
+			}
 
 			/* bang to array */
 			if (fldi >= nflds) {
