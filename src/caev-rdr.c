@@ -39,6 +39,7 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "caev-supp.h"
 #include "caev-rdr.h"
 #include "ctl-dfp754.h"
@@ -320,13 +321,13 @@ ctl_kv_rdr(const char *s)
 	do {
 		char ep = ' ';
 
-		for (; *s && *s <= ' '; s++);
+		/* fast forward to a field */
+		for (; *s && !isalpha(*s); s++);
 		if (!*s) {
 			break;
-		} else if (*s == '.') {
-			s++;
 		}
 
+		/* fast forward to the assignment */
 		for (cp = s; *s != '='; s++);
 
 		/* use CHECK_FLDS from above */
@@ -349,7 +350,7 @@ ctl_kv_rdr(const char *s)
 		for (cp = s; *s >= ' ' && *s != ep; s++);
 		/* get interned value */
 		flds[fldi++].val = intern(cp, s - cp);
-	} while (*s++);
+	} while (1);
 	return make_kvv(flds, fldi);
 }
 
