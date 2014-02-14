@@ -987,11 +987,10 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 		const char *const ep = buf + sizeof(buf);
 
 		if (uniqp) {
-			ctl_caev_t this_c;
+			ctl_caev_t this_c = ctl_kvv_get_caev(this);
 
 			if (__inst_eq_p(prev_t, t) &&
-			    (this_c = ctl_kvv_get_caev(this),
-			     ctl_caev_eq_p(this_c, prev_c))) {
+			    ctl_caev_eq_p(this_c, prev_c)) {
 				continue;
 			}
 			/* store actor representation for the next round */
