@@ -40,65 +40,152 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include "trie.h"
+#include <stdint.h>
 #include "intern.h"
+#include "nifty.h"
 
-typedef struct node_s *node_t;
+/* a hash is the bucket locator and a chksum for collision detection */
+typedef struct {
+	size_t idx;
+	uint_fast32_t chk;
+} hash_t;
 
-struct trie_s {
-	node_t root;
-};
+/* the beef table */
+static struct {
+	obint_t ob;
+	uint_fast32_t ck;
+} *sstk;
+/* alloc size, 2-power */
+static size_t zstk;
+/* number of elements */
+static size_t nstk;
 
-static struct trie_s intt[1U];
-static char *restrict ints;
-static size_t intp;
-static size_t intz;
+/* the big string obarray */
+static char *restrict obs;
+/* alloc size, 2-power */
+static size_t obz;
+/* next ob */
+static size_t obn;
+
+static hash_t
+murmur(const uint8_t *str, size_t len)
+{
+/* tokyocabinet's hasher */
+	size_t idx = 19780211U;
+	uint_fast32_t hash = 751U;
+	const uint8_t *rp = str + len;
+
+	while (len--) {
+		idx = idx * 37U + *str++;
+		hash = (hash * 31U) ^ *--rp;
+	}
+	return (hash_t){idx, hash};
+}
+
+static inline size_t
+get_off(size_t idx, size_t mod)
+{
+	/* no need to negate MOD as it's a 2-power */
+	return -idx % mod;
+}
+
+static void*
+recalloc(void *buf, size_t nmemb_ol, size_t nmemb_nu, size_t membz)
+{
+	nmemb_ol *= membz;
+	nmemb_nu *= membz;
+	buf = realloc(buf, nmemb_nu);
+	memset((uint8_t*)buf + nmemb_ol, 0, nmemb_nu - nmemb_ol);
+	return buf;
+}
+
+static obint_t
+make_obint(const char *str, size_t len)
+{
+/* put STR (of length LEN) into string obarray, don't check for dups */
+#define OBAR_MINZ	(1024U)
+	/* make sure we pad with \0 bytes to the next 4-byte multiple */
+	size_t pad = ((len / 4U) + 1U) * 4U;
+	obint_t res;
+
+	if (UNLIKELY(obn + pad >= obz)) {
+		size_t nuz = (obz * 2U) ?: OBAR_MINZ;
+
+		obs = recalloc(obs, obz, nuz, sizeof(*obs));
+		obz = nuz;
+	}
+	/* paste the string in question */
+	memcpy(obs + (res = obn), str, len);
+	/* assemble the result */
+	res |= len << 24U;
+	/* inc the obn pointer */
+	obn += pad;
+	return res;
+}
 
 
 obint_t
-intern(const char *str)
+intern(const char *str, size_t len)
 {
-	obint_t res;
-	size_t ztr;
+#define SSTK_MINZ	(256U)
+#define OBINT_MAX_LEN	(256U)
+	hash_t hx = murmur((const uint8_t*)str, len);
 
-	if ((res = (uintptr_t)trie_get(intt, str))) {
-		return res;
+	if (UNLIKELY(len == 0U || len >= OBINT_MAX_LEN)) {
+		/* don't bother */
+		return 0U;
 	}
-	/* otherwise intern the string */
-	ztr = strlen(str);
+	while (1) {
+		/* just try what we've got */
+		for (size_t mod = SSTK_MINZ; mod <= zstk; mod *= 2U) {
+			size_t off = get_off(hx.idx, mod);
 
-	/* resize? */
-	if (intp + ztr >= intz) {
-		/* time to resize again */
-		intz = (intz * 2U) ?: 256U;
-		ints = realloc(ints, intz);
+			if (LIKELY(sstk[off].ck == hx.chk)) {
+				/* found him */
+				return sstk[off].ob;
+			} else if (sstk[off].ob == 0U) {
+				/* found empty slot */
+				obint_t ob = make_obint(str, len);
+				sstk[off].ob = ob;
+				sstk[off].ck = hx.chk;
+				nstk++;
+				return ob;
+			}
+		}
+		/* quite a lot of collisions, resize then */
+		sstk = recalloc(sstk, zstk, 2U * zstk, sizeof(*sstk));
+		zstk *= 2U;
 	}
+	/* not reached */
+}
 
-	/* make the unique copy of STR */
-	memcpy(ints + (res = intp), str, ztr);
-	/* up our admin pointers */
-	intp += ztr;
-	/* finalise string */
-	ints[intp++] = '\0';
-
-	/* and finally leave a not in the trie */
-	trie_put(intt, str, (void*)res);
-	return res;
+void
+unintern(obint_t UNUSED(ob))
+{
+	return;
 }
 
 const char*
 obint_name(obint_t ob)
 {
-	return ints + (ptrdiff_t)ob;
+	return obs + obint_off(ob);
 }
 
 void
 clear_interns(void)
 {
-	deinit_trie(intt);
-	free(ints);
-	ints = NULL;
-	intz = 0U;
+	if (LIKELY(sstk != NULL)) {
+		free(sstk);
+	}
+	sstk = NULL;
+	zstk = 0U;
+	nstk = 0U;
+	if (LIKELY(obs != NULL)) {
+		free(obs);
+	}
+	obs = NULL;
+	obz = 0U;
+	obn = 0U;
 	return;
 }
 
