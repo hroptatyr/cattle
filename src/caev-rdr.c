@@ -81,8 +81,6 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 			break;
 		} else if (!(q = strtoul(pp + 1U, &pp, 10))) {
 			break;
-		} else if (*pp != '"' && *pp != '\'') {
-			break;
 		}
 		/* otherwise ass */
 		res.ratio = (ctl_ratio_t){p, q};
@@ -93,9 +91,6 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		_Decimal32 p;
 
 		p = strtod32(s, &pp);
-		if (*pp != '"' && *pp != '\'') {
-			break;
-		}
 		res.price = (ctl_price_t)p;
 		break;
 	}
@@ -116,10 +111,8 @@ snarf_fv(ctl_fld_key_t fc, const char *s)
 		p = strtol(pp, &pp, 10);
 		if (pp[0] != '<' || pp[1] != '-') {
 			break;
-		} else if (!(q = strtoul(pp + 2U, &pp, 10),
-			     *pp == '"' || *pp == '\'')) {
-			break;
 		}
+		q = strtoul(pp + 2U, &pp, 10),
 		/* otherwise ass */
 		res.custm = (ctl_custm_t){.r = (ctl_ratio_t){p, q}, .a = v};
 		break;
