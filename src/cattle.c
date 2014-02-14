@@ -901,92 +901,60 @@ out:
 	return res;
 }
 
-
-#if defined STANDALONE
-#include "cattle.yucc"
-
+/* printer commands */
 static int
-cmd_print(const struct yuck_cmd_print_s argi[static 1U])
+ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 {
-	static struct ctl_ctx_s ctx[1];
-	bool rawp = argi->raw_flag;
+	ctl_caev_t prev = ctl_zero_caev();
+	echs_instant_t prev_t = {.u = 0U};
 	int res = 0;
 
-	if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
-		res = 1;
-		goto out;
-	} else if (argi->summary_flag) {
-		/* --summary implies --raw */
-		rawp = true;
-	}
-
-	if (argi->nargs == 0U && !rawp) {
-		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
-			error("cannot read from stdin");
-			res = 1;
-			goto out;
-		}
-	} else if (argi->nargs == 0U) {
-		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
-			error("cannot read from stdin");
-			res = 1;
-			goto out;
-		}
-	}
-	for (size_t i = 0U; i < argi->nargs && !rawp; i++) {
-		const char *fn = argi->args[i];
-
-		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
-			error("cannot open file `%s'", fn);
-			res = 1;
-			goto out;
-		}
-	}
-	for (size_t i = 0U; i < argi->nargs && rawp; i++) {
-		const char *fn = argi->args[i];
-
-		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
-			error("cannot open file `%s'", fn);
-			res = 1;
-			goto out;
-		}
-	}
-
-	ctl_caev_t sum = ctl_zero_caev();
-	ctl_caev_t prev = sum;
-	echs_instant_t prev_t = {.u = 0U};
 	for (echs_instant_t t;
 	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
-		colour_t this = ctl_wheap_pop(ctx->q);
+		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
-		if (argi->unique_flag && __inst_eq_p(prev_t, t)) {
-			if (rawp && !memcmp(&this, &prev, sizeof(this.c))) {
-				/* completely identical */
-				continue;
-			}
+		if (uniqp && __inst_eq_p(prev_t, t) &&
+		    ctl_caev_eq_p(this, prev)) {
+			/* completely identical */
+			continue;
 		}
 
-		if (!argi->summary_flag) {
-			bp += dt_strf(bp, ep - bp, t);
-			*bp++ = '\t';
-			if (!rawp) {
-				bp += ctl_kvv_wr(bp, ep - bp, this.flds);
-				free_kvv(this.flds);
-			} else {
-				bp += ctl_caev_wr(bp, ep - bp, this.c);
-				prev = this.c;
-			}
-			*bp++ = '\n';
-			*bp = '\0';
-			fputs(buf, stdout);
-		} else if (rawp) {
-			sum = ctl_caev_add(sum, this.c);
-		}
+		bp += dt_strf(bp, ep - bp, t);
+		*bp++ = '\t';
+		bp += ctl_caev_wr(bp, ep - bp, this);
+		prev = this;
+		*bp++ = '\n';
+		*bp = '\0';
+		fputs(buf, stdout);
 	}
-	if (argi->summary_flag) {
+	return res;
+}
+
+static int
+ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
+{
+	ctl_caev_t sum = ctl_zero_caev();
+	ctl_caev_t prev = sum;
+	echs_instant_t prev_t = {.u = 0U};
+	int res = 0;
+
+	for (echs_instant_t t;
+	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
+		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
+
+		if (uniqp && __inst_eq_p(prev_t, t) && ctl_caev_eq_p(this, prev)) {
+			/* completely identical */
+			continue;
+		}
+		/* just sum them up here */
+		sum = ctl_caev_add(sum, this);
+		prev = this;
+	}
+	/* and now print */
+	{
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
@@ -996,12 +964,101 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 		*bp = '\0';
 		fputs(buf, stdout);
 	}
+	return res;
+}
+
+static int
+ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
+{
+	ctl_caev_t prev = ctl_zero_caev();
+	echs_instant_t prev_t = {.u = 0U};
+	int res = 0;
+
+	for (echs_instant_t t;
+	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
+		colour_t this = ctl_wheap_pop(ctx->q);
+		char buf[256U];
+		char *bp = buf;
+		const char *const ep = buf + sizeof(buf);
+
+		if (uniqp && __inst_eq_p(prev_t, t)) {
+			if (!memcmp(&this, &prev, sizeof(this.c))) {
+				/* completely identical */
+				continue;
+			}
+		}
+
+		bp += dt_strf(bp, ep - bp, t);
+		*bp++ = '\t';
+		bp += ctl_kvv_wr(bp, ep - bp, this.flds);
+		free_kvv(this.flds);
+		*bp++ = '\n';
+		*bp = '\0';
+		fputs(buf, stdout);
+	}
+	return res;
+}
+
+
+#if defined STANDALONE
+#include "cattle.yucc"
+
+static int
+cmd_print(const struct yuck_cmd_print_s argi[static 1U])
+{
+	static struct ctl_ctx_s ctx[1];
+	bool rawp = argi->raw_flag;
+	bool uniqp = argi->unique_flag;
+	int rc = 1;
+
+	if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+		goto out;
+	} else if (argi->summary_flag) {
+		/* --summary implies --raw */
+		rawp = true;
+	}
+
+	if (argi->nargs == 0U && !rawp) {
+		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
+			error("cannot read from stdin");
+			goto out;
+		}
+	} else if (argi->nargs == 0U) {
+		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
+			error("cannot read from stdin");
+			goto out;
+		}
+	}
+	for (size_t i = 0U; i < argi->nargs && !rawp; i++) {
+		const char *fn = argi->args[i];
+
+		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
+			error("cannot open file `%s'", fn);
+			goto out;
+		}
+	}
+	for (size_t i = 0U; i < argi->nargs && rawp; i++) {
+		const char *fn = argi->args[i];
+
+		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
+			error("cannot open file `%s'", fn);
+			goto out;
+		}
+	}
+
+	if (!rawp && ctl_print_kv(ctx, uniqp) >= 0) {
+		rc = 0;
+	} else if (argi->summary_flag && ctl_print_sum(ctx, uniqp) >= 0) {
+		rc = 0;
+	} else if (rawp && ctl_print_raw(ctx, uniqp) >= 0) {
+		rc = 0;
+	}
 
 out:
 	if (LIKELY(ctx->q != NULL)) {
 		free_ctl_wheap(ctx->q);
 	}
-	return res;
+	return rc;
 }
 
 static int
