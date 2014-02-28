@@ -1,0 +1,13 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle print -u "${srcdir}/XMT.echs"
+2012-03-08	caev="DVCA" xdte="2012-03-08" anou="2012-03-07T23:00:02" secu="XMT" exch="XETR" isin="CH0008899764" name="CS ETF (CH) ON SMI" nett/EUR="0.315"
+2012-04-23	caev="DVCA" xdte="2012-04-23" anou="2012-04-22T22:00:03" secu="XMT" exch="XETR" isin="CH0008899764" name="CS ETF (CH) ON SMI" nett/EUR="0.416"
+2013-02-27	caev="DVCA" xdte="2013-02-27" anou="2013-02-26T23:00:02" secu="XMT" exch="XETR" isin="CH0008899764" name="CS ETF (CH) ON SMI" nett/EUR="0.329"
+2013-03-07	caev="DVCA" xdte="2013-03-07" anou="2013-03-06T23:00:04" secu="XMT" exch="XETR" isin="CH0008899764" name="CS ETF (CH) ON SMI" nett/EUR="0.357"
+2013-04-15	caev="DVCA" xdte="2013-04-15" cdte="2013-04-12" anou="2013-04-11T22:00:01" secu="XMT" exch="XETR" isin="CH0008899764" name="CS ETF (CH) ON SMI" nett/EUR="0.492"
+2013-04-15	caev="DVCA" xdte="2013-04-15" anou="2013-04-14T22:00:01" secu="XMT" exch="XETR" isin="CH0008899764" name="CS ETF (CH) ON SMI" nett/EUR="0.493"
+2014-02-27	caev="DVCA" xdte="2014-02-27" cdte="2014-02-26" anou="2014-02-27T06:38:25" secu="XMT" exch="XETR" isin="CH0008899764" name="ISHARES SMI (CH)" nett/EUR="0.34"
+$
+
+## cattle_print_18.clit ends here
