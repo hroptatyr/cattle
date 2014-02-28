@@ -9,17 +9,23 @@ include $(top_builddir)/version.mk
 BUILT_SOURCES =
 EXTRA_DIST = $(BUILT_SOURCES)
 EXTRA_DIST += $(man1_MANS)
+SUFFIXES =
 
 man1_MANS =
 man1_MANS += $(built_mans)
 man1_MANS += cattle.man
 
-BUILT_SOURCES += cattle.man
-EXTRA_DIST += cattle.name
+BUILT_SOURCES += $(built_mans)
 EXTRA_DIST += author.h2m
 
-%.man: $(top_srcdir)/src/%.yuck $(top_srcdir)/configure $(top_builddir)/version.mk
-	$(AM_V_GEN) PATH=$(top_builddir)/build-aux:"$${PATH}" \
-		yuck$(EXEEXT) genman --version-string=$(VERSION) -o $@ $<
+VPATH += @top_srcdir@/src
+SUFFIXES += .yuck
+SUFFIXES += .man
+.yuck.man:
+	$(AM_V_GEN) PATH="$(top_builddir)/build-aux:$${PATH}" \
+		yuck$(EXEEXT) genman \
+			--package "$(PACKAGE_NAME)" \
+			-i "$(srcdir)/author.h2m" \
+			-o $@ --version-file "$(top_builddir)/.version" $<
 
 ## Makefile.am ends here
