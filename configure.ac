@@ -3,8 +3,7 @@ dnl Autoconf startup.
 dnl -------------------------------------------------------------------------
 
 AC_PREREQ([2.63])
-## t.i.n.a.v = this is not a version, never use it!
-AC_INIT([cattle], [t.i.n.a.v], [https://github.com/hroptatyr/cattle])
+AC_INIT([cattle], [0.2.1.GIT], [https://github.com/hroptatyr/cattle])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -27,7 +26,7 @@ AC_COPYRIGHT([dnl
 AM_INIT_AUTOMAKE([foreign parallel-tests dist-xz color-tests subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-GIT_VERSION_MAGIC
+AX_YUCK_SCMVER([version.mk])
 AC_CONFIG_LINKS([GNUmakefile:GNUmakefile])
 
 ## the build chain
@@ -71,7 +70,8 @@ if test "${use_asm_corus}" = "yes"; then
 	AC_DEFINE([USE_ASM_CORUS], [1], [Whether to use asm backed coroutines])
 fi
 
-AX_CHECK_YUCK
+## check for yuck helper
+AX_CHECK_YUCK([with_included_yuck="yes"])
 
 ## libtool goddess^Wgoodness
 ## has to be down here as we're turning -Werror'ing off

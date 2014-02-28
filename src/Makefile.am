@@ -19,9 +19,7 @@ noinst_HEADERS =
 BUILT_SOURCES =
 EXTRA_DIST = $(BUILT_SOURCES)
 CLEANFILES = 
-
-CLEANFILES += version.c
-EXTRA_DIST += version.c.in
+SUFFIXES =
 
 noinst_LTLIBRARIES += libcattle.la
 libcattle_la_SOURCES = cattle.h
@@ -78,7 +76,7 @@ endif  USE_ASM_CORUS
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
 cattle_SOURCES += cattle.yuck
-cattle_SOURCES += version.c version.h
+cattle_SOURCES += version.c version.h version.c.in
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
 cattle_CPPFLAGS += -DSTANDALONE
 cattle_LDADD = libcattle.la
@@ -90,15 +88,21 @@ BUILT_SOURCES += cattle.yucc
 
 analysis: $(libcattle_la_SOURCES:%.c=%.sa)
 
-version.c: version.c.in $(top_builddir)/version.mk
-	sed -e 's,[@]VERSION[@],$(VERSION),g' <$(srcdir)/$@.in >$@
+## version rules
+version.c: version.c.in $(top_builddir)/.version
+	$(AM_V_GEN) PATH="$(top_builddir)/build-aux:$${PATH}" \
+		yuck$(EXEEXT) scmver --ignore-noscm --force -o $@ \
+			--use-reference --reference $(top_builddir)/.version $<
 
 ## gperf rule
-%.c: %.erf
+SUFFIXES += .erf
+.erf.c:
 	$(AM_V_GEN) $(GPERF) -L ANSI-C $< --output-file $@
 
-%.yucc: %.yuck $(top_builddir)/version.mk
-	$(AM_V_GEN) PATH=$(top_builddir)/build-aux:"$${PATH}" \
+SUFFIXES += .yuck
+SUFFIXES += .yucc
+.yuck.yucc:
+	$(AM_V_GEN) PATH="$(top_builddir)/build-aux:$${PATH}" \
 		yuck$(EXEEXT) gen -o $@ $<
 
 ## for dist or dist check we need binaries, so help2man can work
@@ -116,5 +120,6 @@ dist-hook: $(bin_PROGRAMS)
 	$(COMPILE) -S -c $(AM_CFLAGS) $<
 
 ## create static analysis
-%.sa: %.c
+SUFFIXES += .sa
+.c.sa:
 	$(AM_V_GEN) clang -std=gnu99 --analyze $< -o $@
