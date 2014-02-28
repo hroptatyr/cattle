@@ -6,23 +6,32 @@ LC_ALL = C
 ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS =
+EXTRA_DIST = $(BUILT_SOURCES)
+BUILT_SOURCES =
+DISTCLEANFILES =
+CLEANFILES =
+
 SUBDIRS += build-aux
 SUBDIRS += src
 SUBDIRS += info
 SUBDIRS += test
 
-EXTRA_DIST =
-DISTCLEANFILES =
-
-EXTRA_DIST += build-aux/git-version-gen
-EXTRA_DIST += README.md
-
 DISTCLEANFILES += version.mk
+EXTRA_DIST += version.mk.in
+BUILT_SOURCES += .version
+
+doc_DATA = README.md
+EXTRA_DIST += $(doc_DATA)
 
 if USE_ASM_CORUS
 DISTCHECK_CONFIGURE_FLAGS = --with-asm-backed-coroutines
 endif  USE_ASM_CORUS
 
+.version:
+	$(AM_V_GEN) echo "v$(VERSION)" > $@
+
+## make sure .version is read-only in the dist
 dist-hook:
-	echo $(VERSION) > $(distdir)/version \
-	&& touch -r $(top_builddir)/version.mk $(distdir)/version
+	chmod ugo-w $(distdir)/.version
+
+## Makefile.am ends here

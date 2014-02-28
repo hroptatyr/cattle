@@ -26,7 +26,7 @@ AC_COPYRIGHT([dnl
 AM_INIT_AUTOMAKE([foreign parallel-tests dist-xz color-tests subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-GIT_VERSION_MAGIC
+AX_YUCK_SCMVER([version.mk])
 AC_CONFIG_LINKS([GNUmakefile:GNUmakefile])
 
 ## the build chain
@@ -70,7 +70,8 @@ if test "${use_asm_corus}" = "yes"; then
 	AC_DEFINE([USE_ASM_CORUS], [1], [Whether to use asm backed coroutines])
 fi
 
-AX_CHECK_YUCK
+## check for yuck helper
+AX_CHECK_YUCK([with_included_yuck="yes"])
 
 ## libtool goddess^Wgoodness
 ## has to be down here as we're turning -Werror'ing off

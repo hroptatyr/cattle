@@ -20,9 +20,6 @@ BUILT_SOURCES =
 EXTRA_DIST = $(BUILT_SOURCES)
 CLEANFILES = 
 
-CLEANFILES += version.c
-EXTRA_DIST += version.c.in
-
 noinst_LTLIBRARIES += libcattle.la
 libcattle_la_SOURCES = cattle.h
 libcattle_la_SOURCES += cattle-ratio.c cattle-ratio.h
@@ -78,7 +75,7 @@ endif  USE_ASM_CORUS
 bin_PROGRAMS += cattle
 cattle_SOURCES = cattle.c
 cattle_SOURCES += cattle.yuck
-cattle_SOURCES += version.c version.h
+cattle_SOURCES += version.c version.h version.c.in
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
 cattle_CPPFLAGS += -DSTANDALONE
 cattle_LDADD = libcattle.la
@@ -90,8 +87,11 @@ BUILT_SOURCES += cattle.yucc
 
 analysis: $(libcattle_la_SOURCES:%.c=%.sa)
 
-version.c: version.c.in $(top_builddir)/version.mk
-	sed -e 's,[@]VERSION[@],$(VERSION),g' <$(srcdir)/$@.in >$@
+## version rules
+version.c: version.c.in $(top_builddir)/.version
+	$(AM_V_GEN) PATH="$(top_builddir)/build-aux:$${PATH}" \
+		yuck$(EXEEXT) scmver --ignore-noscm --force -o $@ \
+			--use-reference --reference $(top_builddir)/.version $<
 
 ## gperf rule
 %.c: %.erf
