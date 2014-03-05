@@ -191,9 +191,15 @@ ctl_caev_rdr(echs_instant_t t, const char *s)
 	CHECK_FLDS;
 	flds[fldi++] = MAKE_CTL_FLD(admin, CTL_FLD_CAEV, ccod);
 	flds[fldi++] = MAKE_CTL_FLD(date, CTL_FLD_XDTE, t);
+
 	/* now look for .XXXX= or .XXXX/ or XXXX= or XXXX/ */
 	for (const char *sp = s; (sp = strchr(sp, ' ')) != NULL; sp++) {
-		if (*++sp == '.') {
+		sp++;
+		if (*sp == '{') {
+			/* overread braces */
+			sp++;
+		}
+		if (*sp == '.') {
 			/* overread . */
 			sp++;
 		}
