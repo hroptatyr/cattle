@@ -191,21 +191,31 @@ ctl_caev_rdr(echs_instant_t t, const char *s)
 	CHECK_FLDS;
 	flds[fldi++] = MAKE_CTL_FLD(admin, CTL_FLD_CAEV, ccod);
 	flds[fldi++] = MAKE_CTL_FLD(date, CTL_FLD_XDTE, t);
-	/* now look for .XXXX= or .XXXX/ */
-	for (const char *sp = s; (sp = strchr(sp, '.')) != NULL; sp++) {
-		switch (sp[5U]) {
+
+	/* now look for .XXXX= or .XXXX/ or XXXX= or XXXX/ */
+	for (const char *sp = s; (sp = strchr(sp, ' ')) != NULL; sp++) {
+		sp++;
+		if (*sp == '{') {
+			/* overread braces */
+			sp++;
+		}
+		if (*sp == '.') {
+			/* overread . */
+			sp++;
+		}
+		switch (sp[4U]) {
 			ctl_fld_rdr_t f;
 			ctl_fld_unk_t fc;
 			ctl_fld_val_t fv;
 		case '/':
 		case '=':
 			/* ah, could be a field */
-			if ((f = __ctl_fldify(sp + 1U, 4U)) == NULL) {
+			if ((f = __ctl_fldify(sp, 4U)) == NULL) {
 				break;
 			}
 			/* otherwise we've got the code */
 			fc = (ctl_fld_unk_t)f->fc;
-			with (const char *vp = sp += 5U) {
+			with (const char *vp = sp += 4U) {
 				if (*vp++ != '=') {
 					if ((vp = strchr(vp, '=')) == NULL) {
 						continue;
