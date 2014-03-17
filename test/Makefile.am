@@ -331,6 +331,18 @@ TESTS += cattle_apply_22.clit
 EXTRA_DIST += cattle_10.tser
 EXTRA_DIST += cattle_10.echs
 
+TESTS += cattle_apply_23.clit
+TESTS += cattle_apply_24.clit
+TESTS += cattle_apply_25.clit
+TESTS += cattle_apply_26.clit
+TESTS += cattle_apply_27.clit
+TESTS += cattle_apply_28.clit
+TESTS += cattle_apply_29.clit
+TESTS += cattle_apply_30.clit
+EXTRA_DIST += cattle_23.echs
+EXTRA_DIST += cattle_24.echs
+EXTRA_DIST += cattle_25.echs
+
 TESTS += cattle_apply_reverse_23.clit
 TESTS += cattle_apply_reverse_24.clit
 TESTS += cattle_apply_reverse_25.clit
