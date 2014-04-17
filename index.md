@@ -2,6 +2,7 @@
 title: cattle
 project: cattle
 layout: project
+latest: https://github.com/hroptatyr/cattle/releases/download/v0.2.1/cattle-0.2.1.tar.xz
 ---
 
 cattle (corporate actions on the command-line)
