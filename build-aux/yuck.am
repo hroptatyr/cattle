@@ -5,7 +5,6 @@
 ##   EXTRA_DIST
 ##   DISTCLEANFILES
 
-M4 ?= m4
 yuck_CPPFLAGS = -D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -D_BSD_SOURCE
 yuck_CPPFLAGS += -D_ALL_SOURCE
 yuck_CPPFLAGS += -D_DARWIN_C_SOURCE
@@ -19,7 +18,7 @@ yuck_bootstrap_CPPFLAGS += -DWITH_SCMVER
 
 noinst_PROGRAMS += yuck
 yuck_SOURCES = yuck.c yuck.yuck
-yuck_SOURCES += yuck-scmver.c yuck-scmver.h
+yuck_SOURCES += yuck-scmver.c yuck-scmver.h yuck-scmver.m4
 yuck_SOURCES += yuck.m4
 yuck_SOURCES += yuck-coru.c.m4 yuck-coru.h.m4
 yuck_SOURCES += yuck.man.m4

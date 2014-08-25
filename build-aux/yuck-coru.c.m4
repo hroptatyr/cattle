@@ -12,8 +12,11 @@ changecom([#])dnl
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
-ifdef([YUCK_HEADER], [#include "YUCK_HEADER"
+changecom([])dnl
+ifdef([YUCK_HEADER], [dnl
+#include "YUCK_HEADER"
 ])dnl
+changecom([#])dnl
 
 #if defined __INTEL_COMPILER
 # pragma warning (disable:177)
@@ -175,11 +178,18 @@ dnl now simply expand yuck_foo_action:
 			}dnl
 divert[]dnl
 ]) else {
-				ifelse(defn([__CMD]), [],
-				       [/* grml */
+ifelse(defn([__CMD]), [], [dnl
+ifdef([YOPT_ALLOW_UNKNOWN_DASHDASH], [dnl
+				/* just treat it as argument then */
+				resume_at(arg);
+], [dnl
+				/* grml */
 				fprintf(stderr, "YUCK_UMB_STR: unrecognized option `--%s'\n", op);
-				resume_at(failure);],
-				       [resume_at(yuck_cmd()[_longopt]);])
+				resume_at(failure);
+])dnl
+], [dnl
+				resume_at(yuck_cmd()[_longopt]);
+])dnl
 			}
 			resume;
 		}
@@ -233,14 +243,27 @@ pushdef([yuck_auto_action], [/* invoke auto action and exit */
 			switch (*op) {
 			default:
 				divert(1);
+ifdef([YOPT_ALLOW_UNKNOWN_DASH], [dnl
+				resume_at(arg);
+], [dnl
 				fprintf(stderr, "YUCK_UMB_STR: invalid option -%c\n", *op);
 				resume_at(failure);
+])dnl
 
 ifdef([YUCK_SHORTS_HAVE_NUMERALS], [
 				/* [yuck_shorts()] (= yuck_shorts())
 				 * has numerals as shortopts
 				 * don't allow literal treatment of numerals */divert(-1)])
-			case '0' ... '9':;
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
 				/* literal treatment of numeral */
 				resume_at(arg);
 
@@ -369,6 +392,10 @@ yuck_C_literal(yuck_cmd_desc(defn([__CMD])))\n\
 		break;
 ])
 	}
+
+#if defined yuck_post_usage
+	yuck_post_usage(src);
+#endif	/* yuck_post_usage */
 	return;
 }
 
@@ -421,8 +448,12 @@ yuck_C_literal(backquote([yuck_option_help_line(defn([__IDN]), defn([__CMD]))]))
 ])
 	}
 
+#if defined yuck_post_help
+	yuck_post_help(src);
+#endif	/* yuck_post_help */
+
 #if defined PACKAGE_BUGREPORT
-	puts("\
+	puts("\n\
 Report bugs to " PACKAGE_BUGREPORT);
 #endif	/* PACKAGE_BUGREPORT */
 	return;
@@ -453,10 +484,14 @@ ifdef([YUCK_VERSION], [dnl
 ])dnl
 		break;
 	}
+
+#if defined yuck_post_version
+	yuck_post_version(src);
+#endif	/* yuck_post_version */
 	return;
 }
-
 popdef([DEFUN])dnl
+
 #if defined __INTEL_COMPILER
 # pragma warning (default:177)
 # pragma warning (default:111)
