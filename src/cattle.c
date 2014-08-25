@@ -531,6 +531,8 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	if (fn == NULL) {
 		f = stdin;
+	} else if (fn[0U] == '-' && fn[1U] == '\0') {
+		f = stdin;
 	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
 	}
