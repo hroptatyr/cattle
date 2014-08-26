@@ -224,7 +224,7 @@ static const struct rdr_res_s {
 
 		if (*line == '#') {
 			continue;
-		} else if (__inst_0_p(res.t = dt_strp(line, &p))) {
+		} else if (echs_nul_instant_p(res.t = dt_strp(line, &p))) {
 			continue;
 		} else if (*p != '\t') {
 			continue;
@@ -240,7 +240,7 @@ static const struct rdr_res_s {
 
 		if (*line == '#') {
 			continue;
-		} else if (__inst_0_p(res.t = dt_strp(line, &p))) {
+		} else if (echs_nul_instant_p(res.t = dt_strp(line, &p))) {
 			continue;
 		} else if (*p != '\t') {
 			continue;
@@ -289,7 +289,7 @@ static const struct pop_res_s {
 	static ctl_caev_t this[1U];
 	struct pop_res_s res;
 
-	while (!__inst_0_p(res.t = ctl_wheap_top_rank(c->q))) {
+	while (!echs_nul_instant_p(res.t = ctl_wheap_top_rank(c->q))) {
 		/* assume it's a ctl-caev_t */
 		*this = ctl_wheap_pop(c->q).c;
 		res.msg = this;
@@ -557,7 +557,8 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
 		/* sum up caevs in between price lines */
 		for (;
-		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
+		     LIKELY(ev != NULL) &&
+			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
 		     ev = next(pop)) {
 			ctl_caev_t caev;
 
@@ -594,7 +595,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				wrr,
 				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
-			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
+			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
 	}
 	/* drain the adjuster, then the writer */
 	(void)next(adj);
@@ -648,7 +649,8 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* sum up caevs in between price lines */
 		for (;
-		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
+		     LIKELY(ev != NULL) &&
+			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
 		     ev = next(pop)) {
 			ctl_caev_t caev;
 			float fctr;
@@ -696,7 +698,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				wrr,
 				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
-			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
+			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
 	}
 	/* unload the writer and adjuster */
 	(void)next(adj);
@@ -758,7 +760,8 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		/* sum up caevs in between price lines */
 		for (;
-		     LIKELY(ev != NULL) && UNLIKELY(!__inst_lt_p(ln->t, ev->t));
+		     LIKELY(ev != NULL) &&
+			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
 		     ev = next(pop)) {
 			ctl_caev_t caev;
 			struct fa_s cell;
@@ -797,7 +800,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			/* no need to use the strtod32() reader */
 			last = strtof(ln->ln, NULL);
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
-			 LIKELY((ev == NULL || __inst_lt_p(ln->t, ev->t))));
+			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
 	}
 
 	/* end of first pass */
@@ -847,7 +850,8 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	for (ln = next(rdr), i = 0U; ln != NULL;) {
 		/* mul up factors in between price lines */
 		for (;
-		     LIKELY(i < nfa) && UNLIKELY(!__inst_lt_p(ln->t, fa[i].t));
+		     LIKELY(i < nfa) &&
+			     UNLIKELY(!echs_instant_lt_p(ln->t, fa[i].t));
 		     i++) {
 			if (UNLIKELY(isnan(last))) {
 				res = -1;
@@ -881,7 +885,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				wrr,
 				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
-			 LIKELY((i >= nfa || __inst_lt_p(ln->t, fa[i].t))));
+			 LIKELY(i >= nfa || echs_instant_lt_p(ln->t, fa[i].t)));
 	}
 	/* unload the writer and adjuster */
 	(void)next(adj);
@@ -912,14 +916,14 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
+	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
 		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
 		char buf[256U];
 		char *bp = buf;
 		const char *const ep = buf + sizeof(buf);
 
 		if (uniqp) {
-			if (__inst_eq_p(prev_t, t) &&
+			if (echs_instant_eq_p(prev_t, t) &&
 			    ctl_caev_eq_p(this, prev)) {
 				/* completely identical */
 				continue;
@@ -946,11 +950,11 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
+	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
 		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
 
 		if (uniqp) {
-			if (__inst_eq_p(prev_t, t) &&
+			if (echs_instant_eq_p(prev_t, t) &&
 			    ctl_caev_eq_p(this, prev)) {
 				/* completely identical */
 				continue;
@@ -982,7 +986,7 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !__inst_0_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
+	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
 		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
 		char buf[256U];
 		char *bp = buf;
@@ -991,7 +995,7 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 		if (uniqp) {
 			ctl_caev_t this_c = ctl_kvv_get_caev(this);
 
-			if (__inst_eq_p(prev_t, t) &&
+			if (echs_instant_eq_p(prev_t, t) &&
 			    ctl_caev_eq_p(this_c, prev_c)) {
 				continue;
 			}

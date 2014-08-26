@@ -22,6 +22,7 @@ CLEANFILES =
 SUFFIXES =
 
 noinst_LTLIBRARIES += libcattle.la
+EXTRA_libcattle_la_SOURCES =
 libcattle_la_SOURCES = cattle.h
 libcattle_la_SOURCES += cattle-ratio.c cattle-ratio.h
 libcattle_la_SOURCES += cattle-price.c cattle-price.h
@@ -30,7 +31,8 @@ libcattle_la_SOURCES += cattle-perio.h
 libcattle_la_SOURCES += cattle-date.h
 libcattle_la_SOURCES += caev.c caev.h
 libcattle_la_SOURCES += dt-strpf.c dt-strpf.h
-libcattle_la_SOURCES += instant.h
+libcattle_la_SOURCES += instant.c instant.h
+EXTRA_libcattle_la_SOURCES += wikisort.c
 libcattle_la_SOURCES += wheap.c wheap.h
 libcattle_la_SOURCES += intern.c intern.h
 libcattle_la_SOURCES += caev-series.c caev-series.h

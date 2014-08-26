@@ -54,7 +54,8 @@ main(int argc, char *argv[])
 		}
 	}
 
-	for (echs_instant_t t; !__inst_0_p(t = ctl_wheap_top_rank(x));) {
+	for (echs_instant_t t;
+	     !echs_nul_instant_p(t = ctl_wheap_top_rank(x));) {
 		(void)ctl_wheap_pop(x);
 
 		pr(t);
