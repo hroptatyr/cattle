@@ -1,0 +1,11 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+## intraday should stay intraday
+$ cattle apply "${srcdir}/cattle_15.tser" "${srcdir}/cattle_01.echs" <<EOF
+2006-01-01T12:00:00.000	20.00
+2007-01-01T13:00:00.000	22.00
+2008-01-01T12:00:00.000	24.00
+2009-01-01T13:00:00.000	26.00
+$
+
+## cattle_apply_intraday_03.clit ends here

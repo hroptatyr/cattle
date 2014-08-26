@@ -399,6 +399,13 @@ TESTS += cattle_apply_prec_10.clit
 TESTS += cattle_apply_prec_11.clit
 TESTS += cattle_apply_prec_12.clit
 
+TESTS += cattle_apply_intraday_01.clit
+TESTS += cattle_apply_intraday_02.clit
+TESTS += cattle_apply_intraday_03.clit
+TESTS += cattle_apply_intraday_04.clit
+EXTRA_DIST += cattle_14.tser
+EXTRA_DIST += cattle_15.tser
+
 check_PROGRAMS += intern.01
 intern_01_SOURCES = intern.01.c
 intern_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)

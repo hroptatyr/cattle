@@ -1,0 +1,10 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ head -1 "${srcdir}/cattle_01.echs" | cattle apply "${srcdir}/cattle_15.tser"
+2006-01-01T12:00:00.000	2.00
+2007-01-01T13:00:00.000	2.20
+2008-01-01T12:00:00.000	2.40
+2009-01-01T13:00:00.000	2.60
+$
+
+## cattle_apply_intraday_04.clit ends here
