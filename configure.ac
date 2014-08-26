@@ -3,7 +3,7 @@ dnl Autoconf startup.
 dnl -------------------------------------------------------------------------
 
 AC_PREREQ([2.63])
-AC_INIT([cattle], [0.2.1rc1], [https://github.com/hroptatyr/cattle])
+AC_INIT([cattle], [0.2.2rc1], [https://github.com/hroptatyr/cattle])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
