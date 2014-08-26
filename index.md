@@ -8,9 +8,6 @@ latest: https://github.com/hroptatyr/cattle/releases/download/v0.2.1/cattle-0.2.
 cattle (corporate actions on the command-line)
 ==============================================
 
-[![Build Status](https://secure.travis-ci.org/hroptatyr/cattle.png?branch=master)](http://travis-ci.org/hroptatyr/cattle)
-[![Build Status](https://drone.io/github.com/hroptatyr/cattle/status.png)](https://drone.io/github.com/hroptatyr/cattle/latest)
-
 A simple library that handles corporate action events and applies them
 to time series of market prices, outstanding securities and nominal
 values.
