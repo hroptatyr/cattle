@@ -187,8 +187,26 @@ dt_strp(const char *str, char **on)
 	} else if ((tmp = strtoi_lim(sp, &sp, 0, 999)) < 0) {
 		res = nul;
 		goto nul;
+	} else {
+		/* consume more digits */
+		for (; *sp >= '0' && *sp <= '9'; sp++);
 	}
 	res.ms = tmp;
+
+	/* for completeness overread any time zone offsets */
+	switch (*sp) {
+	case '+':
+	case '-':
+		/* consume digits, colons and more digits */
+		for (sp++; *sp >= '0' && *sp <= '9'; sp++);
+		if (*sp == ':') {
+			for (sp++; *sp >= '0' && *sp <= '9'; sp++);
+		}
+		break;
+	default:
+		break;
+	}
+
 nul:
 	if (LIKELY(on != NULL)) {
 		*on = deconst(sp);
