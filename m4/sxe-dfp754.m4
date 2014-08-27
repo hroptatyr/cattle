@@ -206,7 +206,33 @@ AC_DEFUN([_SXE_CHECK_DFP754_ARITH_FLAVOUR], [dnl
 	AC_MSG_RESULT([${sxe_cv_feat_dfp754_arith_flavour}])
 ])dnl _SXE_CHECK_DFP754_ARITH_FLAVOUR
 
+AC_DEFUN([_SXE_CHECK_DFP754_LITERALS], [dnl
+
+	AC_MSG_CHECKING([whether dfp754 literals work])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#define __STDC_WANT_DEC_FP__	1
+#include <stdint.h>
+#include <stdio.h>
+]], [[
+	_Decimal32 one = 1.df;
+	_Decimal32 xxx = 12.9df;
+
+	if (one + xxx == 13.9df) {
+		return 0;
+	}
+	return 1;
+]])], [
+	sxe_cv_feat_dfp754_literals="yes"
+	$2
+], [
+	sxe_cv_feat_dfp754_literals="no"
+	$3
+])
+	AC_MSG_RESULT([${sxe_cv_feat_dfp754_literals}])
+])dnl _SXE_CHECK_DFP754_LITERALS
+
 AC_DEFUN([SXE_CHECK_DFP754], [dnl
+	AC_REQUIRE([_SXE_CHECK_DFP754_LITERALS])
 	AC_REQUIRE([_SXE_CHECK_DFP754_LITERAL_FLAVOUR])
 	AC_REQUIRE([_SXE_CHECK_DFP754_CAST_FLAVOUR])
 	AC_REQUIRE([_SXE_CHECK_DFP754_ARITH_FLAVOUR])
