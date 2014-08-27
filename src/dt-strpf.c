@@ -197,10 +197,17 @@ dt_strp(const char *str, char **on)
 	switch (*sp) {
 	case '+':
 	case '-':
-		/* consume digits, colons and more digits */
-		for (sp++; *sp >= '0' && *sp <= '9'; sp++);
-		if (*sp == ':') {
-			for (sp++; *sp >= '0' && *sp <= '9'; sp++);
+		/* consume 2 digits, a colon maybe, and another 2 digits */
+		if (sp[1U] >= '0' && sp[1U] <= '9' &&
+		    sp[2U] >= '0' && sp[2U] <= '9') {
+			if (sp[3U] == ':' &&
+			    sp[4U] >= '0' && sp[4U] <= '9' &&
+			    sp[5U] >= '0' && sp[5U] <= '9') {
+				sp += 6U;
+			} else if (sp[3U] >= '0' && sp[3U] <= '9' &&
+				   sp[4U] >= '0' && sp[4U] <= '9') {
+				sp += 5U;
+			}
 		}
 		break;
 	default:
