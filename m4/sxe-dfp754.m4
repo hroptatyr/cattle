@@ -50,20 +50,20 @@ AC_DEFUN([_SXE_CHECK_DFP754_LITERAL_FLAVOUR], [dnl
 			return 0;
 		case 0b00110010100000000000000000000000U:
 			/* bid 0.df */
-			return 1;
+			return 97;
 		case 0b00100010010100000000000000000000U:
 			/* dpd 0.df */
-			return 2;
+			return 98;
 		}
 ]])], [
 		sxe_cv_feat_dfp754_literal_flavour="unknown"
 		$2
 	], [
 		case "$?" in
-		(1)
+		(97)
 			sxe_cv_feat_dfp754_literal_flavour="bid"
 			;;
-		(2)
+		(98)
 			sxe_cv_feat_dfp754_literal_flavour="dpd"
 			;;
 		(*)
@@ -107,20 +107,20 @@ AC_DEFUN([_SXE_CHECK_DFP754_CAST_FLAVOUR], [dnl
 			return 0;
 		case 0b00110010000000000000000000000101U:
 			/* bid 0.5df */
-			return 1;
+			return 97;
 		case 0b00100010001100000000000001010000U:
 			/* dpd 0.5df */
-			return 2;
+			return 98;
 		}
 ]])], [
 		sxe_cv_feat_dfp754_cast_flavour="unknown"
 		$2
 	], [
 		case "$?" in
-		(1)
+		(97)
 			sxe_cv_feat_dfp754_cast_flavour="bid"
 			;;
-		(2)
+		(98)
 			sxe_cv_feat_dfp754_cast_flavour="dpd"
 			;;
 		(*)
@@ -166,20 +166,20 @@ AC_DEFUN([_SXE_CHECK_DFP754_ARITH_FLAVOUR], [dnl
 			return 0;
 		case 0b00110010100000000000000000000001U:
 			/* bid 1.df */
-			return 1;
+			return 97;
 		case 0b00100010010000000000000000010000U:
 			/* dpd 1.df */
-			return 2;
+			return 98;
 		}
 ]])], [
 		sxe_cv_feat_dfp754_arith_flavour="unknown"
 		$2
 	], [
 		case "$?" in
-		(1)
+		(97)
 			sxe_cv_feat_dfp754_arith_flavour="bid"
 			;;
-		(2)
+		(98)
 			sxe_cv_feat_dfp754_arith_flavour="dpd"
 			;;
 		(*)
