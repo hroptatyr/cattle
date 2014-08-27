@@ -41,7 +41,7 @@ AC_DEFUN([_SXE_CHECK_DFP754_LITERAL_FLAVOUR], [dnl
 #include <stdint.h>
 #include <stdio.h>
 ]], [[
-		_Decimal32 naught = 0.df;
+		_Decimal32 naught = 0;
 		uint32_t x = (union {_Decimal32 x; uint32_t u;}){naught}.u;
 
 		switch (x) {
@@ -156,7 +156,7 @@ AC_DEFUN([_SXE_CHECK_DFP754_ARITH_FLAVOUR], [dnl
 #include <stdio.h>
 ]], [[
 		_Decimal32 naught = (_Decimal32)0.f;
-		_Decimal32 one = 1.df;
+		_Decimal32 one = (_Decimal32)1.f;
 		_Decimal32 sum = naught + one;
 		uint32_t x = (union {_Decimal32 x; uint32_t u;}){sum}.u;
 
