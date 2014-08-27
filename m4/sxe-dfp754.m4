@@ -50,20 +50,32 @@ AC_DEFUN([_SXE_CHECK_DFP754_LITERAL_FLAVOUR], [dnl
 			return 0;
 		case 0b00110010100000000000000000000000U:
 			/* bid 0.df */
+			return 96;
+		case 0b00110010000000000000000000000000U:
+			/* bid 0.0df */
 			return 97;
 		case 0b00100010010100000000000000000000U:
 			/* dpd 0.df */
 			return 98;
+		case 0b00100010010000000000000000000000U:
+			/* dpd 0.0df */
+			return 99;
 		}
 ]])], [
 		sxe_cv_feat_dfp754_literal_flavour="unknown"
 		$2
 	], [
 		case "$?" in
+		(96)
+			sxe_cv_feat_dfp754_literal_flavour="bid"
+			;;
 		(97)
 			sxe_cv_feat_dfp754_literal_flavour="bid"
 			;;
 		(98)
+			sxe_cv_feat_dfp754_literal_flavour="dpd"
+			;;
+		(99)
 			sxe_cv_feat_dfp754_literal_flavour="dpd"
 			;;
 		(*)
@@ -107,20 +119,32 @@ AC_DEFUN([_SXE_CHECK_DFP754_CAST_FLAVOUR], [dnl
 			return 0;
 		case 0b00110010000000000000000000000101U:
 			/* bid 0.5df */
+			return 96;
+		case 0b00110001100000000000000000110010U:
+			/* bid 0.50df */
 			return 97;
-		case 0b00100010001100000000000001010000U:
+		case 0b00100010010000000000000000000101U:
 			/* dpd 0.5df */
 			return 98;
+		case 0b00100010001100000000000001010000U:
+			/* dpd 0.50df */
+			return 99;
 		}
 ]])], [
 		sxe_cv_feat_dfp754_cast_flavour="unknown"
 		$2
 	], [
 		case "$?" in
+		(96)
+			sxe_cv_feat_dfp754_cast_flavour="bid"
+			;;
 		(97)
 			sxe_cv_feat_dfp754_cast_flavour="bid"
 			;;
 		(98)
+			sxe_cv_feat_dfp754_cast_flavour="dpd"
+			;;
+		(99)
 			sxe_cv_feat_dfp754_cast_flavour="dpd"
 			;;
 		(*)
@@ -166,20 +190,32 @@ AC_DEFUN([_SXE_CHECK_DFP754_ARITH_FLAVOUR], [dnl
 			return 0;
 		case 0b00110010100000000000000000000001U:
 			/* bid 1.df */
+			return 96;
+		case 0b00110010000000000000000000001010U:
+			/* bid 1.0df */
 			return 97;
-		case 0b00100010010000000000000000010000U:
+		case 0b00100010010100000000000000000001U:
 			/* dpd 1.df */
 			return 98;
+		case 0b00100010010000000000000000010000U:
+			/* dpd 1.0df */
+			return 99;
 		}
 ]])], [
 		sxe_cv_feat_dfp754_arith_flavour="unknown"
 		$2
 	], [
 		case "$?" in
+		(96)
+			sxe_cv_feat_dfp754_arith_flavour="bid"
+			;;
 		(97)
 			sxe_cv_feat_dfp754_arith_flavour="bid"
 			;;
 		(98)
+			sxe_cv_feat_dfp754_arith_flavour="dpd"
+			;;
+		(99)
 			sxe_cv_feat_dfp754_arith_flavour="dpd"
 			;;
 		(*)
