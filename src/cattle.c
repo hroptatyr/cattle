@@ -764,19 +764,26 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	const struct pop_res_s *ev;
 	const struct rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
+		/* skip over events from the past,
+		 * i.e. from before the time of the first market price */
+		for (; LIKELY(ev != NULL) &&
+			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
+		     ev = next(pop));
+
+		do {
+			/* no need to use the strtod32() reader */
+			last = strtof(ln->ln, NULL);
+		} while (LIKELY((ln = next(rdr)) != NULL) &&
+			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
 
 		/* sum up caevs in between price lines */
 		for (;
 		     LIKELY(ev != NULL) &&
-			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
+			     (UNLIKELY(ln == NULL) ||
+			      UNLIKELY(!echs_instant_lt_p(ln->t, ev->t)));
 		     ev = next(pop)) {
 			ctl_caev_t caev;
 			struct fa_s cell;
-
-			if (UNLIKELY(isnan(last))) {
-				res = -1;
-				goto out;
-			}
 
 			caev = *(const ctl_caev_t*)ev->msg;
 			cell.last = last;
@@ -801,13 +808,6 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 			fa[nfa++] = cell;
 		}
-
-		/* apply caev sum to price lines */
-		do {
-			/* no need to use the strtod32() reader */
-			last = strtof(ln->ln, NULL);
-		} while (LIKELY((ln = next(rdr)) != NULL) &&
-			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
 	}
 
 	/* end of first pass */

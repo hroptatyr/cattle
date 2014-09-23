@@ -1,0 +1,6 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ ?1 cattle apply -T -F "${srcdir}/cattle_16.tser" "${srcdir}/cattle_16.echs"
+$
+
+## cattle_apply_total_return_10.clit ends here
