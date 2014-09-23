@@ -707,6 +707,8 @@ dnl Usage: SXE_CHECK_SIMD([INTRIN], [[SNIPPET], [IF-FOUND], [IF-NOT-FOUND]])
 #endif
 ]], [ifelse([$2],[],[$1(0U)],[$2]);])], [
 	eval AS_TR_SH(ac_cv_func_$1)="yes"
+	AC_DEFINE(AS_TR_CPP([HAVE_$1]), [1], [dnl
+Define to 1 if you have the `$1' simd routine])
 	$3
 ], [
 	eval AS_TR_SH(ac_cv_func_$1)="no"
