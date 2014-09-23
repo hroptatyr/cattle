@@ -502,7 +502,7 @@ ctl_read_kv_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	coru_t rdr;
 	FILE *f;
 
-	if (fn == NULL) {
+	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
 		f = stdin;
 	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
@@ -538,9 +538,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	ctl_caev_t sum;
 	FILE *f;
 
-	if (fn == NULL) {
-		f = stdin;
-	} else if (fn[0U] == '-' && fn[1U] == '\0') {
+	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
 		f = stdin;
 	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
@@ -636,7 +634,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	assert(ctx->fwd);
 
-	if (fn == NULL) {
+	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
 		f = stdin;
 	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
@@ -749,7 +747,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	assert(!ctx->fwd);
 
-	if (fn == NULL) {
+	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
 		f = stdin;
 	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
 		return -1;
