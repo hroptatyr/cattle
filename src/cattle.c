@@ -764,7 +764,6 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	const struct pop_res_s *ev;
 	const struct rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
-
 		/* sum up caevs in between price lines */
 		for (;
 		     LIKELY(ev != NULL) &&
@@ -774,8 +773,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			struct fa_s cell;
 
 			if (UNLIKELY(isnan(last))) {
-				res = -1;
-				goto out;
+				continue;
 			}
 
 			caev = *(const ctl_caev_t*)ev->msg;
@@ -808,6 +806,36 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			last = strtof(ln->ln, NULL);
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
+	}
+
+	for (; LIKELY(!isnan(last)) && UNLIKELY(ev != NULL); ev = next(pop)) {
+		/* time series ended prematurely,
+		 * traverse the CAEVs from the future */
+		ctl_caev_t caev;
+		struct fa_s cell;
+
+		caev = *(const ctl_caev_t*)ev->msg;
+		cell.last = last;
+		cell.aadj = (float)caev.mktprc.a;
+		cell.t = ev->t;
+
+		/* represent everything as factor */
+		if (LIKELY(!ctx->rev)) {
+			/* all's good */
+			cell.fctr = 1.f + cell.aadj / cell.last;
+		} else {
+			/* we do the fix up later ...
+			 * there's nothing else we need */
+			cell.fctr = 1.f;
+		}
+		cell.fctr *= ratio_to_float(caev.mktprc.r);
+		prod *= cell.fctr;
+
+		/* push to fa array */
+		if ((nfa % 64U) == 0U) {
+			fa = realloc(fa, (nfa + 64) * sizeof(*fa));
+		}
+		fa[nfa++] = cell;
 	}
 
 	/* end of first pass */
