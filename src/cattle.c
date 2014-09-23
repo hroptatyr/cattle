@@ -764,17 +764,26 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	const struct pop_res_s *ev;
 	const struct rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
+		/* skip over events from the past,
+		 * i.e. from before the time of the first market price */
+		for (; LIKELY(ev != NULL) &&
+			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
+		     ev = next(pop));
+
+		do {
+			/* no need to use the strtod32() reader */
+			last = strtof(ln->ln, NULL);
+		} while (LIKELY((ln = next(rdr)) != NULL) &&
+			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
+
 		/* sum up caevs in between price lines */
 		for (;
 		     LIKELY(ev != NULL) &&
-			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
+			     (UNLIKELY(ln == NULL) ||
+			      UNLIKELY(!echs_instant_lt_p(ln->t, ev->t)));
 		     ev = next(pop)) {
 			ctl_caev_t caev;
 			struct fa_s cell;
-
-			if (UNLIKELY(isnan(last))) {
-				continue;
-			}
 
 			caev = *(const ctl_caev_t*)ev->msg;
 			cell.last = last;
@@ -799,43 +808,6 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 			fa[nfa++] = cell;
 		}
-
-		/* apply caev sum to price lines */
-		do {
-			/* no need to use the strtod32() reader */
-			last = strtof(ln->ln, NULL);
-		} while (LIKELY((ln = next(rdr)) != NULL) &&
-			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
-	}
-
-	for (; LIKELY(!isnan(last)) && UNLIKELY(ev != NULL); ev = next(pop)) {
-		/* time series ended prematurely,
-		 * traverse the CAEVs from the future */
-		ctl_caev_t caev;
-		struct fa_s cell;
-
-		caev = *(const ctl_caev_t*)ev->msg;
-		cell.last = last;
-		cell.aadj = (float)caev.mktprc.a;
-		cell.t = ev->t;
-
-		/* represent everything as factor */
-		if (LIKELY(!ctx->rev)) {
-			/* all's good */
-			cell.fctr = 1.f + cell.aadj / cell.last;
-		} else {
-			/* we do the fix up later ...
-			 * there's nothing else we need */
-			cell.fctr = 1.f;
-		}
-		cell.fctr *= ratio_to_float(caev.mktprc.r);
-		prod *= cell.fctr;
-
-		/* push to fa array */
-		if ((nfa % 64U) == 0U) {
-			fa = realloc(fa, (nfa + 64) * sizeof(*fa));
-		}
-		fa[nfa++] = cell;
 	}
 
 	/* end of first pass */
