@@ -349,7 +349,7 @@ static const struct rdr_res_s {
 			max = r.rlim_cur;
 		}
 
-		init_mb(&mb, 65536U, max);
+		init_mb(&mb, 65536U, max / 4U);
 	}
 
 rewind:
