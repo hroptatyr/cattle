@@ -255,6 +255,8 @@ rewind:
 		} else if (*p != '\t') {
 			continue;
 		}
+		/* \nul out the line */
+		line[nrd - 1] = '\0';
 		/* check if this guy needs buffering */
 		if (buf != NULL) {
 			if (bof + nrd > bsz) {
@@ -266,12 +268,11 @@ rewind:
 				memmove(buf, old, bof);
 			}
 			memcpy(buf + bof, line, nrd);
-			bof += nrd - 1/*\n*/;
-			buf[bof++] = '\0';
+			bof += nrd/*including \n*/;
 		}
 		/* pack the result structure */
 		res.ln = p + 1U;
-		res.lz = nrd - (p + 1U - line);
+		res.lz = nrd - 1/*\n*/ - (p + 1U - line);
 		yield(res);
 	}
 
@@ -320,7 +321,7 @@ massage_rdr(const struct rdr_res_s *msg)
 
 	res.t = msg->t;
 	res.nf = 0U;
-	for (size_t i = 0U; i < countof(res.f) && *p != '\n'; i++) {
+	for (size_t i = 0U; i < countof(res.f) && *p; i++) {
 		char *next;
 		res.f[res.nf++] = strtod32(p + 1U, &next);
 		p = next;
