@@ -49,6 +49,7 @@
 #include <sys/mman.h>
 #include <math.h>
 #include <sys/resource.h>
+#include <fcntl.h>
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
@@ -254,21 +255,51 @@ mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
 	const int prot = PROT_READ | PROT_WRITE;
 	const int mapf = MAP_ANON | MAP_PRIVATE;
 
-	if (mb->bof + z > mb->bsz) {
+	if (mb->bof + z > mb->max) {
+		/* flush to disk */
+		char tmpnam[64U];
+		size_t tot = 0UL;
+		int fd;
+
+	flush:
+		/* generate temporary file name */
+		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
+
+		if ((fd = open(tmpnam, O_WRONLY | O_APPEND | O_CREAT, 0644)) < 0) {
+			return -1;
+		}
+		/* now rite mb->bof bytes there */
+		for (ssize_t nwr;
+		     (nwr = write(fd, mb->buf + tot, mb->bof - tot)) > 0;
+		     tot += (size_t)nwr);
+		/* all good */
+		close(fd);
+
+		if (UNLIKELY(tot < mb->bof)) {
+			/* couldn't completely write the file */
+			return -1;
+		}
+		/* reset buffer offset */
+		mb->bof = 0U;
+
+	} else if (mb->bof + z > mb->bsz) {
 		char *old = mb->buf;
 
 		/* calc new size */
 		for (mb->bsz *= 2U; mb->bof + z > mb->bsz; mb->bsz *= 2U);
 		/* check if we need to resort to the disk */
 		if (UNLIKELY(mb->bsz > mb->max)) {
+			/* yep */
 			mb->bsz = mb->max;
 		}
 		mb->buf = mmap(mb->buf, mb->bsz, prot, mapf, -1, 0);
 		if (mb->buf == MAP_FAILED) {
 			return -1;
 		}
-		if (LIKELY(mb->bof > 0U)) {
-			memmove(mb->buf, old, mb->bof);
+		memmove(mb->buf, old, mb->bof);
+
+		if (mb->bsz == mb->max) {
+			goto flush;
 		}
 	}
 	memcpy(mb->buf + mb->bof, s, z);
