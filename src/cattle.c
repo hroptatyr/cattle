@@ -48,6 +48,7 @@
 #include <assert.h>
 #include <sys/mman.h>
 #include <math.h>
+#include <sys/resource.h>
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
@@ -200,6 +201,82 @@ mkscal(signed int nd)
 }
 
 
+/* membuf guts */
+struct membuf_s {
+	char *buf;
+	size_t bsz;
+	size_t bof;
+	size_t max;
+};
+
+static int
+init_mb(struct membuf_s *restrict mb, size_t iniz, size_t maxz)
+{
+	const int prot = PROT_READ | PROT_WRITE;
+	const int mapf = MAP_ANON | MAP_PRIVATE;
+	const size_t pgsz = sysconf(_SC_PAGESIZE);
+
+	if (UNLIKELY(iniz > maxz)) {
+		if (LIKELY(maxz > 0U)) {
+			iniz = maxz;
+		}
+	}
+	/* now round to multiples of pgsz */
+	iniz = (iniz / pgsz) * pgsz;
+	maxz = (maxz / pgsz) * pgsz;
+
+	mb->buf = mmap(NULL, (mb->bsz = iniz), prot, mapf, -1, 0);
+	if (UNLIKELY(mb->buf == MAP_FAILED)) {
+		return -1;
+	}
+	/* initialise the rest of the crew */
+	mb->bof = 0U;
+	mb->max = maxz;
+	return 0;
+}
+
+static int
+free_mb(struct membuf_s *restrict mb)
+{
+	int rc;
+
+	if (UNLIKELY(mb->buf == NULL)) {
+		return -1;
+	}
+	rc = munmap(mb->buf, mb->bsz);
+	memset(mb, 0, sizeof(*mb));
+	return rc;
+}
+
+static int
+mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
+{
+	const int prot = PROT_READ | PROT_WRITE;
+	const int mapf = MAP_ANON | MAP_PRIVATE;
+
+	if (mb->bof + z > mb->bsz) {
+		char *old = mb->buf;
+
+		/* calc new size */
+		for (mb->bsz *= 2U; mb->bof + z > mb->bsz; mb->bsz *= 2U);
+		/* check if we need to resort to the disk */
+		if (UNLIKELY(mb->bsz > mb->max)) {
+			mb->bsz = mb->max;
+		}
+		mb->buf = mmap(mb->buf, mb->bsz, prot, mapf, -1, 0);
+		if (mb->buf == MAP_FAILED) {
+			return -1;
+		}
+		if (LIKELY(mb->bof > 0U)) {
+			memmove(mb->buf, old, mb->bof);
+		}
+	}
+	memcpy(mb->buf + mb->bof, s, z);
+	mb->bof += z/*including \n*/;
+	return 0;
+}
+
+
 /* coroutines */
 struct echs_fund_s {
 	echs_instant_t t;
@@ -220,24 +297,28 @@ static const struct rdr_res_s {
 } *defcoru(co_appl_rdr, c, UNUSED(arg))
 {
 /* coroutine for the reader of the tseries */
-	const int prot = PROT_READ | PROT_WRITE;
-	const int mapf = MAP_ANON | MAP_PRIVATE;
 	char *line = NULL;
 	size_t llen = 0UL;
 	/* we'll yield a rdr_res */
 	struct rdr_res_s res;
 	/* for non-seekables we keep a buffer here */
-	char *buf = NULL;
-	size_t bof = 0UL;
-	size_t bsz = 0UL;
+	struct membuf_s mb = {NULL};
+	/* number of times to loop over the input */
 	size_t loop = c->loop;
 
 	if (loop && fseek(c->f, 0, SEEK_SET) < 0) {
 		/* we need a buffer then */
-		buf = mmap(NULL, (bsz = 65536U), prot, mapf, -1, 0);
-		if (UNLIKELY(buf == MAP_FAILED)) {
-			return NULL;
+		size_t max;
+		struct rlimit r;
+
+		/* firstly determine the maximum amount of memory to use */
+		if (getrlimit(RLIMIT_AS, &r) < 0) {
+			max = RLIM_INFINITY;
+		} else {
+			max = r.rlim_cur;
 		}
+
+		init_mb(&mb, 65536U, max);
 	}
 
 rewind:
@@ -258,17 +339,8 @@ rewind:
 		/* \nul out the line */
 		line[nrd - 1] = '\0';
 		/* check if this guy needs buffering */
-		if (buf != NULL) {
-			if (bof + nrd > bsz) {
-				char *old = buf;
-
-				/* calc new size */
-				for (bsz *= 2U; bof + nrd > bsz; bsz *= 2U);
-				buf = mmap(buf, bsz, prot, mapf, -1, 0);
-				memmove(buf, old, bof);
-			}
-			memcpy(buf + bof, line, nrd);
-			bof += nrd/*including \n*/;
+		if (mb.buf != NULL) {
+			mb_cat(&mb, line, nrd);
 		}
 		/* pack the result structure */
 		res.ln = p + 1U;
@@ -281,14 +353,14 @@ rewind:
 		/* first of all, let everyone know about EOF */
 		yield_ptr(NULL);
 
-		if (buf == NULL) {
+		if (mb.buf == NULL) {
 			/* just go back to the ordinary loop innit */
 			rewind(c->f);
 			goto rewind;
 		}
 
 		/* otherwise serve from buffer */
-		for (const char *bp = buf, *const ep = buf + bof;
+		for (const char *bp = mb.buf, *const ep = mb.buf + mb.bof;
 		     bp < ep; bp++) {
 			const size_t ll = strlen(bp);
 			char *p;
@@ -302,8 +374,8 @@ rewind:
 		}
 	}
 
-	if (buf != NULL) {
-		(void)munmap(buf, bsz);
+	if (mb.buf != NULL) {
+		free_mb(&mb);
 	}
 
 	free(line);
