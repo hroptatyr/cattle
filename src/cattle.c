@@ -46,6 +46,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <sys/mman.h>
 #include <math.h>
 #include "cattle.h"
 #include "caev.h"
@@ -55,6 +56,10 @@
 #include "dt-strpf.h"
 #include "caev-series.h"
 #include "coru.h"
+
+#if !defined MAP_ANON && defined MAP_ANONYMOUS
+# define MAP_ANON	MAP_ANONYMOUS
+#endif	/* !MAP_ANON && MAP_ANONYMOUS */
 
 struct ctl_ctx_s {
 	ctl_caevs_t q;
@@ -204,6 +209,8 @@ struct echs_fund_s {
 
 declcoru(co_appl_rdr, {
 		FILE *f;
+		/* after EOF rewind to the beginning and start over */
+		size_t loop;
 	}, {});
 
 static const struct rdr_res_s {
@@ -213,13 +220,32 @@ static const struct rdr_res_s {
 } *defcoru(co_appl_rdr, c, UNUSED(arg))
 {
 /* coroutine for the reader of the tseries */
+	const int prot = PROT_READ | PROT_WRITE;
+	const int mapf = MAP_ANON | MAP_PRIVATE;
 	char *line = NULL;
 	size_t llen = 0UL;
 	/* we'll yield a rdr_res */
 	struct rdr_res_s res;
+	/* for non-seekables we keep a buffer here */
+	char *buf = NULL;
+	size_t bof = 0UL;
+	size_t bsz = 0UL;
+	size_t loop = c->loop;
 
+	if (loop && fseek(c->f, 0, SEEK_SET) < 0) {
+		/* we need a buffer then */
+		buf = mmap(NULL, (bsz = 65536U), prot, mapf, -1, 0);
+		if (UNLIKELY(buf == MAP_FAILED)) {
+			return NULL;
+		}
+	}
+
+rewind:
 #if defined HAVE_GETLINE
 	for (ssize_t nrd; (nrd = getline(&line, &llen, c->f)) > 0;) {
+#elif defined HAVE_FGETLN
+	while ((line = fgetln(c->f, &llen)) != NULL) {
+#endif	/* HAVE_GETLINE || HAVE_FGETLN */
 		char *p;
 
 		if (*line == '#') {
@@ -228,34 +254,61 @@ static const struct rdr_res_s {
 			continue;
 		} else if (*p != '\t') {
 			continue;
+		}
+		/* check if this guy needs buffering */
+		if (buf != NULL) {
+			if (bof + nrd > bsz) {
+				char *old = buf;
+
+				/* calc new size */
+				for (bsz *= 2U; bof + nrd > bsz; bsz *= 2U);
+				buf = mmap(buf, bsz, prot, mapf, -1, 0);
+				memmove(buf, old, bof);
+			}
+			memcpy(buf + bof, line, nrd);
+			bof += nrd - 1/*\n*/;
+			buf[bof++] = '\0';
 		}
 		/* pack the result structure */
 		res.ln = p + 1U;
 		res.lz = nrd - (p + 1U - line);
 		yield(res);
 	}
-#elif defined HAVE_FGETLN
-	while ((line = fgetln(c->f, &llen)) != NULL) {
-		char *p;
 
-		if (*line == '#') {
-			continue;
-		} else if (echs_nul_instant_p(res.t = dt_strp(line, &p))) {
-			continue;
-		} else if (*p != '\t') {
-			continue;
+	/* check if we ought to loop */
+	while (loop--) {
+		/* first of all, let everyone know about EOF */
+		yield_ptr(NULL);
+
+		if (buf == NULL) {
+			/* just go back to the ordinary loop innit */
+			rewind(c->f);
+			goto rewind;
 		}
-		/* pack the result structure */
-		res.ln = p + 1U;
-		res.lz = llen - (p + 1U - line);
-		yield(res);
+
+		/* otherwise serve from buffer */
+		for (const char *bp = buf, *const ep = buf + bof;
+		     bp < ep; bp++) {
+			const size_t ll = strlen(bp);
+			char *p;
+			res.t = dt_strp(bp, &p);
+			res.ln = p + 1U;
+			res.lz = ll - (p + 1U - bp);
+			/* increment by line length */
+			bp += ll;
+			/* and yield */
+			yield(res);
+		}
 	}
-#endif	/* HAVE_FGETLN */
+
+	if (buf != NULL) {
+		(void)munmap(buf, bsz);
+	}
 
 	free(line);
 	line = NULL;
 	llen = 0U;
-	return 0;
+	return NULL;
 }
 
 static struct echs_fund_s
@@ -754,7 +807,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	init_coru();
-	rdr = make_coru(co_appl_rdr, f);
+	rdr = make_coru(co_appl_rdr, f, .loop = 1U);
 	pop = make_coru(co_appl_pop, ctx->q);
 
 	/* initialise another wheap and another prod */
@@ -811,9 +864,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	/* end of first pass */
-	free_coru(rdr);
 	free_coru(pop);
-	fini_coru();
 
 	if (UNLIKELY(ctx->rev)) {
 		/* massage the factors,
@@ -844,11 +895,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		}
 	}
 
-	/* last pass */
-	fseek(f, 0, SEEK_SET);
-
-	init_coru();
-	rdr = make_coru(co_appl_rdr, .f = f);
+	/* last pass, we reuse the RDR coru as it's in loop mode */
 	adj = make_coru(co_appl_adj, .totret = true);
 	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
