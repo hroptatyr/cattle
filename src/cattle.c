@@ -277,6 +277,7 @@ free_mb(struct membuf_s *restrict mb)
 	rc += munmap(mb->buf, mb->bsz);
 wipe:
 	memset(mb, 0, sizeof(*mb));
+	mb->rfd = mb->wfd = -1;
 	return rc;
 }
 
