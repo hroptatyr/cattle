@@ -296,7 +296,7 @@ AC_DEFUN([_SXE_CHECK_DFP754_LITERALS], [dnl
 	AC_MSG_RESULT([${sxe_cv_feat_dfp754_literals}])
 ])dnl _SXE_CHECK_DFP754_LITERALS
 
-AC_DEFUN([_SXE_TRY_DFP754_FLAGS], [dnl
+AC_DEFUN([_SXE_TRY_DFP754_CFLAGS], [dnl
 	AC_RUN_IFELSE([AC_LANG_PROGRAM([[
 #include <math.h>
 #if defined HAVE_DFP754_H
@@ -308,7 +308,9 @@ AC_DEFUN([_SXE_TRY_DFP754_FLAGS], [dnl
 ]], [[
 	_Decimal32 x;
 	_Decimal32 y;
-	_Decimal32 z = x + isnand32(y) ? x : y;
+	if (isnand32(x + y)) {
+		return 1;
+	}
 ]])], [
 	sxe_cv_dfp754_cflags="yes"
 	$1
@@ -316,7 +318,31 @@ AC_DEFUN([_SXE_TRY_DFP754_FLAGS], [dnl
 	sxe_cv_dfp754_cflags="no"
 	$2
 ])
-])dnl _SXE_TRY_DFP754_FLAGS
+])dnl _SXE_TRY_DFP754_CFLAGS
+
+AC_DEFUN([_SXE_TRY_DFP754_LIBS], [dnl
+	AC_RUN_IFELSE([AC_LANG_PROGRAM([[
+#include <math.h>
+#if defined HAVE_DFP754_H
+# include <dfp754.h>
+#endif  /* HAVE_DFP754_H */
+#if defined HAVE_DFP_STDLIB_H
+# include <dfp/stdlib.h>
+#endif  /* HAVE_DFP_STDLIB_H */
+]], [[
+	_Decimal32 x;
+	_Decimal32 y;
+	if (nand32((const char*)0) == x + y) {
+		return 1;
+	}
+]])], [
+	sxe_cv_dfp754_libs="yes"
+	$1
+], [
+	sxe_cv_dfp754_libs="no"
+	$2
+])
+])dnl _SXE_TRY_DFP754_LIBS
 
 AC_DEFUN([_SXE_CHECK_DFP754_FLAGS], [dnl
 ## checks for defines and libs needed to get the dfp stuff going
@@ -334,7 +360,7 @@ AC_DEFUN([_SXE_CHECK_DFP754_FLAGS], [dnl
 	LDFLAGS="${LDFLAGS} ${dfp754_LIBS}"
 
 	AC_MSG_CHECKING([how to waken dfp754 resources])
-	_SXE_TRY_DFP754_FLAGS
+	_SXE_TRY_DFP754_CFLAGS
 
 	if test "${sxe_cv_dfp754_cflags}" = "yes"; then
 		## keep everything as is
@@ -343,15 +369,45 @@ AC_DEFUN([_SXE_CHECK_DFP754_FLAGS], [dnl
 		AC_MSG_ERROR([provided dfp754_CFLAGS won't work])
 	else
 		## try __STDC_WANT_DEC_FP__
-		CPPFLAGS="${CPPFLAGS} -D__STDC_WANT_DEC_FP__"
+		CPPFLAGS="${save_CPPFLAGS} -D__STDC_WANT_DEC_FP__"
 
-		_SXE_TRY_DFP754_FLAGS
+		_SXE_TRY_DFP754_CFLAGS
 
 		if test "${sxe_cv_dfp754_cflags}" = "yes"; then
 			dfp754_CFLAGS="-D__STDC_WANT_DEC_FP__"
 		else
 			AC_MSG_ERROR([cannot figure out flags
 Use dfp754_CFLAGS and/or dfp754_LIBS after inspecting config.log])
+		fi
+	fi
+
+	_SXE_TRY_DFP754_LIBS
+
+	if test "${sxe_cv_dfp754_libs}" = "yes"; then
+		## keep it as is
+		:
+	elif test "${ac_cv_env_dfp754_LIBS_set}" = "set"; then
+		AC_MSG_ERROR([provided dfp754_LIBS won't work])
+	else
+		## try -lm
+		LDFLAGS="${save_LDFLAGS} -lm"
+
+		_SXE_TRY_DFP754_LIBS
+
+		if test "${sxe_cv_dfp754_libs}" = "yes"; then
+			dfp754_LIBS="-lm"
+		else
+			## try -ldecNumber
+			LDFLAGS="${save_LDFLAGS} -ldecNumber"
+
+			_SXE_TRY_DFP754_LIBS
+
+			if test "${sxe_cv_dfp754_libs}" = "yes"; then
+				dfp754_LIBS="-ldecNumber"
+			else
+				AC_MSG_ERROR([cannot figure out libs
+Use dfp754_CFLAGS and/or dfp754_LIBS after inspecting config.log])
+			fi
 		fi
 	fi
 
