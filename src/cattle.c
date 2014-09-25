@@ -208,7 +208,8 @@ struct membuf_s {
 	size_t bsz;
 	size_t bof;
 	size_t max;
-	int fd;
+	int wfd;
+	int rfd;
 };
 
 static int
@@ -234,7 +235,7 @@ init_mb(struct membuf_s *restrict mb, size_t iniz, size_t maxz)
 	/* initialise the rest of the crew */
 	mb->bof = 0U;
 	mb->max = maxz;
-	mb->fd = -1;
+	mb->rfd = mb->wfd = -1;
 	return 0;
 }
 
@@ -248,8 +249,11 @@ free_mb(struct membuf_s *restrict mb)
 		goto wipe;
 	}
 	/* close the temp file, if any */
-	if (UNLIKELY(mb->fd >= 0)) {
-		rc += close(mb->fd);
+	if (UNLIKELY(mb->rfd >= 0)) {
+		rc += close(mb->rfd);
+	}
+	if (UNLIKELY(mb->wfd >= 0)) {
+		rc += close(mb->wfd);
 	}
 	if (UNLIKELY(mb->buf == MAP_FAILED)) {
 		rc--;
@@ -272,13 +276,13 @@ mb_load(struct membuf_s *restrict mb)
 {
 	ssize_t nrd;
 
-	if (mb->fd < 0) {
+	if (mb->rfd < 0) {
 		char tmpnam[64U];
 
 		/* generate temporary file name */
 		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
 
-		if ((mb->fd = open(tmpnam, O_RDONLY)) < 0) {
+		if ((mb->rfd = open(tmpnam, O_RDONLY)) < 0) {
 			return -1;
 		}
 	}
@@ -288,9 +292,9 @@ mb_load(struct membuf_s *restrict mb)
 		mb->bof = mb->bsz - mb->bof;
 	}
 	/* read as many as mb->bsz bytes */
-	if ((nrd = read(mb->fd, mb->buf + mb->bof, mb->bsz - mb->bof)) <= 0) {
-		close(mb->fd);
-		mb->fd = -1;
+	if ((nrd = read(mb->rfd, mb->buf + mb->bof, mb->bsz - mb->bof)) <= 0) {
+		close(mb->rfd);
+		mb->rfd = -1;
 		nrd = -1;
 	} else {
 		mb->bof += (size_t)nrd;
@@ -298,33 +302,37 @@ mb_load(struct membuf_s *restrict mb)
 	return nrd;
 }
 
-static int
+static ssize_t
 mb_flsh(struct membuf_s *restrict mb)
 {
-	char tmpnam[64U];
-	size_t tot = 0UL;
-	int fd;
+	ssize_t tot = 0;
 
-	/* generate temporary file name */
-	snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
+	if (mb->wfd < 0) {
+		const int ofl = O_WRONLY | O_CREAT | O_TRUNC;
+		char tmpnam[64U];
 
-	if ((fd = open(tmpnam, O_WRONLY | O_APPEND | O_CREAT, 0644)) < 0) {
-		return -1;
+		/* generate temporary file name */
+		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
+
+		if ((mb->wfd = open(tmpnam, ofl, 0644)) < 0) {
+			return -1;
+		}
 	}
 	/* now write mb->bof bytes there */
 	for (ssize_t nwr;
-	     (nwr = write(fd, mb->buf + tot, mb->bof - tot)) > 0;
-	     tot += (size_t)nwr);
-	/* all good */
-	close(fd);
+	     (nwr = write(mb->wfd, mb->buf + tot, mb->bof - tot)) > 0;
+	     tot += nwr);
 
-	if (UNLIKELY(tot < mb->bof)) {
-		/* couldn't completely write the file */
-		return -1;
+	if (UNLIKELY((size_t)tot < mb->bof)) {
+		/* couldn't completely write the file,
+		 * do some cleaning up then */
+		close(mb->wfd);
+		mb->wfd = -1;
+		tot = -1;
 	}
 	/* reset buffer offset */
 	mb->bof = 0U;
-	return 0;
+	return tot;
 }
 
 static int
