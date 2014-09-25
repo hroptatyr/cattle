@@ -241,23 +241,28 @@ init_mb(struct membuf_s *restrict mb, size_t iniz, size_t maxz)
 static int
 free_mb(struct membuf_s *restrict mb)
 {
-	int rc;
+	int rc = 0;
 
 	if (UNLIKELY(mb->buf == NULL)) {
-		return -1;
+		rc--;
+		goto wipe;
 	}
 	/* close the temp file, if any */
 	if (UNLIKELY(mb->fd >= 0)) {
-		(void)close(mb->fd);
+		rc += close(mb->fd);
 	}
-	if (UNLIKELY(mb->bsz == mb->max)) {
+	if (UNLIKELY(mb->buf == MAP_FAILED)) {
+		rc--;
+		goto wipe;
+	} else if (UNLIKELY(mb->bsz == mb->max)) {
 		char tmpnam[64U];
 
 		/* generate temporary file name */
 		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
-		(void)unlink(tmpnam);
+		rc += unlink(tmpnam);
 	}
-	rc = munmap(mb->buf, mb->bsz);
+	rc += munmap(mb->buf, mb->bsz);
+wipe:
 	memset(mb, 0, sizeof(*mb));
 	return rc;
 }
