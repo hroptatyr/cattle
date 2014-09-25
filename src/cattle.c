@@ -351,13 +351,17 @@ mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
 			/* yep */
 			mb->bsz = mb->max;
 		}
-		mb->buf = mmap(mb->buf, mb->bsz, prot, mapf, -1, 0);
-		if (mb->buf == MAP_FAILED) {
-			/* better munmap the old guy */
-			munmap(old, olz);
-			return -1;
+		mb->buf = mmap(NULL, mb->bsz, prot, mapf, -1, 0);
+		if (UNLIKELY(mb->buf == MAP_FAILED)) {
+			/* we've got the old guy, use that as max value */
+			mb->buf = old;
+			mb->bsz = mb->max = olz;
+			goto flush;
 		}
+		/* otherwise move the contents to the new space */
 		memmove(mb->buf, old, mb->bof);
+		/* and release the old space */
+		munmap(old, olz);
 
 		if (mb->bsz == mb->max) {
 			goto flush;
