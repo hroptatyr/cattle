@@ -329,6 +329,8 @@ mb_flsh(struct membuf_s *restrict mb)
 		close(mb->wfd);
 		mb->wfd = -1;
 		tot = -1;
+	} else {
+		fsync(mb->wfd);
 	}
 	/* reset buffer offset */
 	mb->bof = 0U;
