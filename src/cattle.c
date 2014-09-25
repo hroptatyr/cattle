@@ -284,10 +284,6 @@ mb_load(struct membuf_s *restrict mb)
 	if (mb->rfd < 0) {
 		return -1;
 	}
-	if (mb->wfd >= 0) {
-		fsync(mb->wfd);
-		fsync(mb->rfd);
-	}
 	/* memmove remainder */
 	if (mb->bof && mb->bof < mb->bsz) {
 		memmove(mb->buf, mb->buf + mb->bof, mb->bsz - mb->bof);
