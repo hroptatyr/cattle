@@ -208,6 +208,7 @@ struct membuf_s {
 	size_t bsz;
 	size_t bof;
 	size_t max;
+	int fd;
 };
 
 static int
@@ -233,6 +234,7 @@ init_mb(struct membuf_s *restrict mb, size_t iniz, size_t maxz)
 	/* initialise the rest of the crew */
 	mb->bof = 0U;
 	mb->max = maxz;
+	mb->fd = -1;
 	return 0;
 }
 
@@ -244,9 +246,80 @@ free_mb(struct membuf_s *restrict mb)
 	if (UNLIKELY(mb->buf == NULL)) {
 		return -1;
 	}
+	/* close the temp file, if any */
+	if (UNLIKELY(mb->fd >= 0)) {
+		(void)close(mb->fd);
+	}
+	if (UNLIKELY(mb->bsz == mb->max)) {
+		char tmpnam[64U];
+
+		/* generate temporary file name */
+		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
+		(void)unlink(tmpnam);
+	}
 	rc = munmap(mb->buf, mb->bsz);
 	memset(mb, 0, sizeof(*mb));
 	return rc;
+}
+
+static ssize_t
+mb_load(struct membuf_s *restrict mb)
+{
+	ssize_t nrd;
+
+	if (mb->fd < 0) {
+		char tmpnam[64U];
+
+		/* generate temporary file name */
+		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
+
+		if ((mb->fd = open(tmpnam, O_RDONLY)) < 0) {
+			return -1;
+		}
+	}
+	/* memmove remainder */
+	if (mb->bof && mb->bof < mb->bsz) {
+		memmove(mb->buf, mb->buf + mb->bof, mb->bsz - mb->bof);
+		mb->bof = mb->bsz - mb->bof;
+	}
+	/* read as many as mb->bsz bytes */
+	if ((nrd = read(mb->fd, mb->buf + mb->bof, mb->bsz - mb->bof)) <= 0) {
+		close(mb->fd);
+		mb->fd = -1;
+		nrd = -1;
+	} else {
+		mb->bof += (size_t)nrd;
+	}
+	return nrd;
+}
+
+static int
+mb_flsh(struct membuf_s *restrict mb)
+{
+	char tmpnam[64U];
+	size_t tot = 0UL;
+	int fd;
+
+	/* generate temporary file name */
+	snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
+
+	if ((fd = open(tmpnam, O_WRONLY | O_APPEND | O_CREAT, 0644)) < 0) {
+		return -1;
+	}
+	/* now write mb->bof bytes there */
+	for (ssize_t nwr;
+	     (nwr = write(fd, mb->buf + tot, mb->bof - tot)) > 0;
+	     tot += (size_t)nwr);
+	/* all good */
+	close(fd);
+
+	if (UNLIKELY(tot < mb->bof)) {
+		/* couldn't completely write the file */
+		return -1;
+	}
+	/* reset buffer offset */
+	mb->bof = 0U;
+	return 0;
 }
 
 static int
@@ -256,31 +329,11 @@ mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
 	const int mapf = MAP_ANON | MAP_PRIVATE;
 
 	if (mb->bof + z > mb->max) {
-		/* flush to disk */
-		char tmpnam[64U];
-		size_t tot = 0UL;
-		int fd;
-
 	flush:
-		/* generate temporary file name */
-		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
-
-		if ((fd = open(tmpnam, O_WRONLY | O_APPEND | O_CREAT, 0644)) < 0) {
+		/* flush to disk */
+		if (mb_flsh(mb) < 0) {
 			return -1;
 		}
-		/* now rite mb->bof bytes there */
-		for (ssize_t nwr;
-		     (nwr = write(fd, mb->buf + tot, mb->bof - tot)) > 0;
-		     tot += (size_t)nwr);
-		/* all good */
-		close(fd);
-
-		if (UNLIKELY(tot < mb->bof)) {
-			/* couldn't completely write the file */
-			return -1;
-		}
-		/* reset buffer offset */
-		mb->bof = 0U;
 
 	} else if (mb->bof + z > mb->bsz) {
 		char *old = mb->buf;
@@ -379,6 +432,11 @@ rewind:
 		yield(res);
 	}
 
+	if (mb.buf != NULL && mb.bsz == mb.max) {
+		/* dump the rest of the buffer to the disk as well */
+		mb_flsh(&mb);
+	}
+
 	/* check if we ought to loop */
 	while (loop--) {
 		/* first of all, let everyone know about EOF */
@@ -390,19 +448,30 @@ rewind:
 			goto rewind;
 		}
 
-		/* otherwise serve from buffer */
-		for (const char *bp = mb.buf, *const ep = mb.buf + mb.bof;
-		     bp < ep; bp++) {
-			const size_t ll = strlen(bp);
-			char *p;
-			res.t = dt_strp(bp, &p);
-			res.ln = p + 1U;
-			res.lz = ll - (p + 1U - bp);
-			/* increment by line length */
-			bp += ll;
-			/* and yield */
-			yield(res);
-		}
+		/* load from disk */
+		do {
+			/* otherwise serve from buffer */
+			for (const char *bp = mb.buf,
+				     *const ep = mb.buf + mb.bof;
+			     bp < ep; bp++) {
+				const char *eol;
+				char *p;
+
+				if ((eol = memchr(bp, '\0', ep - bp)) == NULL) {
+					/* let them know we've only read
+					 * half a line */
+					mb.bof = bp - mb.buf;
+					break;
+				}
+				res.t = dt_strp(bp, &p);
+				res.ln = p + 1U;
+				res.lz = eol - p - 1U;
+				/* increment by line length */
+				bp = eol;
+				/* and yield */
+				yield(res);
+			}
+		} while (mb_load(&mb) >= 0);
 	}
 
 	if (mb.buf != NULL) {
