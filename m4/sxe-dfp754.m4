@@ -312,9 +312,9 @@ dnl Usage: _SXE_TRY_DFP754_FLAGS([CFLAGS], [LIBS], [ACTION-IF-FOUND], [ACTION-IF
 # include <dfp/stdlib.h>
 #endif  /* HAVE_DFP_STDLIB_H */
 ]], [[
-	_Decimal32 x = nand32((const char*)0);
-	_Decimal32 y = nand32((const char*)0);
-	if (!isnand32(x + y)) {
+	_Decimal32 x = 0.df;
+	_Decimal32 y = 0.df;
+	if (isnand32(x + y)) {
 		return 1;
 	}
 ]])], [
