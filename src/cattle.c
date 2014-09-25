@@ -268,11 +268,6 @@ free_mb(struct membuf_s *restrict mb)
 	if (UNLIKELY(mb->buf == MAP_FAILED)) {
 		rc--;
 		goto wipe;
-	} else if (UNLIKELY(mb->bsz == mb->max)) {
-		const char *fn = mb_tmpnam(mb);
-
-		/* just try the unlink */
-		rc += unlink(fn);
 	}
 	rc += munmap(mb->buf, mb->bsz);
 wipe:
@@ -287,12 +282,7 @@ mb_load(struct membuf_s *restrict mb)
 	ssize_t nrd;
 
 	if (mb->rfd < 0) {
-		const int ofl = O_RDONLY;
-		const char *fn = mb_tmpnam(mb);
-
-		if ((mb->rfd = open(fn, ofl)) < 0) {
-			return -1;
-		}
+		return -1;
 	}
 	if (mb->wfd >= 0) {
 		fsync(mb->wfd);
@@ -325,7 +315,11 @@ mb_flsh(struct membuf_s *restrict mb)
 
 		if ((mb->wfd = open(fn, ofl, 0644)) < 0) {
 			return -1;
+		} else if ((mb->rfd = open(fn, O_RDONLY)) < 0) {
+			return -1;
 		}
+		/* otherwise just get rid of the file right away */
+		(void)unlink(fn);
 	}
 	/* now write mb->bof bytes there */
 	for (ssize_t nwr;
