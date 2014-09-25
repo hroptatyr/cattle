@@ -415,10 +415,11 @@ static const struct rdr_res_s {
 
 rewind:
 #if defined HAVE_GETLINE
-	for (ssize_t nrd; (nrd = getline(&line, &llen, c->f)) > 0;) {
+	for (ssize_t nrd; (nrd = getline(&line, &llen, c->f)) > 0;)
 #elif defined HAVE_FGETLN
-	while ((line = fgetln(c->f, &llen)) != NULL) {
+	while ((line = fgetln(c->f, &llen)) != NULL)
 #endif	/* HAVE_GETLINE || HAVE_FGETLN */
+	{
 		char *p;
 
 		if (*line == '#') {
