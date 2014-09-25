@@ -436,8 +436,9 @@ rewind:
 		/* \nul out the line */
 		line[nrd - 1] = '\0';
 		/* check if this guy needs buffering */
-		if (mb.buf != NULL) {
-			mb_cat(&mb, line, nrd);
+		if (mb.buf != NULL && mb_cat(&mb, line, nrd) < 0) {
+			/* big bugger */
+			goto out;
 		}
 		/* pack the result structure */
 		res.ln = p + 1U;
@@ -487,6 +488,7 @@ rewind:
 		} while (mb_load(&mb) >= 0);
 	}
 
+out:
 	if (mb.buf != NULL) {
 		free_mb(&mb);
 	}
