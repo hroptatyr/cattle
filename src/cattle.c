@@ -212,6 +212,16 @@ struct membuf_s {
 	int rfd;
 };
 
+static const char*
+mb_tmpnam(const struct membuf_s *mb)
+{
+	static char tmpnam[64U];
+
+	/* generate a temporary file name */
+	snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
+	return tmpnam;
+}
+
 static int
 init_mb(struct membuf_s *restrict mb, size_t iniz, size_t maxz)
 {
@@ -259,11 +269,10 @@ free_mb(struct membuf_s *restrict mb)
 		rc--;
 		goto wipe;
 	} else if (UNLIKELY(mb->bsz == mb->max)) {
-		char tmpnam[64U];
+		const char *fn = mb_tmpnam(mb);
 
-		/* generate temporary file name */
-		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
-		rc += unlink(tmpnam);
+		/* just try the unlink */
+		rc += unlink(fn);
 	}
 	rc += munmap(mb->buf, mb->bsz);
 wipe:
@@ -277,12 +286,10 @@ mb_load(struct membuf_s *restrict mb)
 	ssize_t nrd;
 
 	if (mb->rfd < 0) {
-		char tmpnam[64U];
+		const int ofl = O_RDONLY;
+		const char *fn = mb_tmpnam(mb);
 
-		/* generate temporary file name */
-		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
-
-		if ((mb->rfd = open(tmpnam, O_RDONLY)) < 0) {
+		if ((mb->rfd = open(fn, ofl)) < 0) {
 			return -1;
 		}
 	}
@@ -309,12 +316,9 @@ mb_flsh(struct membuf_s *restrict mb)
 
 	if (mb->wfd < 0) {
 		const int ofl = O_WRONLY | O_CREAT | O_TRUNC;
-		char tmpnam[64U];
+		const char *fn = mb_tmpnam(mb);
 
-		/* generate temporary file name */
-		snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
-
-		if ((mb->wfd = open(tmpnam, ofl, 0644)) < 0) {
+		if ((mb->wfd = open(fn, ofl, 0644)) < 0) {
 			return -1;
 		}
 	}
