@@ -294,6 +294,10 @@ mb_load(struct membuf_s *restrict mb)
 			return -1;
 		}
 	}
+	if (mb->wfd >= 0) {
+		fsync(mb->wfd);
+		fsync(mb->rfd);
+	}
 	/* memmove remainder */
 	if (mb->bof && mb->bof < mb->bsz) {
 		memmove(mb->buf, mb->buf + mb->bof, mb->bsz - mb->bof);
@@ -334,8 +338,6 @@ mb_flsh(struct membuf_s *restrict mb)
 		close(mb->wfd);
 		mb->wfd = -1;
 		tot = -1;
-	} else {
-		fsync(mb->wfd);
 	}
 	/* reset buffer offset */
 	mb->bof = 0U;
