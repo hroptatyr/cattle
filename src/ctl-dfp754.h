@@ -37,6 +37,9 @@
 #if !defined INCLUDED_ctl_dfp754_h_
 #define INCLUDED_ctl_dfp754_h_
 
+#if defined HAVE_CONFIG_H
+# include "config.h"
+#endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -67,8 +70,12 @@ inline __attribute__((pure, const)) _Decimal32 bobs(uint32_t u);
 inline __attribute__((pure, const)) int quantexpbid32(_Decimal32 x);
 inline __attribute__((pure, const)) int quantexpdpd32(_Decimal32 x);
 inline __attribute__((pure, const)) int quantexpd32(_Decimal32 x);
+#if !defined HAVE_NAND32
 inline __attribute__((pure, const)) _Decimal32 nand32(char *__tagp);
-#define isnand32		__builtin_isnand32
+#endif	/* !HAVE_NAND32 */
+#if !defined HAVE_ISNAND32
+# define isnand32		__builtin_isnand32
+#endif	/* !HAVE_ISNAND32 */
 
 inline __attribute__((pure, const)) uint32_t
 bits(_Decimal32 x)
@@ -129,10 +136,12 @@ quantexpd32(_Decimal32 x)
 }
 #endif	/* !HAVE_DFP754_*_LITERALS */
 
+#if !defined HAVE_NAND32
 inline __attribute__((pure, const)) _Decimal32
 nand32(char *__tagp __attribute__((unused)))
 {
 	return bobs(NAND32_U);
 }
+#endif	/* !HAVE_NAND32 */
 
 #endif	/* INCLUDED_ctl_dfp754_h_ */

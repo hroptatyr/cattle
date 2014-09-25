@@ -70,6 +70,12 @@ AM_CONDITIONAL([HAVE_QUANTIZED32], [test "${ac_cv_func_quantized32}" = "yes"])
 AC_CHECK_FUNCS([scalbnd32])
 AM_CONDITIONAL([HAVE_SCALBND32], [test "${ac_cv_func_scalbnd32}" = "yes"])
 
+save_LDFLAGS="${LDFLAGS}"
+LDFLAGS="${LDFLAGS} -lm"
+AC_CHECK_FUNCS([nand32])
+AC_CHECK_FUNCS([isnand32])
+LDFLAGS="${save_LDFLAGS}"
+
 SXE_CHECK_ASM_CORUS
 
 AC_CHECK_FUNCS([getline])
