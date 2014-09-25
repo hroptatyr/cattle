@@ -336,7 +336,8 @@ mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
 		}
 
 	} else if (mb->bof + z > mb->bsz) {
-		char *old = mb->buf;
+		char *const old = mb->buf;
+		const size_t olz = mb->bsz;
 
 		/* calc new size */
 		for (mb->bsz *= 2U; mb->bof + z > mb->bsz; mb->bsz *= 2U);
@@ -347,6 +348,8 @@ mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
 		}
 		mb->buf = mmap(mb->buf, mb->bsz, prot, mapf, -1, 0);
 		if (mb->buf == MAP_FAILED) {
+			/* better munmap the old guy */
+			munmap(old, olz);
 			return -1;
 		}
 		memmove(mb->buf, old, mb->bof);
