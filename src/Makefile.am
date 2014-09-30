@@ -3,7 +3,6 @@ include $(top_builddir)/version.mk
 
 AM_CFLAGS = $(EXTRA_CFLAGS)
 AM_CPPFLAGS = -D_GNU_SOURCE -D_POSIX_C_SOURCE=201001L -D_XOPEN_SOURCE=800 -D_BSD_SOURCE
-AM_CPPFLAGS += -D__STDC_WANT_DEC_FP__
 AM_CPPFLAGS += -DHAVE_VERSION_H
 ## we need some system's special capabilities
 AM_CPPFLAGS += -D_ALL_SOURCE
@@ -54,7 +53,10 @@ libcattle_la_SOURCES += caev-fld-gp.erf
 ## dfp754 utils
 libcattle_la_SOURCES += ctl-dfp754.c ctl-dfp754.h
 libcattle_la_CPPFLAGS = $(AM_CPPFLAGS)
+libcattle_la_CPPFLAGS += $(dfp754_CFLAGS)
 libcattle_la_CPPFLAGS += -DWHEAP_COLOUR_H='"caev-series.h"'
+libcattle_la_LDFLAGS = $(AM_LDFLAGS)
+libcattle_la_LDFLAGS += $(dfp754_LIBS)
 BUILT_SOURCES += caev-rdr-gp.c
 BUILT_SOURCES += caev-fld-gp.c
 
