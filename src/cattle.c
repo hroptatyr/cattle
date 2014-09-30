@@ -1,6 +1,6 @@
 /*** cattle.c -- tool to apply corporate actions
  *
- * Copyright (C) 2013 Sebastian Freundt
+ * Copyright (C) 2013-2014 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -1157,6 +1157,8 @@ out:
 }
 
 /* printer commands */
+static char pr_buf[4096U];
+
 static int
 ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 {
@@ -1167,9 +1169,8 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	for (echs_instant_t t;
 	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
 		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
-		char buf[256U];
-		char *bp = buf;
-		const char *const ep = buf + sizeof(buf);
+		char *bp = pr_buf;
+		const char *const ep = pr_buf + sizeof(pr_buf);
 
 		if (uniqp) {
 			if (echs_instant_eq_p(prev_t, t) &&
@@ -1185,7 +1186,7 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 		prev = this;
 		*bp++ = '\n';
 		*bp = '\0';
-		fputs(buf, stdout);
+		fputs(pr_buf, stdout);
 	}
 	return res;
 }
@@ -1215,14 +1216,13 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	}
 	/* and now print */
 	{
-		char buf[256U];
-		char *bp = buf;
-		const char *const ep = buf + sizeof(buf);
+		char *bp = pr_buf;
+		const char *const ep = pr_buf + sizeof(pr_buf);
 
 		bp += ctl_caev_wr(bp, ep - bp, sum);
 		*bp++ = '\n';
 		*bp = '\0';
-		fputs(buf, stdout);
+		fputs(pr_buf, stdout);
 	}
 	return res;
 }
@@ -1237,9 +1237,8 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	for (echs_instant_t t;
 	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
 		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
-		char buf[256U];
-		char *bp = buf;
-		const char *const ep = buf + sizeof(buf);
+		char *bp = pr_buf;
+		const char *const ep = pr_buf + sizeof(pr_buf);
 
 		if (uniqp) {
 			ctl_caev_t this_c = ctl_kvv_get_caev(this);
@@ -1258,7 +1257,7 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 		free_kvv(this);
 		*bp++ = '\n';
 		*bp = '\0';
-		fputs(buf, stdout);
+		fputs(pr_buf, stdout);
 	}
 	return res;
 }

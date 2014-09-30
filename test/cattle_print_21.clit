@@ -1,0 +1,7 @@
+#!/usr/bin/clitoris ## -*- shell-script -*-
+
+$ cattle print "${srcdir}/CBK.echs"
+< "${srcdir}/CBK.echs"
+$
+
+## cattle_print_21.clit ends here
