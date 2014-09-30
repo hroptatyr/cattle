@@ -293,6 +293,10 @@ TESTS += cattle_print_20.clit
 EXTRA_DIST += SVT.echs
 EXTRA_DIST += XMT.echs
 
+TESTS += cattle_print_21.clit
+TESTS += cattle_print_22.clit
+EXTRA_DIST += CBK.echs
+
 TESTS += cattle_apply_01.clit
 TESTS += cattle_apply_02.clit
 TESTS += cattle_apply_03.clit
