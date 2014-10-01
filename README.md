@@ -15,6 +15,7 @@ values and outstanding securities.
 
 Cattle is hosted primarily on github:
 
++ homepage: <http://www.fresse.org/cattle/>
 + github: <https://github.com/hroptatyr/cattle>
 + issues: <https://github.com/hroptatyr/cattle/issues>
 + releases: <https://github.com/hroptatyr/cattle/releases>
@@ -32,7 +33,7 @@ Red tape
 
 
 Examples
-========
+--------
 Suppose we're interested in a backadjusted time series of ticker `XYZ`.
 Observed market close prices (in GBP) are:
 
@@ -119,8 +120,8 @@ regardless whether or not a corporate action event has been observed the
 adjustment tool must be run every day.
 
 
-Reversing the adjustment
-------------------------
+### Reversing the adjustment
+
 Sometimes it is desirable to reproduce the original (raw) time series
 from an adjusted series and a series of corporate action events.
 
@@ -156,8 +157,8 @@ reproduces the original time series, too.  The switch `--forward` in the
 second example is necessary as information is lost about whether an
 adjustment has been applied forwards or backwards.
 
-Total returns
--------------
+### Total returns
+
 So far we considered corporate actions (especially those with payment
 events) as if they could be moved in time so long as prices are adjusted
 accordingly.  However, this inaccurately reflects situations where it's
@@ -211,11 +212,19 @@ might suffer from *quantisation artefacts*.
 
 
 Similar projects
-================
+----------------
 
 None.
 
-  [1]: http://www.iso15022.org/uhb/uhb/finmt564.htm
+
+Further reading
+---------------
+
++ [Definition of corporate action](http://en.wikipedia.org/wiki/Corporate_action)
++ [MT654 Details](http://www.iso15022.org/UHB/UHB/FINMT564.htm)
+
+
+  [1]: http://www.iso15022.org/UHB/UHB/FINMT564.htm
 
 
 <!--
