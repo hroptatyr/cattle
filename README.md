@@ -15,6 +15,7 @@ values and outstanding securities.
 
 Cattle is hosted primarily on github:
 
++ homepage: <http://www.fresse.org/cattle/>
 + github: <https://github.com/hroptatyr/cattle>
 + issues: <https://github.com/hroptatyr/cattle/issues>
 + releases: <https://github.com/hroptatyr/cattle/releases>
