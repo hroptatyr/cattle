@@ -215,18 +215,16 @@ adjusted prices are always quantised to market prices, the reversal
 might suffer from *quantisation artefacts*.
 
 
-Similar projects
-----------------
-
-None.
-
-
 Further reading
 ---------------
 
 - [Definition of corporate action](http://en.wikipedia.org/wiki/Corporate_action)
 - [MT654 Details](http://www.iso15022.org/UHB/UHB/FINMT564.htm)
--
+
+Similar projects
+----------------
+
+None.
 
 
   [1]: http://www.iso15022.org/UHB/UHB/FINMT564.htm
