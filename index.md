@@ -226,6 +226,7 @@ Further reading
 
 - [Definition of corporate action](http://en.wikipedia.org/wiki/Corporate_action)
 - [MT654 Details](http://www.iso15022.org/UHB/UHB/FINMT564.htm)
+-
 
 
   [1]: http://www.iso15022.org/UHB/UHB/FINMT564.htm
