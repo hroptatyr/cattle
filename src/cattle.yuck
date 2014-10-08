@@ -42,6 +42,17 @@ Print resulting actors of caev echse messages.
   -u, --unique          Assume that only one CA event will occur at any
                         one date/time.
 
+
+Usage: cattle exp TIME-SERIES-FILE [CAEV-FILE]...
+
+Turn additive actions into multiplicative ones.
+
+
+Usage: cattle log TIME-SERIES-FILE [CAEV-FILE]...
+
+Turn multiplicative actions into additive ones.
+
+
 ## Local variables:
 ## mode: auto-fill
 ## fill-column: 72
