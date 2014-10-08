@@ -8,6 +8,7 @@ format that resembles JSON.
 Time series are given as DATE/PRICE or DATE/QUOTE tab-separated text
 files.
 
+
 Usage: cattle apply TIME-SERIES-FILE [CAEV-FILE]...
 
 Apply series of corporate action events to (price) time series.
@@ -31,6 +32,7 @@ Apply series of corporate action events to (price) time series.
                         fraction than the default.
                         Default is +0.
 
+
 Usage: cattle print [CAEV-FILE]...
 
 Print resulting actors of caev echse messages.
