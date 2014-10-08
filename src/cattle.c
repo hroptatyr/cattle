@@ -778,7 +778,8 @@ static int
 ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
- * format in there is first column is a date, the rest is prices */
+ * format in there is first column is a date, the rest is prices
+ * this is the total payout adjustment */
 	coru_t rdr;
 	coru_t pop;
 	coru_t adj;
