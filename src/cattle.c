@@ -977,7 +977,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
  * format in there is first column is a date, the rest is prices
- * this is the total return forward adjustment */
+ * this is the total return backward adjustment */
 	struct fa_s {
 		echs_instant_t t;
 		float fctr;
