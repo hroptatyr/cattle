@@ -1166,7 +1166,7 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 /* wants a const char *fn, the time series
  * format in there is first column is a date, the rest is prices
  * this is the total return backward adjustment expressed in
- * caev echs lines */
+ * multiplicative caev echs lines */
 	coru_t rdr;
 	coru_t pop;
 	int res = 0;
@@ -1223,6 +1223,93 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 							caev.mktprc.r, r);
 				}
 				caev.mktprc.a = 0.df;
+			}
+
+			/* print caev */
+			bp += dt_strf(bp, ep - bp, ev->t);
+			*bp++ = '\t';
+			/* just use the raw printer for now */
+			bp += ctl_caev_wr(bp, ep - bp, caev);
+			*bp++ = '\n';
+			*bp = '\0';
+			fputs(pr_buf, stdout);
+		}
+	}
+
+
+	/* finished, yay */
+	free_coru(rdr);
+	free_coru(pop);
+	fini_coru();
+
+	fclose(f);
+	return res;
+}
+
+static int
+ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
+{
+/* wants a const char *fn, the time series
+ * format in there is first column is a date, the rest is prices
+ * this is the total return backward adjustment expressed in
+ * additive caev echs lines */
+	coru_t rdr;
+	coru_t pop;
+	int res = 0;
+	FILE *f;
+
+	assert(!ctx->fwd);
+
+	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
+		f = stdin;
+	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
+		return -1;
+	}
+
+	init_coru();
+	rdr = make_coru(co_appl_rdr, f);
+	pop = make_coru(co_appl_pop, ctx->q);
+
+	ctl_price_t last = nand32(NULL);
+	const struct pop_res_s *ev;
+	const struct rdr_res_s *ln;
+	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
+		/* skip over events from the past,
+		 * i.e. from before the time of the first market price */
+		for (; LIKELY(ev != NULL) &&
+			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
+		     ev = next(pop));
+
+		do {
+			/* no need to use the strtod32() reader */
+			last = strtod32(ln->ln, NULL);
+		} while (LIKELY((ln = next(rdr)) != NULL) &&
+			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
+
+		/* sum up caevs in between price lines */
+		for (;
+		     LIKELY(ev != NULL) &&
+			     (UNLIKELY(ln == NULL) ||
+			      UNLIKELY(!echs_instant_lt_p(ln->t, ev->t)));
+		     ev = next(pop)) {
+			ctl_caev_t caev;
+			char *bp = pr_buf;
+			const char *const ep = pr_buf + sizeof(pr_buf);
+
+			caev = *(const ctl_caev_t*)ev->msg;
+			if (!ctl_ratio_zero_p(caev.mktprc.r)) {
+				ctl_price_t x = last;
+
+				x *= caev.mktprc.r.p;
+				x /= caev.mktprc.r.q;
+				x -= last;
+
+				if (LIKELY(caev.mktprc.a == 0.df)) {
+					caev.mktprc.a = x;
+				} else {
+					caev.mktprc.a += x;
+				}
+				caev.mktprc.r = ctl_zero_ratio();
 			}
 
 			/* print caev */
@@ -1588,6 +1675,71 @@ out:
 	return res;
 }
 
+static int
+cmd_log(const struct yuck_cmd_exp_s argi[static 1U])
+{
+	static struct ctl_ctx_s ctx[1];
+	int res = 0;
+
+	if (argi->nargs < 1U) {
+		yuck_auto_help((const void*)argi);
+		res = 1;
+		goto out;
+	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+		res = 1;
+		goto out;
+	}
+
+	if (argi->forward_flag) {
+		ctx->fwd = 1U;
+	}
+
+	/* open caev files and read */
+	if (argi->nargs <= 1U) {
+		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
+			error("cannot read from stdin");
+			res = 1;
+			goto out;
+		}
+	}
+	for (size_t i = 1U; i < argi->nargs; i++) {
+		const char *fn = argi->args[i];
+
+		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
+			error("cannot open caev file `%s'", fn);
+			res = 1;
+			goto out;
+		}
+	}
+
+	/* open time series file */
+	with (const char *tser_fn = argi->args[0U]) {
+		if (!ctx->fwd) {
+			/* total return back adjustment needs 2 scans */
+			if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
+				error("\
+cannot deduce factors for total return adjustment from `%s'", tser_fn);
+				res = 1;
+				goto out;
+			}
+		} else {
+			if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
+				error("\
+cannot deduce factors for total return adjustment from `%s'", tser_fn);
+				res = 1;
+				goto out;
+			}
+		}
+	}
+
+out:
+	if (LIKELY(ctx->q != NULL)) {
+		free_ctl_wheap(ctx->q);
+		ctx->q = NULL;
+	}
+	return res;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1621,6 +1773,10 @@ See --help to obtain a list of available commands.");
 
 	case CATTLE_CMD_EXP:
 		res = cmd_exp((const void*)argi);
+		break;
+
+	case CATTLE_CMD_LOG:
+		res = cmd_log((const void*)argi);
 		break;
 	}
 
