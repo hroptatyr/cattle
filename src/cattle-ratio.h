@@ -37,6 +37,8 @@
 #if !defined INCLUDED_cattle_ratio_h_
 #define INCLUDED_cattle_ratio_h_
 
+#include <stdbool.h>
+
 /**
  * Ratios, as used by newo and adex fields, unitless. */
 typedef struct ctl_ratio_s ctl_ratio_t;
@@ -100,6 +102,12 @@ static __inline __attribute__((const, pure)) ctl_ratio_t
 ctl_zero_ratio(void)
 {
 	return (ctl_ratio_t){0, 0U};
+}
+
+static __inline __attribute__((const, pure)) bool
+ctl_ratio_zero_p(ctl_ratio_t r)
+{
+	return r.p == 0;
 }
 
 #endif	/* INCLUDED_cattle_ratio_h_ */
