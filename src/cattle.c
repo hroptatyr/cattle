@@ -1264,6 +1264,30 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 }
 
 
+/* helpers */
+ctl_ratio_t
+ctl_price_return(ctl_price_t a, ctl_price_t b)
+{
+/* return 1.df + a / b  (via (a + b) / b */
+	bcd32_t da = decompd32(a + b);
+	bcd32_t db = decompd32(b);
+	int sign = da.sign ^ db.sign;
+	signed int p = da.mant;
+	unsigned int q = db.mant;
+
+	if (UNLIKELY(sign)) {
+		p = -p;
+	}
+	for (; da.expo > db.expo; da.expo--) {
+		p *= 10;
+	}
+	for (; da.expo < db.expo; da.expo++) {
+		q *= 10;
+	}
+	return ctl_ratio_canon((ctl_ratio_t){p, q});
+}
+
+
 #if defined STANDALONE
 #include "cattle.yucc"
 
