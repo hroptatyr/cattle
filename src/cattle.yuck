@@ -47,6 +47,10 @@ Usage: cattle exp TIME-SERIES-FILE [CAEV-FILE]...
 
 Turn additive actions into multiplicative ones.
 
+  -F, --forward         Forward-adjust the time series, i.e. current
+                        prices are modified to match past prices.
+                        Default: backward adjustment
+
 
 Usage: cattle log TIME-SERIES-FILE [CAEV-FILE]...
 
