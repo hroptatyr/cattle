@@ -83,6 +83,7 @@ cattle_SOURCES += cattle.yuck
 cattle_SOURCES += version.c version.h version.c.in
 cattle_CPPFLAGS = $(AM_CPPFLAGS)
 cattle_CPPFLAGS += -DSTANDALONE
+cattle_CPPFLAGS += $(dfp754_CFLAGS)
 cattle_LDADD = libcattle.la
 if USE_ASM_CORUS
 cattle_LDADD += libcoru.la

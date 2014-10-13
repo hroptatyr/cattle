@@ -8,6 +8,7 @@ format that resembles JSON.
 Time series are given as DATE/PRICE or DATE/QUOTE tab-separated text
 files.
 
+
 Usage: cattle apply TIME-SERIES-FILE [CAEV-FILE]...
 
 Apply series of corporate action events to (price) time series.
@@ -31,6 +32,7 @@ Apply series of corporate action events to (price) time series.
                         fraction than the default.
                         Default is +0.
 
+
 Usage: cattle print [CAEV-FILE]...
 
 Print resulting actors of caev echse messages.
@@ -39,6 +41,21 @@ Print resulting actors of caev echse messages.
   -r, --raw             Print raw actors.
   -u, --unique          Assume that only one CA event will occur at any
                         one date/time.
+
+
+Usage: cattle exp TIME-SERIES-FILE [CAEV-FILE]...
+
+Turn additive actions into multiplicative ones.
+
+  -F, --forward         Forward-adjust the time series, i.e. current
+                        prices are modified to match past prices.
+                        Default: backward adjustment
+
+
+Usage: cattle log TIME-SERIES-FILE [CAEV-FILE]...
+
+Turn multiplicative actions into additive ones.
+
 
 ## Local variables:
 ## mode: auto-fill

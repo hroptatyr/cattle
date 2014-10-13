@@ -50,14 +50,6 @@
 #define U(x)	(uint_least8_t)((x) - '0')
 #define C(x)	(char)((x) + '0')
 
-typedef struct bcd32_s bcd32_t;
-
-struct bcd32_s {
-	uint_least32_t mant;
-	int expo;
-	int sign;
-};
-
 
 static inline __attribute__((pure, const)) int
 sign_bid(_Decimal32 x)
@@ -687,5 +679,17 @@ scalbnd32(_Decimal32 x, int n)
 # endif	 /* HAVE_DFP754_*_LITERALS */
 }
 #endif	/* !HAVE_SCALBND32 */
+
+
+/* non-standard stuff */
+bcd32_t
+decompd32(_Decimal32 x)
+{
+#if defined HAVE_DFP754_BID_LITERALS
+	return (bcd32_t){mant_bid(x), quantexpbid32(x), sign_bid(x)};
+#elif defined HAVE_DFP754_DPD_LITERALS
+	return (bcd32_t){mant_dpd(x), quantexpdpd32(x), sign_dpd(x)};
+#endif	/* HAVE_DFP754_*_LITERALS */
+}
 
 /* ctl-dfp754.c ends here */
