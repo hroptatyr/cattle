@@ -1663,7 +1663,7 @@ out:
 }
 
 static int
-cmd_log(const struct yuck_cmd_exp_s argi[static 1U])
+cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 {
 	static struct ctl_ctx_s ctx[1];
 	int res = 0;
@@ -1675,10 +1675,6 @@ cmd_log(const struct yuck_cmd_exp_s argi[static 1U])
 	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
 		res = 1;
 		goto out;
-	}
-
-	if (argi->forward_flag) {
-		ctx->fwd = 1U;
 	}
 
 	/* open caev files and read */
