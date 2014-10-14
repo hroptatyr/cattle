@@ -1202,7 +1202,8 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			caev = ctl_kvv_get_caev(kvv);
 			if (caev.mktprc.a != 0.df) {
 				ctl_ratio_t r =
-					ctl_price_return(caev.mktprc.a, last);
+					ctl_price_return(
+						last + caev.mktprc.a, last);
 
 				if (LIKELY(ctl_ratio_zero_p(caev.mktprc.r))) {
 					caev.mktprc.r = r;
@@ -1624,10 +1625,6 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		goto out;
 	}
 
-	if (argi->forward_flag) {
-		ctx->fwd = 1U;
-	}
-
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
@@ -1648,21 +1645,12 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 
 	/* open time series file */
 	with (const char *tser_fn = argi->args[0U]) {
-		if (!ctx->fwd) {
-			/* total return back adjustment needs 2 scans */
-			if (UNLIKELY(ctl_bexp_caev_file(ctx, tser_fn) < 0)) {
-				error("\
+		/* total return back adjustment needs 2 scans */
+		if (UNLIKELY(ctl_bexp_caev_file(ctx, tser_fn) < 0)) {
+			error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
-				goto out;
-			}
-		} else {
-			if (UNLIKELY(ctl_bexp_caev_file(ctx, tser_fn) < 0)) {
-				error("\
-cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
-				goto out;
-			}
+			res = 1;
+			goto out;
 		}
 	}
 
@@ -1713,21 +1701,12 @@ cmd_log(const struct yuck_cmd_exp_s argi[static 1U])
 
 	/* open time series file */
 	with (const char *tser_fn = argi->args[0U]) {
-		if (!ctx->fwd) {
-			/* total return back adjustment needs 2 scans */
-			if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
-				error("\
+		/* total return back adjustment needs 2 scans */
+		if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
+			error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
-				goto out;
-			}
-		} else {
-			if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
-				error("\
-cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
-				goto out;
-			}
+			res = 1;
+			goto out;
 		}
 	}
 
