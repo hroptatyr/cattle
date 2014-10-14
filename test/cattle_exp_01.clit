@@ -1,0 +1,8 @@
+#!/usr/bin/clitoris  ## -*- shell-script -*-
+
+$ cattle exp "${srcdir}/cattle_07.tser" "${srcdir}/cattle_07.echs"
+2013-10-05	caev="SPLR" newo="1:10"
+2013-10-06	caev=CTL1 {.xmkt="0+29<-30" .xnom="0+0<-0" .xout="0+0<-0"}
+$
+
+## cattle_exp_01.clit ends here
