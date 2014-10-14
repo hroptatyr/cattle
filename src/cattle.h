@@ -53,7 +53,7 @@ extern void ctl_close_caev_file(ctl_ctx_t);
 
 /* helpers that span cattle-*.h types */
 /**
- * Return 1.df + a / b as ctl_ratio_t. */
+ * Return a / b as ctl_ratio_t. */
 extern ctl_ratio_t ctl_price_return(ctl_price_t a, ctl_price_t b);
 
 #endif	/* INCLUDED_cattle_h_ */

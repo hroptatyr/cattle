@@ -1441,8 +1441,8 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 ctl_ratio_t
 ctl_price_return(ctl_price_t a, ctl_price_t b)
 {
-/* return 1.df + a / b  (via (a + b) / b */
-	bcd32_t da = decompd32(a + b);
+/* return a / b */
+	bcd32_t da = decompd32(a);
 	bcd32_t db = decompd32(b);
 	int sign = da.sign ^ db.sign;
 	signed int p = da.mant;
