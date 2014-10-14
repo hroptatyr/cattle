@@ -547,7 +547,7 @@ static const struct pop_res_s {
 		} else if (echs_instant_all_sec_p(res.t)) {
 			res.t.ms = 0U;
 		}
-		/* assume it's a ctl-caev_t */
+		/* assign colour value */
 		res.msg = ctl_wheap_pop(c->q);
 		yield(res);
 	}
