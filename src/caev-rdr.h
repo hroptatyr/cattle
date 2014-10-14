@@ -67,6 +67,12 @@ extern ctl_kvv_t ctl_kv_rdr(const char *msg);
 extern void free_kvv(ctl_kvv_t);
 
 /**
+ * Return the caev code of key/val vector K,
+ * i.e. the value of the field CAEV. */
+extern __attribute__((pure, const)) ctl_caev_code_t
+ctl_kvv_get_caev_code(ctl_kvv_t fldv);
+
+/**
  * Parse a key/val vector and return its acting caev. */
 extern ctl_caev_t ctl_kvv_get_caev(ctl_kvv_t k);
 
