@@ -531,12 +531,10 @@ declcoru(co_appl_pop, {
 
 static const struct pop_res_s {
 	echs_instant_t t;
-	const void *msg;
-	size_t msz;
+	colour_t msg;
 } *defcoru(co_appl_pop, c, UNUSED(arg))
 {
 	/* we'll yield a pop_res_s */
-	static ctl_caev_t this[1U];
 	struct pop_res_s res;
 
 	while (!echs_nul_instant_p(res.t = ctl_wheap_top_rank(c->q))) {
@@ -550,9 +548,7 @@ static const struct pop_res_s {
 			res.t.ms = 0U;
 		}
 		/* assume it's a ctl-caev_t */
-		*this = ctl_wheap_pop(c->q).c;
-		res.msg = this;
-		res.msz = sizeof(ctl_caev_t);
+		res.msg = ctl_wheap_pop(c->q);
 		yield(res);
 	}
 	return 0;
@@ -820,7 +816,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     ev = next(pop)) {
 			ctl_caev_t caev;
 
-			caev = *(const ctl_caev_t*)ev->msg;
+			caev = ev->msg.c;
 
 			/* compute the new sum */
 			if (!ctx->fwd && !ctx->rev) {
@@ -919,7 +915,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				goto out;
 			}
 
-			caev = *(const ctl_caev_t*)ev->msg;
+			caev = ev->msg.c;
 			aadj = (float)caev.mktprc.a;
 
 			if (UNLIKELY(ctx->rev)) {
@@ -1036,7 +1032,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			ctl_caev_t caev;
 			struct fa_s cell;
 
-			caev = *(const ctl_caev_t*)ev->msg;
+			caev = ev->msg.c;
 			cell.last = last;
 			cell.aadj = (float)caev.mktprc.a;
 			cell.t = ev->t;
@@ -1210,7 +1206,7 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			char *bp = pr_buf;
 			const char *const ep = pr_buf + sizeof(pr_buf);
 
-			caev = *(const ctl_caev_t*)ev->msg;
+			caev = ev->msg.c;
 			if (caev.mktprc.a != 0.df) {
 				ctl_ratio_t r =
 					ctl_price_return(caev.mktprc.a, last);
@@ -1296,7 +1292,7 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			char *bp = pr_buf;
 			const char *const ep = pr_buf + sizeof(pr_buf);
 
-			caev = *(const ctl_caev_t*)ev->msg;
+			caev = ev->msg.c;
 			if (!ctl_ratio_zero_p(caev.mktprc.r)) {
 				ctl_price_t x = last;
 
