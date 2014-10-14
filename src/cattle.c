@@ -538,15 +538,6 @@ static const struct pop_res_s {
 	struct pop_res_s res;
 
 	while (!echs_nul_instant_p(res.t = ctl_wheap_top_rank(c->q))) {
-		/* turn all date stamps into full date/time stamps */
-		if (echs_instant_all_day_p(res.t)) {
-			res.t.H = 0U;
-			res.t.M = 0U;
-			res.t.S = 0U;
-			res.t.ms = 0U;
-		} else if (echs_instant_all_sec_p(res.t)) {
-			res.t.ms = 0U;
-		}
 		/* assign colour value */
 		res.msg = ctl_wheap_pop(c->q);
 		yield(res);
