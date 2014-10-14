@@ -1292,6 +1292,10 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			ctl_caev_t caev;
 			bool rawify = false;
 
+			if (ctl_kvv_get_caev_code(kvv) != CTL_CAEV_CTL1) {
+				goto prnt;
+			}
+
 			caev = ctl_kvv_get_caev(kvv);
 			if (!ctl_ratio_zero_p(caev.mktprc.r)) {
 				ctl_price_t x = last;
@@ -1309,6 +1313,7 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				rawify = true;
 			}
 
+		prnt:
 			/* print caev */
 			bp += dt_strf(bp, ep - bp, ev->t);
 			*bp++ = '\t';
