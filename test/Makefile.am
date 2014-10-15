@@ -426,6 +426,13 @@ TESTS += cattle_log_01.clit
 TESTS += cattle_log_02.clit
 TESTS += cattle_log_03.clit
 
+TESTS += cattle_voladj_01.clit
+TESTS += cattle_voladj_02.clit
+TESTS += cattle_voladj_03.clit
+TESTS += cattle_voladj_04.clit
+EXTRA_DIST += cattle_26.tser
+EXTRA_DIST += cattle_27.tser
+
 
 check_PROGRAMS += intern.01
 intern_01_SOURCES = intern.01.c

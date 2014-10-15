@@ -41,7 +41,11 @@
 ctl_caev_t
 make_splr(const ctl_fld_t f[static 1], size_t nf)
 {
-/* return the event actor for the new-for-old ratio */
+/* return the event actor for the new-for-old ratio
+ * SPLF maintains following properties:
+ * mktprc * outsec = const (= market capitalisation)
+ * nomval * outsec = const (= issued capital)
+ * mktprc / nomval = const */
 	ctl_caev_t res = ctl_zero_caev();
 
 	WITH_CTL_FLD(ctl_ratio_t newo, CTL_FLD_NEWO, f, nf, ratio) {
