@@ -420,7 +420,11 @@ TESTS += cattle_apply_stdin_03.clit
 TESTS += cattle_apply_stdin_04.clit
 
 TESTS += cattle_exp_01.clit
+TESTS += cattle_exp_02.clit
+TESTS += cattle_exp_03.clit
 TESTS += cattle_log_01.clit
+TESTS += cattle_log_02.clit
+TESTS += cattle_log_03.clit
 
 
 check_PROGRAMS += intern.01

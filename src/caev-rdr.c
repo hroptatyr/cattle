@@ -249,20 +249,14 @@ out:
 	return res;
 }
 
-ctl_caev_t
-ctl_kvv_get_caev(ctl_kvv_t fldv)
+__attribute__((pure, const)) ctl_caev_code_t
+ctl_kvv_get_caev_code(ctl_kvv_t fldv)
 {
-	static struct ctl_fld_s *flds;
-	static size_t nflds;
-	ctl_caev_code_t ccod;
-	ctl_caev_t res = ctl_zero_caev();
-	size_t fldi;
-
 	if (UNLIKELY(fldv->nkvv == 0U)) {
 		goto out;
 	}
-	/* assume first field is the caev indicator */
 	with (ctl_fld_rdr_t f) {
+		/* assume first field is the caev indicator */
 		const char *k0 = obint_name(fldv->kvv[0].key);
 
 		if ((f = __ctl_fldify(k0, 4U)) == NULL) {
@@ -281,8 +275,25 @@ ctl_kvv_get_caev(ctl_kvv_t fldv)
 			/* not a caev message */
 			goto out;
 		}
-		/* otherwise assign the caev code */
-		ccod = m->code;
+		/* otherwise return the caev code */
+		return m->code;
+	}
+out:
+	return CTL_CAEV_UNK;
+}
+
+ctl_caev_t
+ctl_kvv_get_caev(ctl_kvv_t fldv)
+{
+	static struct ctl_fld_s *flds;
+	static size_t nflds;
+	ctl_caev_code_t ccod;
+	ctl_caev_t res = ctl_zero_caev();
+	size_t fldi;
+
+	if (UNLIKELY((ccod = ctl_kvv_get_caev_code(fldv)) == CTL_CAEV_UNK)) {
+		/* not a caev message, at least not one we support */
+		goto out;
 	}
 
 	/* reset field counter */

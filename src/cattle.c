@@ -70,6 +70,8 @@ struct ctl_ctx_s {
 	unsigned int fwd:1;
 	/* use absolute precision */
 	unsigned int abs_prec:1;
+	/* generic all flag */
+	unsigned int all:1;
 
 	/* use prec fractional digits if abs_prec */
 	signed int prec;
@@ -1202,7 +1204,8 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			caev = ctl_kvv_get_caev(kvv);
 			if (caev.mktprc.a != 0.df) {
 				ctl_ratio_t r =
-					ctl_price_return(caev.mktprc.a, last);
+					ctl_price_return(
+						last + caev.mktprc.a, last);
 
 				if (LIKELY(ctl_ratio_zero_p(caev.mktprc.r))) {
 					caev.mktprc.r = r;
@@ -1287,11 +1290,17 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     ev = next(pop)) {
 			char *bp = pr_buf;
 			const char *const ep = pr_buf + sizeof(pr_buf);
-			ctl_kvv_t kvv = ev->msg.flds;
+			ctl_kvv_t v = ev->msg.flds;
 			ctl_caev_t caev;
 			bool rawify = false;
 
-			caev = ctl_kvv_get_caev(kvv);
+			if (UNLIKELY(ctx->all)) {
+				;
+			} else if (ctl_kvv_get_caev_code(v) != CTL_CAEV_CTL1) {
+				goto prnt;
+			}
+
+			caev = ctl_kvv_get_caev(v);
 			if (!ctl_ratio_zero_p(caev.mktprc.r)) {
 				ctl_price_t x = last;
 
@@ -1308,13 +1317,14 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				rawify = true;
 			}
 
+		prnt:
 			/* print caev */
 			bp += dt_strf(bp, ep - bp, ev->t);
 			*bp++ = '\t';
 			if (rawify) {
 				bp += ctl_caev_wr(bp, ep - bp, caev);
 			} else {
-				bp += ctl_kvv_wr(bp, ep - bp, kvv);
+				bp += ctl_kvv_wr(bp, ep - bp, v);
 			}
 			*bp++ = '\n';
 			*bp = '\0';
@@ -1441,8 +1451,8 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 ctl_ratio_t
 ctl_price_return(ctl_price_t a, ctl_price_t b)
 {
-/* return 1.df + a / b  (via (a + b) / b */
-	bcd32_t da = decompd32(a + b);
+/* return a / b */
+	bcd32_t da = decompd32(a);
 	bcd32_t db = decompd32(b);
 	int sign = da.sign ^ db.sign;
 	signed int p = da.mant;
@@ -1624,10 +1634,6 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		goto out;
 	}
 
-	if (argi->forward_flag) {
-		ctx->fwd = 1U;
-	}
-
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
@@ -1648,21 +1654,12 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 
 	/* open time series file */
 	with (const char *tser_fn = argi->args[0U]) {
-		if (!ctx->fwd) {
-			/* total return back adjustment needs 2 scans */
-			if (UNLIKELY(ctl_bexp_caev_file(ctx, tser_fn) < 0)) {
-				error("\
+		/* total return back adjustment needs 2 scans */
+		if (UNLIKELY(ctl_bexp_caev_file(ctx, tser_fn) < 0)) {
+			error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
-				goto out;
-			}
-		} else {
-			if (UNLIKELY(ctl_bexp_caev_file(ctx, tser_fn) < 0)) {
-				error("\
-cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
-				goto out;
-			}
+			res = 1;
+			goto out;
 		}
 	}
 
@@ -1675,7 +1672,7 @@ out:
 }
 
 static int
-cmd_log(const struct yuck_cmd_exp_s argi[static 1U])
+cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 {
 	static struct ctl_ctx_s ctx[1];
 	int res = 0;
@@ -1689,8 +1686,8 @@ cmd_log(const struct yuck_cmd_exp_s argi[static 1U])
 		goto out;
 	}
 
-	if (argi->forward_flag) {
-		ctx->fwd = 1U;
+	if (argi->all_flag) {
+		ctx->all = 1U;
 	}
 
 	/* open caev files and read */
@@ -1713,21 +1710,12 @@ cmd_log(const struct yuck_cmd_exp_s argi[static 1U])
 
 	/* open time series file */
 	with (const char *tser_fn = argi->args[0U]) {
-		if (!ctx->fwd) {
-			/* total return back adjustment needs 2 scans */
-			if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
-				error("\
+		/* total return back adjustment needs 2 scans */
+		if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
+			error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
-				goto out;
-			}
-		} else {
-			if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
-				error("\
-cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
-				goto out;
-			}
+			res = 1;
+			goto out;
 		}
 	}
 

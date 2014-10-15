@@ -45,17 +45,17 @@ Print resulting actors of caev echse messages.
 
 Usage: cattle exp TIME-SERIES-FILE [CAEV-FILE]...
 
-Turn additive actions into multiplicative ones.
-
-  -F, --forward         Forward-adjust the time series, i.e. current
-                        prices are modified to match past prices.
-                        Default: backward adjustment
+Exponentiate corporate actions.
+I.e. turn additive actions into multiplicative ones.
 
 
 Usage: cattle log TIME-SERIES-FILE [CAEV-FILE]...
 
-Turn multiplicative actions into additive ones.
+Logarithmise corporate actions.
+I.e. turn multiplicative actions into additive ones.
 
+  -a, --all             Logarithmise all multiplicative actions.
+                        Default: only logarithmise CTL1 actions
 
 ## Local variables:
 ## mode: auto-fill

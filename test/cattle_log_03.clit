@@ -1,0 +1,12 @@
+#!/usr/bin/clitoris  ## -*- shell-script -*-
+
+$ cattle apply -F "${srcdir}/cattle_07.tser" "${srcdir}/cattle_07.echs" \
+	> "cattle_log_03.fadj"
+$ cattle exp "${srcdir}/cattle_07.tser" "${srcdir}/cattle_07.echs" | \
+	cattle log "${srcdir}/cattle_07.tser" | \
+	cattle apply -F "${srcdir}/cattle_07.tser"
+< "cattle_log_03.fadj"
+$ rm -f -- "cattle_log_03.fadj"
+$
+
+## cattle_log_03.clit ends here
