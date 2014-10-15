@@ -211,6 +211,28 @@ adjusted prices are always quantised to market prices, the reversal
 might suffer from *quantisation artefacts*.
 
 
+Supported corporate action events
+---------------------------------
+
+We generally only support price relevant corporate action events from
+the [SMPG Corporate Actions Events Templates - SR2012][2]:
+
+- BONU  issuing of bonus shares
+- DRIP  dividend reinvestment plans
+- DVCA  cash dividends
+- DVSE  stock dividends
+- RHTS  rights issue
+- SPLF  forward split
+- SPLR  reverse split
+
+To aid unconventional action events cattle also supports its own caev
+code `CTL1` that allows to explicitly express any linear relationships
+of a corporate action event transition with respect to the market price,
+the nominal value and the number of outstanding shares.  To convert
+ordinary corporate action events into this explicit format, use `cattle
+print -r|--raw`.
+
+
 Similar projects
 ----------------
 
@@ -225,6 +247,7 @@ Further reading
 
 
   [1]: http://www.iso15022.org/UHB/UHB/FINMT564.htm
+  [2]: http://smpg.webexone.com/docs/docapp.aspx?_command=list&fid=20157
 
 
 <!--
