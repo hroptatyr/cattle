@@ -683,7 +683,7 @@ defcoru(co_appl_adj, ia, arg)
 
 				res.t = arg->rdr->t;
 				res.f[nf - 2U] =
-					(float)arg->rdr->f[nf - 2U] / fctr;
+					(float)arg->rdr->f[nf - 2U] * fctr;
 				res.f[nf - 1U] =
 					(float)arg->rdr->f[nf - 1U] / fctr;
 				res.f[0U] = (float)arg->rdr->f[0U] * fctr;
