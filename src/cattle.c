@@ -70,6 +70,8 @@ struct ctl_ctx_s {
 	unsigned int fwd:1;
 	/* use absolute precision */
 	unsigned int abs_prec:1;
+	/* generic all flag */
+	unsigned int all:1;
 
 	/* use prec fractional digits if abs_prec */
 	signed int prec;
@@ -1288,15 +1290,17 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     ev = next(pop)) {
 			char *bp = pr_buf;
 			const char *const ep = pr_buf + sizeof(pr_buf);
-			ctl_kvv_t kvv = ev->msg.flds;
+			ctl_kvv_t v = ev->msg.flds;
 			ctl_caev_t caev;
 			bool rawify = false;
 
-			if (ctl_kvv_get_caev_code(kvv) != CTL_CAEV_CTL1) {
+			if (UNLIKELY(ctx->all)) {
+				;
+			} else if (ctl_kvv_get_caev_code(v) != CTL_CAEV_CTL1) {
 				goto prnt;
 			}
 
-			caev = ctl_kvv_get_caev(kvv);
+			caev = ctl_kvv_get_caev(v);
 			if (!ctl_ratio_zero_p(caev.mktprc.r)) {
 				ctl_price_t x = last;
 
@@ -1320,7 +1324,7 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			if (rawify) {
 				bp += ctl_caev_wr(bp, ep - bp, caev);
 			} else {
-				bp += ctl_kvv_wr(bp, ep - bp, kvv);
+				bp += ctl_kvv_wr(bp, ep - bp, v);
 			}
 			*bp++ = '\n';
 			*bp = '\0';
@@ -1680,6 +1684,10 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
 		res = 1;
 		goto out;
+	}
+
+	if (argi->all_flag) {
+		ctx->all = 1U;
 	}
 
 	/* open caev files and read */
