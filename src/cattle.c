@@ -619,6 +619,7 @@ declcoru(co_appl_adj, {
 static const struct echs_fund_s*
 defcoru(co_appl_adj, ia, arg)
 {
+/* adjust values in RDR according to ADJ_PARAM */
 	const bool totret = ia->totret;
 	/* we'll yield a echs_fund_s */
 	struct echs_fund_s res;
