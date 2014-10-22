@@ -1,6 +1,6 @@
-/*** dt-strpf.h -- parser and formatter funs for echse
+/*** dt-strpf.h -- parser and formatter funs for date/times
  *
- * Copyright (C) 2011-2013 Sebastian Freundt
+ * Copyright (C) 2011-2014 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -36,7 +36,6 @@
  **/
 #if !defined INCLUDED_dt_strpf_h_
 #define INCLUDED_dt_strpf_h_
-
 #include <stdlib.h>
 #include "instant.h"
 
