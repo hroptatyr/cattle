@@ -1,6 +1,6 @@
-/*** dt-strpf.c -- parser and formatter funs for echse
+/*** dt-strpf.c -- parser and formatter funs for date/times
  *
- * Copyright (C) 2011-2013 Sebastian Freundt
+ * Copyright (C) 2011-2014 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -34,10 +34,9 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  **/
-/* implementation part of date-core-strpf.h */
+/* implementation part of dt-strpf.h */
 #if !defined INCLUDED_dt_strpf_c_
 #define INCLUDED_dt_strpf_c_
-
 #if defined HAVE_CONFIG_H
 # include "config.h"
 #endif	/* HAVE_CONFIG_H */
@@ -45,7 +44,7 @@
 #include "dt-strpf.h"
 #include "nifty.h"
 
-static int32_t
+static __attribute__((nonnull(1, 2))) int32_t
 strtoi_lim(const char *str, const char **ep, int32_t llim, int32_t ulim)
 {
 	int32_t res = 0;
@@ -53,56 +52,55 @@ strtoi_lim(const char *str, const char **ep, int32_t llim, int32_t ulim)
 	/* we keep track of the number of digits via rulim */
 	int32_t rulim;
 
+	/* read over leading 0s */
 	for (sp = str, rulim = ulim > 10 ? ulim : 10;
-	     res * 10 <= ulim && rulim && *sp >= '0' && *sp <= '9';
-	     sp++, rulim /= 10) {
-		res *= 10;
-		res += *sp - '0';
-	}
+	     rulim && (unsigned char)(*sp ^ '0') < 10U &&
+		     (res *= 10, res += (unsigned char)(*sp++ ^ '0')) <= ulim;
+	     rulim /= 10);
 	if (UNLIKELY(sp == str)) {
 		res = -1;
 	} else if (UNLIKELY(res < llim || res > ulim)) {
 		res = -2;
 	}
-	*ep = (const char*)sp;
+	*ep = sp;
 	return res;
 }
 
-static size_t
+static __attribute__((nonnull(1))) size_t
 ui32tostr(char *restrict buf, size_t bsz, uint32_t d, int pad)
 {
 /* all strings should be little */
-#define C(x, d)	(char)((x) / (d) % 10 + '0')
+#define C(x, d)	(char)(((x) / (d) % 10) ^ '0')
 	size_t res;
 
-	if (UNLIKELY(d > 1000000000)) {
+	if (UNLIKELY(d > 1000000000U)) {
 		return 0;
 	}
 	switch ((res = (size_t)pad) < bsz ? res : bsz) {
 	case 9:
 		/* for nanoseconds */
-		buf[pad - 9] = C(d, 100000000);
-		buf[pad - 8] = C(d, 10000000);
-		buf[pad - 7] = C(d, 1000000);
+		buf[pad - 9] = C(d, 100000000U);
+		buf[pad - 8] = C(d, 10000000U);
+		buf[pad - 7] = C(d, 1000000U);
 	case 6:
 		/* for microseconds */
-		buf[pad - 6] = C(d, 100000);
-		buf[pad - 5] = C(d, 10000);
+		buf[pad - 6] = C(d, 100000U);
+		buf[pad - 5] = C(d, 10000U);
 	case 4:
 		/* for western year numbers */
-		buf[pad - 4] = C(d, 1000);
+		buf[pad - 4] = C(d, 1000U);
 	case 3:
 		/* for milliseconds or doy et al. numbers */
-		buf[pad - 3] = C(d, 100);
+		buf[pad - 3] = C(d, 100U);
 	case 2:
 		/* hours, mins, secs, doms, moys, etc. */
-		buf[pad - 2] = C(d, 10);
+		buf[pad - 2] = C(d, 10U);
 	case 1:
-		buf[pad - 1] = C(d, 1);
+		buf[pad - 1] = C(d, 1U);
 		break;
 	default:
 	case 0:
-		res = 0;
+		res = 0U;
 		break;
 	}
 	return res;
@@ -119,26 +117,22 @@ dt_strp(const char *str, char **on)
 	int32_t tmp;
 
 	if (UNLIKELY((sp = str) == NULL)) {
-		res = nul;
 		goto nul;
 	}
 	/* read the year */
 	if ((tmp = strtoi_lim(sp, &sp, 1583, 4095)) < 0 || *sp++ != '-') {
-		res = nul;
 		goto nul;
 	}
 	res.y = tmp;
 
 	/* read the month */
 	if ((tmp = strtoi_lim(sp, &sp, 0, 12)) < 0 || *sp++ != '-') {
-		res = nul;
 		goto nul;
 	}
 	res.m = tmp;
 
 	/* read the day or the count */
 	if ((tmp = strtoi_lim(sp, &sp, 0, 31)) < 0) {
-		res = nul;
 		goto nul;
 	}
 	res.d = tmp;
@@ -155,26 +149,23 @@ dt_strp(const char *str, char **on)
 		/* just the date, make it ECHS_ALL_DAY then aye */
 		res.H = ECHS_ALL_DAY;
 		sp--;
-		goto nul;
+		goto out;
 	}
 
-	/* and now parse the time */
-	if ((tmp = strtoi_lim(sp, &sp, 0, 23)) < 0 || *sp++ != ':') {
-		res = nul;
+	/* and now parse the time, allow military midnight */
+	if ((tmp = strtoi_lim(sp, &sp, 0, 24)) < 0 || *sp++ != ':') {
 		goto nul;
 	}
 	res.H = tmp;
 
 	/* minute */
 	if ((tmp = strtoi_lim(sp, &sp, 0, 59)) < 0 || *sp++ != ':') {
-		res = nul;
 		goto nul;
 	}
 	res.M = tmp;
 
 	/* second, allow leap second too */
 	if ((tmp = strtoi_lim(sp, &sp, 0, 60)) < 0) {
-		res = nul;
 		goto nul;
 	}
 	res.S = tmp;
@@ -185,13 +176,18 @@ dt_strp(const char *str, char **on)
 		tmp = ECHS_ALL_SEC;
 		sp--;
 	} else if ((tmp = strtoi_lim(sp, &sp, 0, 999)) < 0) {
-		res = nul;
 		goto nul;
 	} else {
 		/* consume more digits */
 		for (; *sp >= '0' && *sp <= '9'; sp++);
 	}
 	res.ms = tmp;
+
+	if (UNLIKELY(res.H == 24U)) {
+		if (res.M || res.S || res.ms) {
+			goto nul;
+		}
+	}
 
 	/* for completeness overread any time zone offsets */
 	switch (*sp) {
@@ -214,11 +210,17 @@ dt_strp(const char *str, char **on)
 		break;
 	}
 
-nul:
+out:
 	if (LIKELY(on != NULL)) {
 		*on = deconst(sp);
 	}
 	return res;
+
+nul:
+	if (LIKELY(on != NULL)) {
+		*on = deconst(str);
+	}
+	return nul;
 }
 
 size_t
