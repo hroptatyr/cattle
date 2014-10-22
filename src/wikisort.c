@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
+#include "nifty.h"
 
 #if defined __INTEL_COMPILER
 # pragma warning (disable:981)
@@ -300,7 +301,7 @@ static WikiIterator WikiIterator_new(size_t size2, size_t min_level) {
 }
 
 /* merge operation using an external buffer, */
-static void MergeExternal(T *restrict array, const Range A, const Range B, T cache[], const size_t cache_size) {
+static void MergeExternal(T *restrict array, const Range A, const Range B, T cache[], const size_t UNUSED(cache_size)) {
 	/* A fits into the cache, so use that instead of the internal buffer */
 	T *A_index = &cache[0];
 	T *B_index = &array[B.start];
@@ -451,7 +452,7 @@ static void WikiSort(T *restrict array, const size_t size) {
 			 7. sort the second internal buffer if it exists
 			 8. redistribute the two internal buffers back into the array */
 			
-			size_t block_size = (size_t)sqrt(WikiIterator_length(&iterator));
+			size_t block_size = (size_t)sqrt((double)WikiIterator_length(&iterator));
 			size_t buffer_size = WikiIterator_length(&iterator)/block_size + 1;
 			
 			/* as an optimization, we really only need to pull out the internal buffers once for each level of merges */
