@@ -433,6 +433,9 @@ TESTS += cattle_voladj_04.clit
 EXTRA_DIST += cattle_26.tser
 EXTRA_DIST += cattle_27.tser
 
+TESTS += invalid_rdte.clit
+EXTRA_DIST += invalid_rdte.echs
+
 
 check_PROGRAMS += intern.01
 intern_01_SOURCES = intern.01.c
