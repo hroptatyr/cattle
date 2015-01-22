@@ -183,10 +183,18 @@ ctl_kvv_wr(char *restrict buf, size_t bsz, ctl_kvv_t flds)
 	const char *const ep = buf + bsz;
 
 	for (size_t i = 0U; i < flds->nkvv && bp + 4U < ep; i++) {
-		bp += xstrlcpy(bp, obint_name(flds->kvv[i].key), ep - bp);
+		struct ctl_kv_s kv = flds->kvv[i];
+
+		if (UNLIKELY(kv.key == NULL)) {
+			/* skip this guy altogether */
+			continue;
+		}
+		bp += xstrlcpy(bp, obint_name(kv.key), ep - bp);
 		*bp++ = '=';
 		*bp++ = '"';
-		bp += xstrlcpy(bp, obint_name(flds->kvv[i].val), ep - bp);
+		if (LIKELY(kv.val)) {
+			bp += xstrlcpy(bp, obint_name(kv.val), ep - bp);
+		}
 		*bp++ = '"';
 		*bp++ = ' ';
 	}
