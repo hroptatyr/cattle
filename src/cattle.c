@@ -185,7 +185,7 @@ ctl_kvv_wr(char *restrict buf, size_t bsz, ctl_kvv_t flds)
 	for (size_t i = 0U; i < flds->nkvv && bp + 4U < ep; i++) {
 		struct ctl_kv_s kv = flds->kvv[i];
 
-		if (UNLIKELY(kv.key == NULL)) {
+		if (UNLIKELY(!kv.key)) {
 			/* skip this guy altogether */
 			continue;
 		}
