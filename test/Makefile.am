@@ -199,7 +199,7 @@ check_PROGRAMS += caev-supp.14
 caev_supp_14_SOURCES = caev-supp.14.c
 caev_supp_14_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 caev_supp_14_LDADD = $(cattle_LIBS)
-TESTS += caev-supp.14.clit
+#TESTS += caev-supp.14.clit
 
 noinst_LIBRARIES += libwheap.a
 libwheap_a_SOURCES = wheap.c
@@ -343,9 +343,12 @@ TESTS += cattle_apply_27.clit
 TESTS += cattle_apply_28.clit
 TESTS += cattle_apply_29.clit
 TESTS += cattle_apply_30.clit
+TESTS += cattle_apply_31.clit
 EXTRA_DIST += cattle_23.echs
 EXTRA_DIST += cattle_24.echs
 EXTRA_DIST += cattle_25.echs
+EXTRA_DIST += cattle_28.echs
+EXTRA_DIST += cattle_28.tser
 
 TESTS += cattle_apply_reverse_23.clit
 TESTS += cattle_apply_reverse_24.clit
