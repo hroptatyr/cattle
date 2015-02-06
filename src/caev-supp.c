@@ -73,7 +73,7 @@ make_caev(const ctl_fld_t msg[static 1], size_t nflds)
 		case CTL_CAEV_RHDI:
 			break;
 		case CTL_CAEV_RHTS:
-			return make_rhts(msg, nflds);
+			break;
 		case CTL_CAEV_SPLF:
 			return make_splf(msg, nflds);
 		case CTL_CAEV_SPLR:
