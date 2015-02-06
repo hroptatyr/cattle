@@ -199,7 +199,7 @@ check_PROGRAMS += caev-supp.14
 caev_supp_14_SOURCES = caev-supp.14.c
 caev_supp_14_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 caev_supp_14_LDADD = $(cattle_LIBS)
-TESTS += caev-supp.14.clit
+#TESTS += caev-supp.14.clit
 
 noinst_LIBRARIES += libwheap.a
 libwheap_a_SOURCES = wheap.c
