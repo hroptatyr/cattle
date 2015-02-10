@@ -45,16 +45,17 @@ make_rhts(const ctl_fld_t f[static 1], size_t nf)
 	ctl_caev_t res = ctl_zero_caev();
 
 	WITH_CTL_FLD(ctl_ratio_t rtun, CTL_FLD_RTUN, f, nf, ratio) {
+		/* the actual formula is (pP + qQ)/(p+q) but we have
+		 * to represent it as p/(p+q) for the multiplicative bit
+		 * and qQ/(p+q) for the additive bit.
+		 * P is the market price, Q the rights price, for a
+		 * rights-to-underlying ratio of q/p. */
 		res.mktprc.r = ctl_ratio_recipr(ctl_adex_to_newo(rtun));
 		res.outsec.r = ctl_adex_to_newo(rtun);
 		res.nomval.r = ctl_ratio_recipr(ctl_adex_to_newo(rtun));
 
-		/* we later compute p/q (x + r) so we have to stretch
-		 * the absolute value by q/p, as the RHTS formula really
-		 * wants p/q x + r
-		 * i.e. this is q / p * r */
 		WITH_CTL_FLD(ctl_price_t prpp, CTL_FLD_PRPP, f, nf, price) {
-			res.mktprc.a = prpp * rtun.p / rtun.q;
+			res.mktprc.a = prpp * rtun.p;
 			res.nomval.a = 0.df;
 			res.outsec.a = 0.df;
 		}
