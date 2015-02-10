@@ -199,7 +199,7 @@ check_PROGRAMS += caev-supp.14
 caev_supp_14_SOURCES = caev-supp.14.c
 caev_supp_14_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 caev_supp_14_LDADD = $(cattle_LIBS)
-#TESTS += caev-supp.14.clit
+TESTS += caev-supp.14.clit
 
 check_PROGRAMS += arith.01
 arith_01_SOURCES = arith.01.c
