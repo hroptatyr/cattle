@@ -1,6 +1,6 @@
 /*** caev-supp.c -- supported message fields and messages
  *
- * Copyright (C) 2013 Sebastian Freundt
+ * Copyright (C) 2013-2015 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -73,7 +73,7 @@ make_caev(const ctl_fld_t msg[static 1], size_t nflds)
 		case CTL_CAEV_RHDI:
 			break;
 		case CTL_CAEV_RHTS:
-			break;
+			return make_rhts(msg, nflds);
 		case CTL_CAEV_SPLF:
 			return make_splf(msg, nflds);
 		case CTL_CAEV_SPLR:

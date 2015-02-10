@@ -199,7 +199,31 @@ check_PROGRAMS += caev-supp.14
 caev_supp_14_SOURCES = caev-supp.14.c
 caev_supp_14_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
 caev_supp_14_LDADD = $(cattle_LIBS)
-#TESTS += caev-supp.14.clit
+TESTS += caev-supp.14.clit
+
+check_PROGRAMS += arith.01
+arith_01_SOURCES = arith.01.c
+arith_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+arith_01_LDADD = $(cattle_LIBS)
+TESTS += arith.01
+
+check_PROGRAMS += arith.02
+arith_02_SOURCES = arith.02.c
+arith_02_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+arith_02_LDADD = $(cattle_LIBS)
+TESTS += arith.02
+
+check_PROGRAMS += arith.03
+arith_03_SOURCES = arith.03.c
+arith_03_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+arith_03_LDADD = $(cattle_LIBS)
+TESTS += arith.03
+
+check_PROGRAMS += arith.04
+arith_04_SOURCES = arith.04.c
+arith_04_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
+arith_04_LDADD = $(cattle_LIBS)
+TESTS += arith.04
 
 noinst_LIBRARIES += libwheap.a
 libwheap_a_SOURCES = wheap.c

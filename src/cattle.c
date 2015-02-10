@@ -1,6 +1,6 @@
 /*** cattle.c -- tool to apply corporate actions
  *
- * Copyright (C) 2013-2014 Sebastian Freundt
+ * Copyright (C) 2013-2015 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -821,14 +821,12 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			caev = ev->msg.c;
 
 			/* compute the new sum */
-			if (!ctx->fwd && !ctx->rev) {
+			if (!ctx->rev) {
+				/* always use left subtraction */
 				sum = ctl_caev_sup(sum, caev);
-			} else if (!ctx->rev/* && ctx->fwd */) {
-				sum = ctl_caev_sub(sum, caev);
-			} else if (!ctx->fwd/* && ctx->rev */) {
+			} else /*if (ctx->rev)*/ {
+				/* -R mode is always just an ordinary sum */
 				sum = ctl_caev_add(sum, caev);
-			} else /*if (ctx->fwd && ctx->rev)*/ {
-				sum = ctl_caev_add(caev, sum);
 			}
 		}
 
@@ -1353,7 +1351,7 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 /* printer commands */
 static int
-ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
+ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 {
 	ctl_caev_t prev = ctl_zero_caev();
 	echs_instant_t prev_t = {.u = 0U};
@@ -1372,11 +1370,16 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 				continue;
 			}
 		}
+		/* keep track of this caev for the next uniquify run */
+		prev = this;
+
+		if (revp) {
+			this = ctl_caev_inv(this);
+		}
 
 		bp += dt_strf(bp, ep - bp, t);
 		*bp++ = '\t';
 		bp += ctl_caev_wr(bp, ep - bp, this);
-		prev = this;
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(pr_buf, stdout);
@@ -1385,7 +1388,7 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 }
 
 static int
-ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
+ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 {
 	ctl_caev_t sum = ctl_zero_caev();
 	ctl_caev_t prev = sum;
@@ -1403,9 +1406,15 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 				continue;
 			}
 		}
+		/* keep track of this caev for the next uniquify run */
+		prev = this;
+
+		if (revp) {
+			this = ctl_caev_inv(this);
+		}
+
 		/* just sum them up here */
 		sum = ctl_caev_add(sum, this);
-		prev = this;
 	}
 	/* and now print */
 	{
@@ -1489,12 +1498,18 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	static struct ctl_ctx_s ctx[1];
 	bool rawp = argi->raw_flag;
 	bool uniqp = argi->unique_flag;
+	bool revp = argi->reverse_flag;
 	int rc = 1;
 
 	if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
 		goto out;
-	} else if (argi->summary_flag) {
+	}
+
+	if (argi->summary_flag) {
 		/* --summary implies --raw */
+		rawp = true;
+	} else if (argi->reverse_flag) {
+		/* --reverse implies --raw */
 		rawp = true;
 	}
 
@@ -1528,9 +1543,9 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 
 	if (!rawp && ctl_print_kv(ctx, uniqp) >= 0) {
 		rc = 0;
-	} else if (argi->summary_flag && ctl_print_sum(ctx, uniqp) >= 0) {
+	} else if (argi->summary_flag && ctl_print_sum(ctx, uniqp, revp) >= 0) {
 		rc = 0;
-	} else if (rawp && ctl_print_raw(ctx, uniqp) >= 0) {
+	} else if (rawp && ctl_print_raw(ctx, uniqp, revp) >= 0) {
 		rc = 0;
 	}
 

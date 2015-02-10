@@ -1,6 +1,6 @@
 /*** caev.h -- corporate action events
  *
- * Copyright (C) 2013 Sebastian Freundt
+ * Copyright (C) 2013-2015 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -138,6 +138,10 @@ extern ctl_fund_t ctl_caev_act(ctl_caev_t, ctl_fund_t x);
  * It is assumed that currencies match. */
 extern ctl_price_t ctl_caev_act_mktprc(ctl_caev_t, ctl_price_t x);
 
+/**
+ * Return true iff C1 and C2 act equally. */
+extern bool ctl_caev_equal_p(ctl_caev_t c1, ctl_caev_t c2);
+
 
 static inline __attribute__((const, pure)) ctl_caev_t
 ctl_zero_caev(void)
@@ -150,7 +154,7 @@ ctl_zero_caev(void)
 }
 
 /**
- * Return true iff C1 and C2 act equally. */
+ * Return true iff C1 and C2 are equal. */
 static inline __attribute__((const, pure)) bool
 ctl_caev_eq_p(ctl_caev_t c1, ctl_caev_t c2)
 {
