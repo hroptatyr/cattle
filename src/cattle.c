@@ -821,14 +821,12 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			caev = ev->msg.c;
 
 			/* compute the new sum */
-			if (!ctx->fwd && !ctx->rev) {
+			if (!ctx->rev) {
+				/* always use left subtraction */
 				sum = ctl_caev_sup(sum, caev);
-			} else if (!ctx->rev/* && ctx->fwd */) {
-				sum = ctl_caev_sub(sum, caev);
-			} else if (!ctx->fwd/* && ctx->rev */) {
+			} else /*if (ctx->rev)*/ {
+				/* -R mode is always just an ordinary sum */
 				sum = ctl_caev_add(sum, caev);
-			} else /*if (ctx->fwd && ctx->rev)*/ {
-				sum = ctl_caev_add(caev, sum);
 			}
 		}
 
