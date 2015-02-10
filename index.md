@@ -237,6 +237,13 @@ ordinary corporate action events into this explicit format, use `cattle
 print -r|--raw`.
 
 
+[Corporate action arithmetic][3]
+--------------------------------
+
+For detailed coverage of how corporate actions are represented internally,
+as well as details on the arithmetic in use see [this dedicated page][3].
+
+
 Further reading
 ---------------
 
@@ -253,6 +260,7 @@ None.
 
   [1]: http://www.iso15022.org/UHB/UHB/FINMT564.htm
   [2]: http://smpg.webexone.com/docs/docapp.aspx?_command=list&fid=20157
+  [3]: /cattle/arithmetics
 
 
 <!--
