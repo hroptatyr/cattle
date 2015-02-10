@@ -101,24 +101,39 @@
  * part is always absolute in value, subtraction of additive operations
  * from the left is simply an addition.
  *
- *     x1+p1<-q1 -l x2+p2<-q2 = (x1 - x2)+p1/p2<-q1/q2
+ *     x1+p1<-q1 -l x2+p2<-q2 := (p2(x1 - x2)/q2)+(p1/p2)<-(q1/q2)
  *
  * And since all multiplicative operations are aggregated into the
- * multiplicative cell of a sum subtraction of additive operations from the
- * right is defined as:
+ * multiplicative cell of a sum subtraction of additive operations from
+ * the right is defined as:
  *
- *     x1+p1<-q1 -r x2+p2<-q2 = (x1 - q2x2/p2)+p1/p2<-q1/q2
+ *     x1+p1<-q1 -r x2+p2<-q2 = (x1 - (q1/q2)x2/(p1/p2)+(p1/p2)<-(q1/q2)
  *
  * The actual inverse elements can be computed via left or right
  * subtraction from the neutral operation 0+0<-0:
  *
- *     0+0<-0  -l  x+p<-q = (-x)+q<-p
+ *     0+0<-0  -l  x+p<-q = (-px/q)+q<-p
  *
- * which is called the rev or left-inverse, and
+ * and
  *
- *     0+0<-0  -r  x+p<-q = (-qx/p)+q<-p
+ *     0+0<-0  -r  x+p<-q = (-px/q)+q<-p
  *
- * respectively, which we simply call inv or right-inverse. */
+ * respectively, which we simply call inv or inverse.
+ *
+ * Additionally, we provide a reverse operation defined by
+ *
+ *     rev(x+p<-q) := -x+q<-p
+ *
+ * and along with
+ *
+ *     act(x+p<-q, P) := p(P + x)/q
+ *
+ * which we call action of P under x+p<-q, or we say x+p<-q acts on P,
+ * we can define the inverse in terms of act and rev as
+ *
+ *     inv(x+p<-q) = rev(act(x+p<-q))
+ *
+ * where act(x+p<-q) is the operator that maps x to px/q. */
 
 
 static __attribute__((const, pure)) ctl_price_t
@@ -230,6 +245,54 @@ quant_actor_add(ctl_quant_actor_t x, ctl_quant_actor_t y)
 }
 
 static ctl_price_actor_t
+price_actor_sub(ctl_price_actor_t x, ctl_price_actor_t y)
+{
+/* right inverse */
+	ctl_price_actor_t res = {
+		.r = ratio_add(x.r, ratio_rev(y.r)),
+	};
+	res.a = price_add(x.a, -ratio_act_p(ratio_rev(res.r), y.a));
+	return res;
+}
+
+static ctl_quant_actor_t
+quant_actor_sub(ctl_quant_actor_t x, ctl_quant_actor_t y)
+{
+/* right inverse */
+	ctl_quant_actor_t res = {
+		.r = ratio_add(x.r, ratio_rev(y.r)),
+	};
+	res.a = price_add(x.a, -ratio_act_p(ratio_rev(res.r), y.a));
+	return res;
+}
+
+static ctl_price_actor_t
+price_actor_sup(ctl_price_actor_t x, ctl_price_actor_t y)
+{
+/* left inverse */
+	ctl_price_actor_t res = {
+		.r = ratio_add(x.r, ratio_rev(y.r)),
+		/* the simple negative is still overscaled by
+		 * y.r.q/y.r.p, so we'll fix that */
+		.a = ratio_act_p(y.r, price_add(x.a, -y.a)),
+	};
+	return res;
+}
+
+static ctl_quant_actor_t
+quant_actor_sup(ctl_quant_actor_t x, ctl_quant_actor_t y)
+{
+/* left inverse */
+	ctl_quant_actor_t res = {
+		.r = ratio_add(x.r, ratio_rev(y.r)),
+		/* the simple negative is still overscaled by
+		 * x.r.q/x.r.p, so we'll fix that */
+		.a = ratio_act_p(x.r, price_add(x.a, -y.a)),
+	};
+	return res;
+}
+
+static ctl_price_actor_t
 price_actor_rev(ctl_price_actor_t x)
 {
 	ctl_price_actor_t res = {
@@ -305,10 +368,11 @@ ctl_caev_add(ctl_caev_t x, ctl_caev_t y)
 ctl_caev_t
 ctl_caev_sub(ctl_caev_t x, ctl_caev_t y)
 {
+/* right inverse */
 	ctl_caev_t res = {
-		.mktprc = price_actor_add(x.mktprc, price_actor_inv(y.mktprc)),
-		.nomval = price_actor_add(x.nomval, price_actor_inv(y.nomval)),
-		.outsec = quant_actor_add(x.outsec, quant_actor_inv(y.outsec)),
+		.mktprc = price_actor_sub(x.mktprc, y.mktprc),
+		.nomval = price_actor_sub(x.nomval, y.nomval),
+		.outsec = quant_actor_sub(x.outsec, y.outsec),
 	};
 	return res;
 }
@@ -316,10 +380,11 @@ ctl_caev_sub(ctl_caev_t x, ctl_caev_t y)
 ctl_caev_t
 ctl_caev_sup(ctl_caev_t x, ctl_caev_t y)
 {
+/* left inverse */
 	ctl_caev_t res = {
-		.mktprc = price_actor_add(price_actor_rev(y.mktprc), x.mktprc),
-		.nomval = price_actor_add(price_actor_rev(y.nomval), x.nomval),
-		.outsec = quant_actor_add(quant_actor_rev(y.outsec), x.outsec),
+		.mktprc = price_actor_sup(x.mktprc, y.mktprc),
+		.nomval = price_actor_sup(x.nomval, y.nomval),
+		.outsec = quant_actor_sup(x.outsec, y.outsec),
 	};
 	return res;
 }
