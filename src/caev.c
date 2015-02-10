@@ -162,6 +162,22 @@ ratio_rev(ctl_ratio_t x)
 	return ctl_ratio_recipr(x);
 }
 
+static __attribute__((const, pure)) bool
+ratio_equal_p(ctl_ratio_t r1, ctl_ratio_t r2)
+{
+	if (r1.p && r2.p) {
+		return r1.p == r2.p && r1.q == r2.q;
+	} else if (r1.p) {
+		/* r2 is 1<-1 */
+		return r1.p == 1 && r1.q == 1;
+	} else if (r2.p) {
+		/* r1 is 1<-1 */
+		return r2.p == 1 && r2.q == 1;
+	}
+	/* otherwise both r1.p and r2.p are zero */
+	return true;
+}
+
 static __attribute__((const, pure)) ctl_price_t
 ratio_act_p(ctl_ratio_t r, ctl_price_t p)
 {
@@ -178,6 +194,18 @@ ratio_act_q(ctl_ratio_t r, ctl_quant_t q)
 		q = (q * r.p) / r.q;
 	}
 	return q;
+}
+
+static __attribute__((const, pure)) bool
+price_equal_p(ctl_price_t p1, ctl_price_t p2)
+{
+	return p1 == p2;
+}
+
+static __attribute__((const, pure)) bool
+quant_equal_p(ctl_quant_t q1, ctl_quant_t q2)
+{
+	return q1 == q2;
 }
 
 
@@ -233,6 +261,20 @@ quant_actor_inv(ctl_quant_actor_t x)
 {
 	x.a = ratio_act_q(x.r, x.a);
 	return quant_actor_rev(x);
+}
+
+static bool
+price_actor_equal_p(ctl_price_actor_t a1, ctl_price_actor_t a2)
+{
+	return price_equal_p(a1.a, a2.a) &&
+		ratio_equal_p(a1.r, a2.r);
+}
+
+static bool
+quant_actor_equal_p(ctl_quant_actor_t a1, ctl_quant_actor_t a2)
+{
+	return quant_equal_p(a1.a, a2.a) &&
+		ratio_equal_p(a1.r, a2.r);
 }
 
 static ctl_price_t
@@ -321,6 +363,20 @@ ctl_price_t
 ctl_caev_act_mktprc(ctl_caev_t e, ctl_price_t x)
 {
 	return price_act(e.mktprc, x);
+}
+
+
+/* predicates */
+bool
+ctl_caev_equal_p(ctl_caev_t c1, ctl_caev_t c2)
+{
+	if (ctl_caev_eq_p(c1, c2)) {
+		return true;
+	}
+	/* otherwise check if C1 and C2 act equally */
+	return price_actor_equal_p(c1.mktprc, c2.mktprc) &&
+		price_actor_equal_p(c1.nomval, c2.nomval) &&
+		quant_actor_equal_p(c1.outsec, c2.outsec);
 }
 
 /* caev.c ends here */
