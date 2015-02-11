@@ -310,11 +310,11 @@ extern ctl_caev_t make_bonu(const ctl_fld_t f[static 1], size_t n);
 /**
  * Return capital from the capital account. */
 extern ctl_caev_t make_capd(const ctl_fld_t f[static 1], size_t n);
+#endif	/* 0 */
 
 /**
  * Return capital gains from the capital account. */
 extern ctl_caev_t make_capg(const ctl_fld_t f[static 1], size_t n);
-#endif	/* 0 */
 
 /**
  * Return dividend reinvestment event based on additional securities. */
