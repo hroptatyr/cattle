@@ -306,11 +306,9 @@ struct ctl_fld_s {
  * Return bonus distribution event based on pro-rata assignments. */
 extern ctl_caev_t make_bonu(const ctl_fld_t f[static 1], size_t n);
 
-#if 0
 /**
  * Return capital from the capital account. */
 extern ctl_caev_t make_capd(const ctl_fld_t f[static 1], size_t n);
-#endif	/* 0 */
 
 /**
  * Return capital gains from the capital account. */

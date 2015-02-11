@@ -41,6 +41,7 @@ libcattle_la_SOURCES += coru.h
 libcattle_la_SOURCES += caev-supp.c caev-supp.h
 libcattle_la_SOURCES += caev--ctl1.c
 libcattle_la_SOURCES += caev--bonu.c
+libcattle_la_SOURCES += caev--capd.c
 libcattle_la_SOURCES += caev--capg.c
 libcattle_la_SOURCES += caev--drip.c
 libcattle_la_SOURCES += caev--dvca.c
