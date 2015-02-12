@@ -40,8 +40,8 @@ Print resulting actors of caev echse messages.
   -S, --summary         Roll all CA events into one.
   -R, --reverse         Invert CA events, implies -r|--raw.
   -r, --raw             Print raw actors.
-  -u, --unique          Assume that only one CA event will occur at any
-                        one date/time.
+  -u, --unique          Consider two CA events that do the same
+                        equivalent and print only the first one.
 
 
 Usage: cattle exp TIME-SERIES-FILE [CAEV-FILE]...
