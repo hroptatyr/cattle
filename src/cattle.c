@@ -1365,7 +1365,7 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 
 		if (uniqp) {
 			if (echs_instant_eq_p(prev_t, t) &&
-			    ctl_caev_eq_p(this, prev)) {
+			    ctl_caev_equal_p(this, prev)) {
 				/* completely identical */
 				continue;
 			}
@@ -1401,7 +1401,7 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 
 		if (uniqp) {
 			if (echs_instant_eq_p(prev_t, t) &&
-			    ctl_caev_eq_p(this, prev)) {
+			    ctl_caev_equal_p(this, prev)) {
 				/* completely identical */
 				continue;
 			}
@@ -1446,7 +1446,7 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 			ctl_caev_t this_c = ctl_kvv_get_caev(this);
 
 			if (echs_instant_eq_p(prev_t, t) &&
-			    ctl_caev_eq_p(this_c, prev_c)) {
+			    ctl_caev_equal_p(this_c, prev_c)) {
 				continue;
 			}
 			/* store actor representation for the next round */
