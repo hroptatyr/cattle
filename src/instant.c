@@ -187,9 +187,6 @@ echs_instant_diff(echs_instant_t end, echs_instant_t beg)
 		int df_y = end.y - beg.y;
 
 		extra_df += dom_end - dom_beg;
-		if (echs_instant_lt_p(beg, end) && extra_df < 0) {
-			df_y--;
-		}
 		extra_df += df_y * 365 + (df_y - 1) / 4;
 	}
 
