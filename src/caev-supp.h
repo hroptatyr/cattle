@@ -259,6 +259,8 @@ typedef enum {
 	CTL_CAEV_RHTS,
 	CTL_CAEV_SPLF,
 	CTL_CAEV_SPLR,
+	/* must be last */
+	CTL_NCAEV
 } ctl_caev_code_t;
 
 
