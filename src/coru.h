@@ -40,6 +40,7 @@
 #if defined HAVE_CONFIG_H
 # include "config.h"
 #endif	/* HAVE_CONFIG_H */
+#include <stdlib.h>
 #include "coruaux.h"
 
 #define CORU_DEPTH		4U
@@ -57,8 +58,8 @@
 
 typedef struct cocore *coru_t;
 
-static size_t ____cdepth;
-static coru_t ____caller[CORU_DEPTH];
+extern size_t ____cdepth;
+extern coru_t ____caller[CORU_DEPTH];
 
 #define init_coru_core(args...)	initialise_cocore()
 #define init_coru()							\
@@ -161,10 +162,10 @@ typedef struct {
 #define init_coru()
 #define fini_coru()
 
-static size_t ____cdepth;
-static coru_t ____caller[CORU_DEPTH];
-static coru_t ____callee[CORU_DEPTH];
-static intptr_t ____glob;
+extern size_t ____cdepth;
+extern coru_t ____caller[CORU_DEPTH];
+extern coru_t ____callee[CORU_DEPTH];
+extern intptr_t ____glob;
 
 #if !defined _setjmp
 # define _setjmp		setjmp
