@@ -151,6 +151,7 @@ extern coru_t ____caller[CORU_DEPTH];
 #include <setjmp.h>
 #include <stdint.h>
 #include <ucontext.h>
+#include <assert.h>
 
 typedef struct {
 	void *stk;
