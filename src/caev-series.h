@@ -36,7 +36,9 @@
  **/
 #if !defined INCLUDED_caev_series_h_
 #define INCLUDED_caev_series_h_
+#include <stdio.h>
 #include "caev.h"
+#include "coruaux.h"
 
 typedef union {
 	ctl_caev_t c;
@@ -49,9 +51,41 @@ typedef struct ctl_wheap_s *ctl_caevs_t;
 /* must be included after we've def'd WHEAP_COLOUR_T */
 #include "wheap.h"
 
+/* as a service we expose the actual coroutine details here */
+declcoru(ctl_co_rdr, {
+		FILE *f;
+		/* after EOF rewind to the beginning and start over */
+		size_t loop;
+	}, {});
+
+extern const struct ctl_co_rdr_res_s {
+	echs_instant_t t;
+	const char *ln;
+	size_t lz;
+} *defcoru(ctl_co_rdr, c, arg);
+
 
 /**
  * Return a sum of corporate actions without changing the contents of CS. */
 extern ctl_caev_t ctl_caev_sum(ctl_caevs_t cs);
+
+
+/* coroutine-powered high level routines */
+/**
+ * Read CAEVs from FN and put them in Q. */
+extern int ctl_read_caevs(ctl_caevs_t q, const char *fn);
+
+
+static inline ctl_caevs_t
+make_ctl_caevs(void)
+{
+	return make_ctl_wheap();
+}
+
+static inline void
+free_ctl_caevs(ctl_caevs_t q)
+{
+	return free_ctl_wheap(q);
+}
 
 #endif	/* INCLUDED_caev_series_h_ */
