@@ -381,8 +381,11 @@ static void create_shared_frame(struct cocore *coroutine)
 
 void initialise_cocore(void)
 {
-    INIT_TLS(cocore_state);
-    page_size = getpagesize();
+	if (!page_size) {
+		INIT_TLS(cocore_state);
+		page_size = getpagesize();
+	}
+	return;
 }
 
 

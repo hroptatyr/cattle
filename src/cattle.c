@@ -46,10 +46,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
-#include <sys/mman.h>
 #include <math.h>
-#include <sys/resource.h>
-#include <fcntl.h>
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
@@ -107,20 +104,6 @@ xstrlcpy(char *restrict dst, const char *src, size_t dsz)
 	memcpy(dst, src, ssz);
 	dst[ssz] = '\0';
 	return ssz;
-}
-
-static int
-pr_ei(echs_instant_t t)
-{
-	char buf[32U];
-	return fwrite(buf, sizeof(*buf), dt_strf(buf, sizeof(buf), t), stdout);
-}
-
-static int
-pr_d32(_Decimal32 x)
-{
-	char bf[32U];
-	return fwrite(bf, sizeof(*bf), d32tostr(bf, sizeof(bf), x), stdout);
 }
 
 static float
@@ -206,320 +189,10 @@ ctl_kvv_wr(char *restrict buf, size_t bsz, ctl_kvv_t flds)
 	return bp - buf;
 }
 
-static _Decimal32
-mkscal(signed int nd)
-{
-/* produce a d32 with -ND fractional digits */
-	return scalbnd32(1.df, nd);
-}
-
-
-/* membuf guts */
-struct membuf_s {
-	char *buf;
-	size_t bsz;
-	size_t bof;
-	size_t max;
-	int wfd;
-	int rfd;
-};
-
-static const char*
-mb_tmpnam(const struct membuf_s *mb)
-{
-	static char tmpnam[64U];
-
-	/* generate a temporary file name */
-	snprintf(tmpnam, sizeof(tmpnam), "/tmp/ctl_%p", mb->buf);
-	return tmpnam;
-}
-
-static int
-init_mb(struct membuf_s *restrict mb, size_t iniz, size_t maxz)
-{
-	const int prot = PROT_READ | PROT_WRITE;
-	const int mapf = MAP_ANON | MAP_PRIVATE;
-	const size_t pgsz = sysconf(_SC_PAGESIZE);
-
-	if (UNLIKELY(iniz > maxz)) {
-		if (LIKELY(maxz > 0U)) {
-			iniz = maxz;
-		}
-	}
-	/* now round to multiples of pgsz */
-	iniz = (iniz / pgsz) * pgsz;
-	maxz = (maxz / pgsz) * pgsz;
-
-	mb->buf = mmap(NULL, (mb->bsz = iniz), prot, mapf, -1, 0);
-	if (UNLIKELY(mb->buf == MAP_FAILED)) {
-		return -1;
-	}
-	/* initialise the rest of the crew */
-	mb->bof = 0U;
-	mb->max = maxz;
-	mb->rfd = mb->wfd = -1;
-	return 0;
-}
-
-static int
-free_mb(struct membuf_s *restrict mb)
-{
-	int rc = 0;
-
-	if (UNLIKELY(mb->buf == NULL)) {
-		rc--;
-		goto wipe;
-	}
-	/* close the temp file, if any */
-	if (UNLIKELY(mb->rfd >= 0)) {
-		rc += close(mb->rfd);
-	}
-	if (UNLIKELY(mb->wfd >= 0)) {
-		rc += close(mb->wfd);
-	}
-	if (UNLIKELY(mb->buf == MAP_FAILED)) {
-		rc--;
-		goto wipe;
-	}
-	rc += munmap(mb->buf, mb->bsz);
-wipe:
-	memset(mb, 0, sizeof(*mb));
-	mb->rfd = mb->wfd = -1;
-	return rc;
-}
-
-static ssize_t
-mb_load(struct membuf_s *restrict mb)
-{
-	ssize_t nrd;
-
-	if (mb->rfd < 0) {
-		return -1;
-	}
-	/* memmove remainder */
-	if (mb->bof && mb->bof < mb->bsz) {
-		memmove(mb->buf, mb->buf + mb->bof, mb->bsz - mb->bof);
-		mb->bof = mb->bsz - mb->bof;
-	}
-	/* read as many as mb->bsz bytes */
-	if ((nrd = read(mb->rfd, mb->buf + mb->bof, mb->bsz - mb->bof)) <= 0) {
-		close(mb->rfd);
-		mb->rfd = -1;
-		nrd = -1;
-	} else {
-		mb->bof += (size_t)nrd;
-	}
-	return nrd;
-}
-
-static ssize_t
-mb_flsh(struct membuf_s *restrict mb)
-{
-	ssize_t tot = 0;
-
-	if (mb->wfd < 0) {
-		const int ofl = O_WRONLY | O_CREAT | O_TRUNC;
-		const char *fn = mb_tmpnam(mb);
-
-		if ((mb->wfd = open(fn, ofl, 0644)) < 0) {
-			return -1;
-		} else if ((mb->rfd = open(fn, O_RDONLY)) < 0) {
-			return -1;
-		}
-		/* otherwise just get rid of the file right away */
-		(void)unlink(fn);
-	}
-	/* now write mb->bof bytes there */
-	for (ssize_t nwr;
-	     (nwr = write(mb->wfd, mb->buf + tot, mb->bof - tot)) > 0;
-	     tot += nwr);
-
-	if (UNLIKELY((size_t)tot < mb->bof)) {
-		/* couldn't completely write the file,
-		 * do some cleaning up then */
-		close(mb->wfd);
-		mb->wfd = -1;
-		tot = -1;
-	}
-	/* reset buffer offset */
-	mb->bof = 0U;
-	return tot;
-}
-
-static int
-mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
-{
-	const int prot = PROT_READ | PROT_WRITE;
-	const int mapf = MAP_ANON | MAP_PRIVATE;
-
-	if (mb->bof + z > mb->max) {
-	flush:
-		/* flush to disk */
-		if (mb_flsh(mb) < 0) {
-			return -1;
-		}
-
-	} else if (mb->bof + z > mb->bsz) {
-		char *const old = mb->buf;
-		const size_t olz = mb->bsz;
-
-		/* calc new size */
-		for (mb->bsz *= 2U; mb->bof + z > mb->bsz; mb->bsz *= 2U);
-		/* check if we need to resort to the disk */
-		if (UNLIKELY(mb->bsz > mb->max)) {
-			/* yep */
-			mb->bsz = mb->max;
-		}
-		mb->buf = mmap(NULL, mb->bsz, prot, mapf, -1, 0);
-		if (UNLIKELY(mb->buf == MAP_FAILED)) {
-			/* we've got the old guy, use that as max value */
-			mb->buf = old;
-			mb->bsz = mb->max = olz;
-			goto flush;
-		}
-		/* otherwise move the contents to the new space */
-		memmove(mb->buf, old, mb->bof);
-		/* and release the old space */
-		munmap(old, olz);
-
-		if (mb->bsz == mb->max) {
-			goto flush;
-		}
-	}
-	memcpy(mb->buf + mb->bof, s, z);
-	mb->bof += z/*including \n*/;
-	return 0;
-}
-
 
 /* coroutines */
-struct echs_fund_s {
-	echs_instant_t t;
-	size_t nf;
-	_Decimal32 f[3U];
-};
-
-declcoru(co_appl_rdr, {
-		FILE *f;
-		/* after EOF rewind to the beginning and start over */
-		size_t loop;
-	}, {});
-
-static const struct rdr_res_s {
-	echs_instant_t t;
-	const char *ln;
-	size_t lz;
-} *defcoru(co_appl_rdr, c, UNUSED(arg))
-{
-/* coroutine for the reader of the tseries */
-	char *line = NULL;
-	size_t llen = 0UL;
-	/* we'll yield a rdr_res */
-	struct rdr_res_s res;
-	/* for non-seekables we keep a buffer here */
-	struct membuf_s mb = {NULL};
-	/* number of times to loop over the input */
-	size_t loop = c->loop;
-
-	if (loop && fseek(c->f, 0, SEEK_SET) < 0) {
-		/* we need a buffer then */
-		size_t max;
-		struct rlimit r;
-
-		/* firstly determine the maximum amount of memory to use */
-		if (getrlimit(RLIMIT_AS, &r) < 0) {
-			max = RLIM_INFINITY;
-		} else {
-			max = r.rlim_cur;
-		}
-
-		init_mb(&mb, 65536U, max / 4U);
-	}
-
-rewind:
-#if defined HAVE_GETLINE
-	for (ssize_t nrd; (nrd = getline(&line, &llen, c->f)) > 0;)
-#elif defined HAVE_FGETLN
-	while ((line = fgetln(c->f, &llen)) != NULL)
-#endif	/* HAVE_GETLINE || HAVE_FGETLN */
-	{
-		char *p;
-
-		if (*line == '#') {
-			continue;
-		} else if (echs_nul_instant_p(res.t = dt_strp(line, &p))) {
-			continue;
-		} else if (*p != '\t') {
-			continue;
-		}
-		/* \nul out the line */
-		line[nrd - 1] = '\0';
-		/* check if this guy needs buffering */
-		if (mb.buf != NULL && mb_cat(&mb, line, nrd) < 0) {
-			/* big bugger */
-			goto out;
-		}
-		/* pack the result structure */
-		res.ln = p + 1U;
-		res.lz = nrd - 1/*\n*/ - (p + 1U - line);
-		yield(res);
-	}
-
-	if (mb.buf != NULL && mb.bsz == mb.max) {
-		/* dump the rest of the buffer to the disk as well */
-		mb_flsh(&mb);
-	}
-
-	/* check if we ought to loop */
-	while (loop--) {
-		/* first of all, let everyone know about EOF */
-		yield_ptr(NULL);
-
-		if (mb.buf == NULL) {
-			/* just go back to the ordinary loop innit */
-			rewind(c->f);
-			goto rewind;
-		}
-
-		/* load from disk */
-		do {
-			/* otherwise serve from buffer */
-			for (const char *bp = mb.buf,
-				     *const ep = mb.buf + mb.bof;
-			     bp < ep; bp++) {
-				const char *eol;
-				char *p;
-
-				if ((eol = memchr(bp, '\0', ep - bp)) == NULL) {
-					/* let them know we've only read
-					 * half a line */
-					mb.bof = bp - mb.buf;
-					break;
-				}
-				res.t = dt_strp(bp, &p);
-				res.ln = p + 1U;
-				res.lz = eol - p - 1U;
-				/* increment by line length */
-				bp = eol;
-				/* and yield */
-				yield(res);
-			}
-		} while (mb_load(&mb) >= 0);
-	}
-
-out:
-	if (mb.buf != NULL) {
-		free_mb(&mb);
-	}
-
-	free(line);
-	line = NULL;
-	llen = 0U;
-	return NULL;
-}
-
 static struct echs_fund_s
-massage_rdr(const struct rdr_res_s *msg)
+massage_rdr(const struct ctl_co_rdr_res_s *msg)
 {
 /* massage a message from the rdr coru into something more useful */
 	struct echs_fund_s res;
@@ -551,65 +224,6 @@ static const struct pop_res_s {
 		/* assign colour value */
 		res.msg = ctl_wheap_pop(c->q);
 		yield(res);
-	}
-	return 0;
-}
-
-declcoru(co_appl_wrr, {
-		bool absp;
-		signed int prec;
-	}, {
-		const struct echs_fund_s *rdr;
-		const struct echs_fund_s *adj;
-	});
-
-static const void*
-defcoru(co_appl_wrr, ia, arg)
-{
-/* no yield */
-	const bool absp = ia->absp;
-	const signed int prec = ia->prec;
-
-	if (!absp) {
-		while (arg != NULL) {
-			_Decimal32 prc = arg->rdr->f[0U];
-
-			pr_ei(arg->adj->t);
-
-			if (UNLIKELY(prec)) {
-				/* come up with a new raw value */
-				int tgtx = quantexpd32(prc) + prec;
-				prc = scalbnd32(1.df, tgtx);
-			}
-			fputc('\t', stdout);
-			pr_d32(quantized32(arg->adj->f[0U], prc));
-
-			for (size_t i = 1U; i < arg->adj->nf; i++) {
-				/* print the rest without prec scaling */
-				fputc('\t', stdout);
-				pr_d32(arg->adj->f[i]);
-			}
-			fputc('\n', stdout);
-			arg = yield(NULL);
-		}
-	} else /*if (absp)*/ {
-		const _Decimal32 scal = mkscal(prec);
-
-		/* absolute precision mode */
-		while (arg != NULL) {
-			pr_ei(arg->adj->t);
-
-			fputc('\t', stdout);
-			pr_d32(quantized32(arg->adj->f[0U], scal));
-
-			for (size_t i = 1U; i < arg->adj->nf; i++) {
-				/* print the rest without prec scaling */
-				fputc('\t', stdout);
-				pr_d32(arg->adj->f[i]);
-			}
-			fputc('\n', stdout);
-			arg = yield(NULL);
-		}
 	}
 	return 0;
 }
@@ -726,45 +340,14 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	init_coru();
-	rdr = make_coru(co_appl_rdr, f);
+	rdr = make_coru(ctl_co_rdr, f);
 
-	for (const struct rdr_res_s *ln; (ln = next(rdr));) {
+	for (const struct ctl_co_rdr_res_s *ln; (ln = next(rdr));) {
 		/* try to read the whole shebang */
 		ctl_caev_t c = ctl_caev_rdr(ln->t, ln->ln);
 
 		/* insert to heap */
 		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){c});
-	}
-	/* now sort the guy */
-	ctl_wheap_fix_deferred(ctx->q);
-	free_coru(rdr);
-	fclose(f);
-	fini_coru();
-	return 0;
-}
-
-static int
-ctl_read_kv_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
-{
-/* wants a const char *fn */
-	coru_t rdr;
-	FILE *f;
-
-	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
-		f = stdin;
-	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
-		return -1;
-	}
-
-	init_coru();
-	rdr = make_coru(co_appl_rdr, f);
-
-	for (const struct rdr_res_s *ln; (ln = next(rdr));) {
-		/* try to read the whole shebang */
-		ctl_kvv_t v = ctl_kv_rdr(ln->ln);
-
-		/* insert to heap */
-		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){.flds = v});
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
@@ -794,10 +377,10 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	init_coru();
-	rdr = make_coru(co_appl_rdr, f);
+	rdr = make_coru(ctl_co_rdr, f);
 	pop = make_coru(co_appl_pop, ctx->q);
 	adj = make_coru(co_appl_adj, .totret = false);
-	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
+	wrr = make_coru(ctl_co_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
 	if (!ctx->fwd) {
 		sum = ctl_caev_sum(ctx->q);
@@ -809,7 +392,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	const struct pop_res_s *ev;
-	const struct rdr_res_s *ln;
+	const struct ctl_co_rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
 		/* sum up caevs in between price lines */
 		for (;
@@ -847,7 +430,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			/* off to the writer */
 			next_with(
 				wrr,
-				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
+				pack_args(ctl_co_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
 	}
@@ -888,17 +471,17 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	init_coru();
-	rdr = make_coru(co_appl_rdr, f);
+	rdr = make_coru(ctl_co_rdr, f);
 	pop = make_coru(co_appl_pop, ctx->q);
 	adj = make_coru(co_appl_adj, .totret = true);
-	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
+	wrr = make_coru(ctl_co_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
 	/* initialise product */
 	prod = 1.f;
 
 	float last = NAN;
 	const struct pop_res_s *ev;
-	const struct rdr_res_s *ln;
+	const struct ctl_co_rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
 
 		/* sum up caevs in between price lines */
@@ -950,7 +533,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			/* off to the writer */
 			next_with(
 				wrr,
-				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
+				pack_args(ctl_co_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
 	}
@@ -1001,7 +584,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	init_coru();
-	rdr = make_coru(co_appl_rdr, f, .loop = 1U);
+	rdr = make_coru(ctl_co_rdr, f, .loop = 1U);
 	pop = make_coru(co_appl_pop, ctx->q);
 
 	/* initialise another wheap and another prod */
@@ -1009,7 +592,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	float last = NAN;
 	const struct pop_res_s *ev;
-	const struct rdr_res_s *ln;
+	const struct ctl_co_rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
 		/* skip over events from the past,
 		 * i.e. from before the time of the first market price */
@@ -1091,7 +674,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	/* last pass, we reuse the RDR coru as it's in loop mode */
 	adj = make_coru(co_appl_adj, .totret = true);
-	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
+	wrr = make_coru(ctl_co_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
 	last = NAN;
 	size_t i;
@@ -1131,7 +714,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			/* off to the writer */
 			next_with(
 				wrr,
-				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
+				pack_args(ctl_co_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY(i >= nfa || echs_instant_lt_p(ln->t, fa[i].t)));
 	}
@@ -1177,12 +760,12 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	init_coru();
-	rdr = make_coru(co_appl_rdr, f);
+	rdr = make_coru(ctl_co_rdr, f);
 	pop = make_coru(co_appl_pop, ctx->q);
 
 	ctl_price_t last = nand32(NULL);
 	const struct pop_res_s *ev;
-	const struct rdr_res_s *ln;
+	const struct ctl_co_rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
 		/* skip over events from the past,
 		 * i.e. from before the time of the first market price */
@@ -1270,12 +853,12 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	}
 
 	init_coru();
-	rdr = make_coru(co_appl_rdr, f);
+	rdr = make_coru(ctl_co_rdr, f);
 	pop = make_coru(co_appl_pop, ctx->q);
 
 	ctl_price_t last = nand32(NULL);
 	const struct pop_res_s *ev;
-	const struct rdr_res_s *ln;
+	const struct ctl_co_rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
 		/* skip over events from the past,
 		 * i.e. from before the time of the first market price */
@@ -1501,7 +1084,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	bool revp = argi->reverse_flag;
 	int rc = 1;
 
-	if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+	if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
 		goto out;
 	}
 
@@ -1514,7 +1097,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	}
 
 	if (argi->nargs == 0U && !rawp) {
-		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			goto out;
 		}
@@ -1527,7 +1110,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	for (size_t i = 0U; i < argi->nargs && !rawp; i++) {
 		const char *fn = argi->args[i];
 
-		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open file `%s'", fn);
 			goto out;
 		}
@@ -1551,7 +1134,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 
 out:
 	if (LIKELY(ctx->q != NULL)) {
-		free_ctl_wheap(ctx->q);
+		free_ctl_caevs(ctx->q);
 	}
 	return rc;
 }
@@ -1653,14 +1236,14 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		yuck_auto_help((const void*)argi);
 		res = 1;
 		goto out;
-	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+	} else if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
 		res = 1;
 		goto out;
 	}
 
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
-		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			res = 1;
 			goto out;
@@ -1669,7 +1252,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 	for (size_t i = 1U; i < argi->nargs; i++) {
 		const char *fn = argi->args[i];
 
-		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open caev file `%s'", fn);
 			res = 1;
 			goto out;
@@ -1689,7 +1272,7 @@ cannot deduce factors for total return adjustment from `%s'", tser_fn);
 
 out:
 	if (LIKELY(ctx->q != NULL)) {
-		free_ctl_wheap(ctx->q);
+		free_ctl_caevs(ctx->q);
 		ctx->q = NULL;
 	}
 	return res;
@@ -1705,7 +1288,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 		yuck_auto_help((const void*)argi);
 		res = 1;
 		goto out;
-	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+	} else if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
 		res = 1;
 		goto out;
 	}
@@ -1716,7 +1299,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
-		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			res = 1;
 			goto out;
@@ -1725,7 +1308,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 	for (size_t i = 1U; i < argi->nargs; i++) {
 		const char *fn = argi->args[i];
 
-		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open caev file `%s'", fn);
 			res = 1;
 			goto out;
@@ -1745,7 +1328,7 @@ cannot deduce factors for total return adjustment from `%s'", tser_fn);
 
 out:
 	if (LIKELY(ctx->q != NULL)) {
-		free_ctl_wheap(ctx->q);
+		free_ctl_caevs(ctx->q);
 		ctx->q = NULL;
 	}
 	return res;

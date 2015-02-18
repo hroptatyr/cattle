@@ -40,18 +40,8 @@
 #if defined HAVE_CONFIG_H
 # include "config.h"
 #endif	/* HAVE_CONFIG_H */
-
-#define declcoru(name, ia, in)			\
-	struct name##_initargs_s ia;		\
-	struct name##_args_s in
-#define coru_args(name)		struct name##_args_s
-#define coru_initargs(name)	struct name##_initargs_s
-#define pack_args(name, _args...)	((coru_args(name)){_args})
-#define pack_initargs(name, _args...)	((coru_initargs(name)){_args})
-#define coru_argp(name)		const coru_args(name)*
-#define coru_initargp(name)	const coru_initargs(name)*
-#define defcoru(name, ia, in)	name(coru_argp(name) in, coru_initargp(name) ia)
-#define _defcoru(name, ia, xin)	name(xin, coru_initargp(name) ia)
+#include <stdlib.h>
+#include "coruaux.h"
 
 #define CORU_DEPTH		4U
 
@@ -68,8 +58,8 @@
 
 typedef struct cocore *coru_t;
 
-static size_t ____cdepth;
-static coru_t ____caller[CORU_DEPTH];
+extern size_t ____cdepth;
+extern coru_t ____caller[CORU_DEPTH];
 
 #define init_coru_core(args...)	initialise_cocore()
 #define init_coru()							\
@@ -161,6 +151,7 @@ static coru_t ____caller[CORU_DEPTH];
 #include <setjmp.h>
 #include <stdint.h>
 #include <ucontext.h>
+#include <assert.h>
 
 typedef struct {
 	void *stk;
@@ -172,10 +163,10 @@ typedef struct {
 #define init_coru()
 #define fini_coru()
 
-static size_t ____cdepth;
-static coru_t ____caller[CORU_DEPTH];
-static coru_t ____callee[CORU_DEPTH];
-static intptr_t ____glob;
+extern size_t ____cdepth;
+extern coru_t ____caller[CORU_DEPTH];
+extern coru_t ____callee[CORU_DEPTH];
+extern intptr_t ____glob;
 
 #if !defined _setjmp
 # define _setjmp		setjmp

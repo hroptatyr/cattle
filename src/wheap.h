@@ -1,6 +1,6 @@
 /*** wheap.h -- weak heaps, as stolen from sxemacs
  *
- * Copyright (C) 2007-2013 Sebastian Freundt
+ * Copyright (C) 2007-2015 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
@@ -40,9 +40,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "instant.h"
-#if defined WHEAP_COLOUR_H
-# include WHEAP_COLOUR_H
-#endif	/* WHEAP_COLOUR_H */
 
 typedef struct ctl_wheap_s *ctl_wheap_t;
 
@@ -53,6 +50,12 @@ typedef uintptr_t colour_t;
 
 extern ctl_wheap_t make_ctl_wheap(void);
 extern void free_ctl_wheap(ctl_wheap_t);
+
+/* include details about the colour of the wheap
+ * this is to get the memory layout right */
+#if defined WHEAP_COLOUR_H
+# include WHEAP_COLOUR_H
+#endif	/* WHEAP_COLOUR_H */
 
 extern echs_instant_t ctl_wheap_top_rank(ctl_wheap_t);
 extern colour_t ctl_wheap_top(ctl_wheap_t);

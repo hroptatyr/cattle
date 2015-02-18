@@ -1,4 +1,4 @@
-/*** caev-series.h -- time series of caevs
+/*** coru.c -- coroutines
  *
  * Copyright (C) 2013-2015 Sebastian Freundt
  *
@@ -33,75 +33,24 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- **/
-#if !defined INCLUDED_caev_series_h_
-#define INCLUDED_caev_series_h_
-#include <stdio.h>
-#include "caev.h"
-#include "coruaux.h"
+ ***/
+#if defined HAVE_CONFIG_H
+# include "config.h"
+#endif	/* HAVE_CONFIG_H */
+#include "coru.h"
 
-typedef union {
-	ctl_caev_t c;
-	void *flds;
-} colour_t;
-#define WHEAP_COLOUR_T
+#if defined USE_ASM_CORUS
 
-typedef struct ctl_wheap_s *ctl_caevs_t;
+size_t ____cdepth;
+coru_t ____caller[CORU_DEPTH];
 
-/* must be included after we've def'd WHEAP_COLOUR_T */
-#include "wheap.h"
+#else  /* !USE_ASM_CORUS */
 
-struct echs_fund_s {
-	echs_instant_t t;
-	size_t nf;
-	_Decimal32 f[3U];
-};
+size_t ____cdepth;
+coru_t ____caller[CORU_DEPTH];
+coru_t ____callee[CORU_DEPTH];
+intptr_t ____glob;
 
-/* as a service we expose the actual coroutine details here */
-declcoru(ctl_co_rdr, {
-		FILE *f;
-		/* after EOF rewind to the beginning and start over */
-		size_t loop;
-	}, {});
+#endif	/* USE_ASM_CORUS */
 
-extern const struct ctl_co_rdr_res_s {
-	echs_instant_t t;
-	const char *ln;
-	size_t lz;
-} *defcoru(ctl_co_rdr, c, arg);
-
-declcoru(ctl_co_wrr, {
-		bool absp;
-		signed int prec;
-	}, {
-		const struct echs_fund_s *rdr;
-		const struct echs_fund_s *adj;
-	});
-
-extern const void *defcoru(ctl_co_wrr, ia, arg);
-
-
-/**
- * Return a sum of corporate actions without changing the contents of CS. */
-extern ctl_caev_t ctl_caev_sum(ctl_caevs_t cs);
-
-
-/* coroutine-powered high level routines */
-/**
- * Read CAEVs from FN and put them in Q. */
-extern int ctl_read_caevs(ctl_caevs_t q, const char *fn);
-
-
-static inline ctl_caevs_t
-make_ctl_caevs(void)
-{
-	return make_ctl_wheap();
-}
-
-static inline void
-free_ctl_caevs(ctl_caevs_t q)
-{
-	return free_ctl_wheap(q);
-}
-
-#endif	/* INCLUDED_caev_series_h_ */
+/* coru.c ends here */

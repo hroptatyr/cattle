@@ -36,7 +36,7 @@ libcattle_la_SOURCES += wheap.c wheap.h
 libcattle_la_SOURCES += intern.c intern.h
 libcattle_la_SOURCES += caev-series.c caev-series.h
 libcattle_la_SOURCES += nifty.h
-libcattle_la_SOURCES += coru.h
+libcattle_la_SOURCES += coru.c coru.h coruaux.h
 ## actual mt564 events
 libcattle_la_SOURCES += caev-supp.c caev-supp.h
 libcattle_la_SOURCES += caev--ctl1.c
