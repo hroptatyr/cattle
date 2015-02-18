@@ -358,37 +358,6 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 }
 
 static int
-ctl_read_kv_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
-{
-/* wants a const char *fn */
-	coru_t rdr;
-	FILE *f;
-
-	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
-		f = stdin;
-	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
-		return -1;
-	}
-
-	init_coru();
-	rdr = make_coru(ctl_co_rdr, f);
-
-	for (const struct ctl_co_rdr_res_s *ln; (ln = next(rdr));) {
-		/* try to read the whole shebang */
-		ctl_kvv_t v = ctl_kv_rdr(ln->ln);
-
-		/* insert to heap */
-		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){.flds = v});
-	}
-	/* now sort the guy */
-	ctl_wheap_fix_deferred(ctx->q);
-	free_coru(rdr);
-	fclose(f);
-	fini_coru();
-	return 0;
-}
-
-static int
 ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
 /* wants a const char *fn, the time series
@@ -1115,7 +1084,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	bool revp = argi->reverse_flag;
 	int rc = 1;
 
-	if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+	if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
 		goto out;
 	}
 
@@ -1128,7 +1097,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	}
 
 	if (argi->nargs == 0U && !rawp) {
-		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			goto out;
 		}
@@ -1141,7 +1110,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	for (size_t i = 0U; i < argi->nargs && !rawp; i++) {
 		const char *fn = argi->args[i];
 
-		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open file `%s'", fn);
 			goto out;
 		}
@@ -1165,7 +1134,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 
 out:
 	if (LIKELY(ctx->q != NULL)) {
-		free_ctl_wheap(ctx->q);
+		free_ctl_caevs(ctx->q);
 	}
 	return rc;
 }
@@ -1267,14 +1236,14 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		yuck_auto_help((const void*)argi);
 		res = 1;
 		goto out;
-	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+	} else if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
 		res = 1;
 		goto out;
 	}
 
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
-		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			res = 1;
 			goto out;
@@ -1283,7 +1252,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 	for (size_t i = 1U; i < argi->nargs; i++) {
 		const char *fn = argi->args[i];
 
-		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open caev file `%s'", fn);
 			res = 1;
 			goto out;
@@ -1303,7 +1272,7 @@ cannot deduce factors for total return adjustment from `%s'", tser_fn);
 
 out:
 	if (LIKELY(ctx->q != NULL)) {
-		free_ctl_wheap(ctx->q);
+		free_ctl_caevs(ctx->q);
 		ctx->q = NULL;
 	}
 	return res;
@@ -1319,7 +1288,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 		yuck_auto_help((const void*)argi);
 		res = 1;
 		goto out;
-	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+	} else if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
 		res = 1;
 		goto out;
 	}
@@ -1330,7 +1299,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
-		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			res = 1;
 			goto out;
@@ -1339,7 +1308,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 	for (size_t i = 1U; i < argi->nargs; i++) {
 		const char *fn = argi->args[i];
 
-		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open caev file `%s'", fn);
 			res = 1;
 			goto out;
@@ -1359,7 +1328,7 @@ cannot deduce factors for total return adjustment from `%s'", tser_fn);
 
 out:
 	if (LIKELY(ctx->q != NULL)) {
-		free_ctl_wheap(ctx->q);
+		free_ctl_caevs(ctx->q);
 		ctx->q = NULL;
 	}
 	return res;
