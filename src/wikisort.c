@@ -31,6 +31,28 @@ static inline size_t Max(const size_t a, const size_t b) {
 	return b;
 }
 
+static size_t
+zsqrt(size_t z)
+{
+/* return the integer square root of Z */
+	register size_t root = 0U;
+	register size_t remainder = z;
+	register size_t place = ((size_t)0x40U) << (8U * (sizeof(root) - 1U));
+
+	while (place > remainder) {
+		place >>= 2U;
+	}
+	while (place) {
+		if (remainder >= root + place) {
+			remainder -= root + place;
+			root += (place << 1U);
+		}
+		root >>= 1U;
+		place >>= 2U;
+	}
+	return root;
+}
+
 #if !defined T
 # error need a type T for wikisort
 #endif	/* !T */
@@ -452,7 +474,7 @@ static void WikiSort(T *restrict array, const size_t size) {
 			 7. sort the second internal buffer if it exists
 			 8. redistribute the two internal buffers back into the array */
 			
-			size_t block_size = (size_t)sqrt((double)WikiIterator_length(&iterator));
+			size_t block_size = zsqrt(WikiIterator_length(&iterator));
 			size_t buffer_size = WikiIterator_length(&iterator)/block_size + 1;
 			
 			/* as an optimization, we really only need to pull out the internal buffers once for each level of merges */
