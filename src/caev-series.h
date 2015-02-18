@@ -51,6 +51,12 @@ typedef struct ctl_wheap_s *ctl_caevs_t;
 /* must be included after we've def'd WHEAP_COLOUR_T */
 #include "wheap.h"
 
+struct echs_fund_s {
+	echs_instant_t t;
+	size_t nf;
+	_Decimal32 f[3U];
+};
+
 /* as a service we expose the actual coroutine details here */
 declcoru(ctl_co_rdr, {
 		FILE *f;
@@ -63,6 +69,16 @@ extern const struct ctl_co_rdr_res_s {
 	const char *ln;
 	size_t lz;
 } *defcoru(ctl_co_rdr, c, arg);
+
+declcoru(ctl_co_wrr, {
+		bool absp;
+		signed int prec;
+	}, {
+		const struct echs_fund_s *rdr;
+		const struct echs_fund_s *adj;
+	});
+
+extern const void *defcoru(ctl_co_wrr, ia, arg);
 
 
 /**

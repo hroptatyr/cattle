@@ -45,6 +45,7 @@
 #include "caev.h"
 #include "caev-series.h"
 #include "caev-rdr.h"
+#include "ctl-dfp754.h"
 #include "coru.h"
 #include "dt-strpf.h"
 #include "nifty.h"
@@ -57,6 +58,28 @@ struct ctl_wheap_s {
 	echs_instant_t *cells;
 	colour_t *colours;
 };
+
+
+static _Decimal32
+mkscal(signed int nd)
+{
+/* produce a d32 with -ND fractional digits */
+	return scalbnd32(1.df, nd);
+}
+
+static int
+pr_ei(echs_instant_t t)
+{
+	char buf[32U];
+	return fwrite(buf, sizeof(*buf), dt_strf(buf, sizeof(buf), t), stdout);
+}
+
+static int
+pr_d32(_Decimal32 x)
+{
+	char bf[32U];
+	return fwrite(bf, sizeof(*bf), d32tostr(bf, sizeof(bf), x), stdout);
+}
 
 
 /* membuf guts */
@@ -345,6 +368,57 @@ out:
 	line = NULL;
 	llen = 0U;
 	return NULL;
+}
+
+const void*
+defcoru(ctl_co_wrr, ia, arg)
+{
+/* no yield */
+	const bool absp = ia->absp;
+	const signed int prec = ia->prec;
+
+	if (!absp) {
+		while (arg != NULL) {
+			_Decimal32 prc = arg->rdr->f[0U];
+
+			pr_ei(arg->adj->t);
+
+			if (UNLIKELY(prec)) {
+				/* come up with a new raw value */
+				int tgtx = quantexpd32(prc) + prec;
+				prc = scalbnd32(1.df, tgtx);
+			}
+			fputc('\t', stdout);
+			pr_d32(quantized32(arg->adj->f[0U], prc));
+
+			for (size_t i = 1U; i < arg->adj->nf; i++) {
+				/* print the rest without prec scaling */
+				fputc('\t', stdout);
+				pr_d32(arg->adj->f[i]);
+			}
+			fputc('\n', stdout);
+			arg = yield(NULL);
+		}
+	} else /*if (absp)*/ {
+		const _Decimal32 scal = mkscal(prec);
+
+		/* absolute precision mode */
+		while (arg != NULL) {
+			pr_ei(arg->adj->t);
+
+			fputc('\t', stdout);
+			pr_d32(quantized32(arg->adj->f[0U], scal));
+
+			for (size_t i = 1U; i < arg->adj->nf; i++) {
+				/* print the rest without prec scaling */
+				fputc('\t', stdout);
+				pr_d32(arg->adj->f[i]);
+			}
+			fputc('\n', stdout);
+			arg = yield(NULL);
+		}
+	}
+	return 0;
 }
 
 

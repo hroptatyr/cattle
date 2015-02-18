@@ -47,8 +47,6 @@
 #include <errno.h>
 #include <assert.h>
 #include <math.h>
-#include <sys/resource.h>
-#include <fcntl.h>
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
@@ -106,20 +104,6 @@ xstrlcpy(char *restrict dst, const char *src, size_t dsz)
 	memcpy(dst, src, ssz);
 	dst[ssz] = '\0';
 	return ssz;
-}
-
-static int
-pr_ei(echs_instant_t t)
-{
-	char buf[32U];
-	return fwrite(buf, sizeof(*buf), dt_strf(buf, sizeof(buf), t), stdout);
-}
-
-static int
-pr_d32(_Decimal32 x)
-{
-	char bf[32U];
-	return fwrite(bf, sizeof(*bf), d32tostr(bf, sizeof(bf), x), stdout);
 }
 
 static float
@@ -205,21 +189,8 @@ ctl_kvv_wr(char *restrict buf, size_t bsz, ctl_kvv_t flds)
 	return bp - buf;
 }
 
-static _Decimal32
-mkscal(signed int nd)
-{
-/* produce a d32 with -ND fractional digits */
-	return scalbnd32(1.df, nd);
-}
-
 
 /* coroutines */
-struct echs_fund_s {
-	echs_instant_t t;
-	size_t nf;
-	_Decimal32 f[3U];
-};
-
 static struct echs_fund_s
 massage_rdr(const struct ctl_co_rdr_res_s *msg)
 {
@@ -253,65 +224,6 @@ static const struct pop_res_s {
 		/* assign colour value */
 		res.msg = ctl_wheap_pop(c->q);
 		yield(res);
-	}
-	return 0;
-}
-
-declcoru(co_appl_wrr, {
-		bool absp;
-		signed int prec;
-	}, {
-		const struct echs_fund_s *rdr;
-		const struct echs_fund_s *adj;
-	});
-
-static const void*
-defcoru(co_appl_wrr, ia, arg)
-{
-/* no yield */
-	const bool absp = ia->absp;
-	const signed int prec = ia->prec;
-
-	if (!absp) {
-		while (arg != NULL) {
-			_Decimal32 prc = arg->rdr->f[0U];
-
-			pr_ei(arg->adj->t);
-
-			if (UNLIKELY(prec)) {
-				/* come up with a new raw value */
-				int tgtx = quantexpd32(prc) + prec;
-				prc = scalbnd32(1.df, tgtx);
-			}
-			fputc('\t', stdout);
-			pr_d32(quantized32(arg->adj->f[0U], prc));
-
-			for (size_t i = 1U; i < arg->adj->nf; i++) {
-				/* print the rest without prec scaling */
-				fputc('\t', stdout);
-				pr_d32(arg->adj->f[i]);
-			}
-			fputc('\n', stdout);
-			arg = yield(NULL);
-		}
-	} else /*if (absp)*/ {
-		const _Decimal32 scal = mkscal(prec);
-
-		/* absolute precision mode */
-		while (arg != NULL) {
-			pr_ei(arg->adj->t);
-
-			fputc('\t', stdout);
-			pr_d32(quantized32(arg->adj->f[0U], scal));
-
-			for (size_t i = 1U; i < arg->adj->nf; i++) {
-				/* print the rest without prec scaling */
-				fputc('\t', stdout);
-				pr_d32(arg->adj->f[i]);
-			}
-			fputc('\n', stdout);
-			arg = yield(NULL);
-		}
 	}
 	return 0;
 }
@@ -499,7 +411,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = make_coru(ctl_co_rdr, f);
 	pop = make_coru(co_appl_pop, ctx->q);
 	adj = make_coru(co_appl_adj, .totret = false);
-	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
+	wrr = make_coru(ctl_co_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
 	if (!ctx->fwd) {
 		sum = ctl_caev_sum(ctx->q);
@@ -549,7 +461,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			/* off to the writer */
 			next_with(
 				wrr,
-				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
+				pack_args(ctl_co_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
 	}
@@ -593,7 +505,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = make_coru(ctl_co_rdr, f);
 	pop = make_coru(co_appl_pop, ctx->q);
 	adj = make_coru(co_appl_adj, .totret = true);
-	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
+	wrr = make_coru(ctl_co_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
 	/* initialise product */
 	prod = 1.f;
@@ -652,7 +564,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			/* off to the writer */
 			next_with(
 				wrr,
-				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
+				pack_args(ctl_co_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY(ev == NULL || echs_instant_lt_p(ln->t, ev->t)));
 	}
@@ -793,7 +705,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 	/* last pass, we reuse the RDR coru as it's in loop mode */
 	adj = make_coru(co_appl_adj, .totret = true);
-	wrr = make_coru(co_appl_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
+	wrr = make_coru(ctl_co_wrr, .absp = ctx->abs_prec, .prec = ctx->prec);
 
 	last = NAN;
 	size_t i;
@@ -833,7 +745,7 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			/* off to the writer */
 			next_with(
 				wrr,
-				pack_args(co_appl_wrr, .rdr = &r, .adj = &a));
+				pack_args(ctl_co_wrr, .rdr = &r, .adj = &a));
 		} while (LIKELY((ln = next(rdr)) != NULL) &&
 			 LIKELY(i >= nfa || echs_instant_lt_p(ln->t, fa[i].t)));
 	}
