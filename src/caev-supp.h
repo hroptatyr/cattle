@@ -263,6 +263,9 @@ typedef enum {
 	CTL_NCAEV
 } ctl_caev_code_t;
 
+/**
+ * Reverse map from ctl_caev_code_t value to string. */
+extern const char *const caev_names[];
 
 typedef union __attribute__((transparent_union)) {
 	ctl_fld_unk_t unk;

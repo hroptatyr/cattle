@@ -42,6 +42,27 @@
 #include "caev.h"
 #include "caev-supp.h"
 
+/* public data */
+const char *const caev_names[] = {
+	"UNK",
+	"BONU",
+	"CAPD",
+	"CAPG",
+	"CTL1",
+	"DECR",
+	"DRIP",
+	"DVCA",
+	"DVOP",
+	"DVSC",
+	"DVSE",
+	"INCR",
+	"LIQU",
+	"RHDI",
+	"RHTS",
+	"SPLF",
+	"SPLR",
+};
+
 
 ctl_caev_t
 make_caev(const ctl_fld_t msg[static 1], size_t nflds)
