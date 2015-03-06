@@ -44,7 +44,7 @@
 
 /* public data */
 const char *const caev_names[] = {
-	"UNK",
+	"XXXX",
 	"BONU",
 	"CAPD",
 	"CAPG",
