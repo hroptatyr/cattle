@@ -92,6 +92,19 @@ cattle_LDADD += libcoru.la
 endif  USE_ASM_CORUS
 BUILT_SOURCES += cattle.yucc
 
+bin_PROGRAMS += catest
+catest_SOURCES = catest.c
+catest_SOURCES += catest.yuck
+catest_SOURCES += version.c version.h version.c.in
+catest_CPPFLAGS = $(AM_CPPFLAGS)
+catest_CPPFLAGS += -DSTANDALONE
+catest_CPPFLAGS += $(dfp754_CFLAGS)
+catest_LDADD = libcattle.la
+if USE_ASM_CORUS
+catest_LDADD += libcoru.la
+endif  USE_ASM_CORUS
+BUILT_SOURCES += catest.yucc
+
 
 analysis: $(libcattle_la_SOURCES:%.c=%.sa)
 

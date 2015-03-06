@@ -1,0 +1,10 @@
+Usage: catest [OPTION]... [FILE]...
+
+Collect statistics about corporate events in FILE.
+If omitted take events from stdin.
+
+## Local variables:
+## mode: auto-fill
+## fill-column: 72
+## filladapt-mode: t
+## End:
