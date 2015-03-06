@@ -95,6 +95,9 @@ fi
 ## check for yuck helper
 AX_CHECK_YUCK([with_included_yuck="yes"])
 
+## check for clitoris helper
+AX_CHECK_CLITORIS
+
 ## libtool goddess^Wgoodness
 ## has to be down here as we're turning -Werror'ing off
 LT_INIT
