@@ -153,32 +153,24 @@ ctl_test_kv_by_caev(struct ctl_ctx_s ctx[static 1U])
 	return rc;
 }
 
-#if 0
-static int
-ctl_test_kv_by_1(struct ctl_ctx_s ctx[static 1U])
-{
-/* test differences absolutely */
-	echs_instant_t ldat = echs_nul_instant();
-	int rc = 0;
-
-	for (echs_instant_t t;
-	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q));) {
-		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
-
-		if (LIKELY(!echs_nul_instant_p(ldat))) {
-			echs_idiff_t d = echs_instant_diff(t, ldat);
-
-			printf("%d\n", d.dd);
-		}
-		ldat = t;
-	}
-	return rc;
-}
-#endif	/* 0 */
-
 
 #if defined STANDALONE
 #include "catest.yucc"
+
+static int
+cmd_freq(struct ctl_ctx_s ctx[static 1U], const struct yuck_cmd_freq_s argi[static 1U])
+{
+	int rc = 0;
+
+	if (argi->freq_arg) {
+		;
+	} else {
+		if (ctl_test_kv_by_caev(ctx) < 0) {
+			rc = 1;
+		}
+	}
+	return rc;
+}
 
 int
 main(int argc, char *argv[])
@@ -213,8 +205,12 @@ main(int argc, char *argv[])
 		}
 	}
 	/* run the bucketiser */
-	if (ctl_test_kv_by_caev(ctx) < 0) {
-		rc = 1;
+	switch (argi->cmd) {
+	case CATEST_CMD_FREQ:
+		rc = cmd_freq(ctx, (const void*)argi);
+		break;
+	default:
+		break;
 	}
 
 out:
