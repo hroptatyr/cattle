@@ -40,6 +40,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "cattle.h"
+#include "intern.h"
 
 /**
  * Cattle'll fiddle with 3 measures directly
@@ -54,6 +55,20 @@ typedef struct ctl_fund_s ctl_fund_t;
  * one for the market price, one for the nominal value and one for the
  * outstanding shares. */
 typedef struct ctl_caev_s ctl_caev_t;
+
+/**
+ * Key/value representation of a corporate action message. */
+typedef struct ctl_kvv_s *ctl_kvv_t;
+
+struct ctl_kv_s {
+	obint_t key;
+	obint_t val;
+};
+
+struct ctl_kvv_s {
+	size_t nkvv;
+	struct ctl_kv_s kvv[];
+};
 
 /**
  * An actor is a parametrisation of what it takes for a corporate action
