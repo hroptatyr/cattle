@@ -53,6 +53,7 @@
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
+#include "caev-wrr.h"
 #include "caev-supp.h"
 #include "ctl-dfp754.h"
 #include "nifty.h"
@@ -78,6 +79,8 @@ struct ctl_ctx_s {
 	signed int prec;
 };
 
+static char pr_buf[4096U];
+
 
 static void
 __attribute__((format(printf, 1, 2)))
@@ -94,6 +97,18 @@ error(const char *fmt, ...)
 	}
 	fputc('\n', stderr);
 	return;
+}
+
+static size_t
+xstrlcpy(char *restrict dst, const char *src, size_t dsz)
+{
+	size_t ssz = strlen(src);
+	if (ssz > dsz) {
+		ssz = dsz - 1U;
+	}
+	memcpy(dst, src, ssz);
+	dst[ssz] = '\0';
+	return ssz;
 }
 
 
@@ -142,13 +157,24 @@ ctl_test_kv_by_caev(struct ctl_ctx_s ctx[static 1U])
 	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q));) {
 		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
 		ctl_caev_code_t ccod = ctl_kvv_get_caev_code(this);
+		char *bp = pr_buf;
+		const char *const ep = pr_buf + sizeof(pr_buf);
+		echs_idiff_t d;
 
+		bp += xstrlcpy(bp, caev_names[ccod], ep - bp);
+		*bp++ = '\t';
 		if (LIKELY(!echs_nul_instant_p(ldat[ccod]))) {
-			echs_idiff_t d = echs_instant_diff(t, ldat[ccod]);
-
-			printf("%s\t%d\n", caev_names[ccod], d.dd);
+			d = echs_instant_diff(t, ldat[ccod]);
+			bp += snprintf(bp, ep - bp, "%d", d.dd);
 		}
+		*bp++ = '\t';
+		bp += ctl_kv_wrr(bp, ep - bp, this);
+		*bp = '\0';
+		puts(pr_buf);
+
 		ldat[ccod] = t;
+
+		free_kvv(this);
 	}
 	return rc;
 }
