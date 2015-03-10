@@ -1,4 +1,4 @@
-/*** caev-rdr.h -- reader for caev message strings
+/*** caev-wrr.h -- writer for caev message strings
  *
  * Copyright (C) 2013-2015 Sebastian Freundt
  *
@@ -34,34 +34,21 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_caev_rdr_h_
-#define INCLUDED_caev_rdr_h_
+#if !defined INCLUDED_caev_wrr_h_
+#define INCLUDED_caev_wrr_h_
 
+#include <stdlib.h>
 #include "cattle.h"
-#include "instant.h"
 #include "caev.h"
 #include "caev-supp.h"
 
 
 /**
- * Return a caev actor object from MSG at instant X. */
-extern ctl_caev_t
-ctl_caev_rdr(echs_instant_t x, const char *msg);
+ * Write actor object E to buffer BUF of size BSZ. */
+extern ssize_t ctl_caev_wrr(char *restrict buf, size_t bsz, ctl_caev_t e);
 
 /**
- * Return a key/val vector object from MSG. */
-extern ctl_kvv_t ctl_kv_rdr(const char *msg);
+ * Write key/val object E to buffer BUF of size BSZ. */
+extern ssize_t ctl_kv_wrr(char *restrict buf, size_t bsz, ctl_kvv_t e);
 
-extern void free_kvv(ctl_kvv_t);
-
-/**
- * Return the caev code of key/val vector K,
- * i.e. the value of the field CAEV. */
-extern __attribute__((pure, const)) ctl_caev_code_t
-ctl_kvv_get_caev_code(ctl_kvv_t fldv);
-
-/**
- * Parse a key/val vector and return its acting caev. */
-extern ctl_caev_t ctl_kvv_get_caev(ctl_kvv_t k);
-
-#endif	/* INCLUDED_caev_rdr_h_ */
+#endif	/* INCLUDED_caev_wrr_h_ */

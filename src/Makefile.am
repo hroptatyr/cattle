@@ -52,6 +52,7 @@ libcattle_la_SOURCES += caev--splr.c
 libcattle_la_SOURCES += caev-rdr.c caev-rdr.h
 libcattle_la_SOURCES += caev-rdr-gp.erf
 libcattle_la_SOURCES += caev-fld-gp.erf
+libcattle_la_SOURCES += caev-wrr.c caev-wrr.h
 ## dfp754 utils
 libcattle_la_SOURCES += ctl-dfp754.c ctl-dfp754.h
 libcattle_la_CPPFLAGS = $(AM_CPPFLAGS)
