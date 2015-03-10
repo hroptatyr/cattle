@@ -50,6 +50,7 @@
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
+#include "caev-wrr.h"
 #include "ctl-dfp754.h"
 #include "nifty.h"
 #include "dt-strpf.h"
@@ -94,18 +95,6 @@ error(const char *fmt, ...)
 	return;
 }
 
-static size_t
-xstrlcpy(char *restrict dst, const char *src, size_t dsz)
-{
-	size_t ssz = strlen(src);
-	if (ssz > dsz) {
-		ssz = dsz - 1U;
-	}
-	memcpy(dst, src, ssz);
-	dst[ssz] = '\0';
-	return ssz;
-}
-
 static float
 ratio_to_float(ctl_ratio_t r)
 {
@@ -113,80 +102,6 @@ ratio_to_float(ctl_ratio_t r)
 		return (float)r.p / (float)r.q;
 	}
 	return 1.f;
-}
-
-static size_t
-ctl_caev_wr(char *restrict buf, size_t bsz, ctl_caev_t c)
-{
-	static const char caev[] = "caev=CTL1";
-	static const char mkti[] = ".xmkt=";
-	static const char nomi[] = ".xnom=";
-	static const char outi[] = ".xout=";
-	char *restrict bp = buf;
-	const char *const ep = buf + bsz;
-
-#define BANG_LIT(p, ep, x)					\
-	({							\
-		size_t z = sizeof(x) - 1;			\
-		(p + z < ep)					\
-			? (memcpy(p, (x), z), z)		\
-			: 0UL					\
-			;					\
-	})
-
-	bp += BANG_LIT(bp, ep, caev);
-	*bp++ = ' ';
-	*bp++ = '{';
-	bp += BANG_LIT(bp, ep, mkti);
-	*bp++ = '"';
-	bp += d32tostr(bp, ep - bp, c.mktprc.a);
-	bp += snprintf(bp, ep - bp, "%+d<-%u", c.mktprc.r.p, c.mktprc.r.q);
-	*bp++ = '"';
-	*bp++ = ' ';
-	bp += BANG_LIT(bp, ep, nomi);
-	*bp++ = '"';
-	bp += d32tostr(bp, ep - bp, c.nomval.a);
-	bp += snprintf(bp, ep - bp, "%+d<-%u", c.nomval.r.p, c.nomval.r.q);
-	*bp++ = '"';
-	*bp++ = ' ';
-	bp += BANG_LIT(bp, ep, outi);
-	*bp++ = '"';
-	bp += d32tostr(bp, ep - bp, c.outsec.a);
-	bp += snprintf(bp, ep - bp, "%+d<-%u", c.outsec.r.p, c.outsec.r.q);
-	*bp++ = '"';
-	*bp++ = '}';
-	*bp = '\0';
-	return bp - buf;
-}
-
-static size_t
-ctl_kvv_wr(char *restrict buf, size_t bsz, ctl_kvv_t flds)
-{
-	char *restrict bp = buf;
-	const char *const ep = buf + bsz;
-
-	for (size_t i = 0U; i < flds->nkvv && bp + 4U < ep; i++) {
-		struct ctl_kv_s kv = flds->kvv[i];
-
-		if (UNLIKELY(!kv.key)) {
-			/* skip this guy altogether */
-			continue;
-		}
-		bp += xstrlcpy(bp, obint_name(kv.key), ep - bp);
-		*bp++ = '=';
-		*bp++ = '"';
-		if (LIKELY(kv.val)) {
-			bp += xstrlcpy(bp, obint_name(kv.val), ep - bp);
-		}
-		*bp++ = '"';
-		*bp++ = ' ';
-	}
-	if (bp[-1] == ' ') {
-		/* don't want no dangling space, do we? */
-		bp--;
-	}
-	*bp = '\0';
-	return bp - buf;
 }
 
 
@@ -812,9 +727,9 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			bp += dt_strf(bp, ep - bp, ev->t);
 			*bp++ = '\t';
 			if (rawify) {
-				bp += ctl_caev_wr(bp, ep - bp, caev);
+				bp += ctl_caev_wrr(bp, ep - bp, caev);
 			} else {
-				bp += ctl_kvv_wr(bp, ep - bp, kvv);
+				bp += ctl_kv_wrr(bp, ep - bp, kvv);
 			}
 			*bp++ = '\n';
 			*bp = '\0';
@@ -912,9 +827,9 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			bp += dt_strf(bp, ep - bp, ev->t);
 			*bp++ = '\t';
 			if (rawify) {
-				bp += ctl_caev_wr(bp, ep - bp, caev);
+				bp += ctl_caev_wrr(bp, ep - bp, caev);
 			} else {
-				bp += ctl_kvv_wr(bp, ep - bp, v);
+				bp += ctl_kv_wrr(bp, ep - bp, v);
 			}
 			*bp++ = '\n';
 			*bp = '\0';
@@ -962,7 +877,7 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 
 		bp += dt_strf(bp, ep - bp, t);
 		*bp++ = '\t';
-		bp += ctl_caev_wr(bp, ep - bp, this);
+		bp += ctl_caev_wrr(bp, ep - bp, this);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(pr_buf, stdout);
@@ -1004,7 +919,7 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
 
-		bp += ctl_caev_wr(bp, ep - bp, sum);
+		bp += ctl_caev_wrr(bp, ep - bp, sum);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(pr_buf, stdout);
@@ -1038,7 +953,7 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 
 		bp += dt_strf(bp, ep - bp, t);
 		*bp++ = '\t';
-		bp += ctl_kvv_wr(bp, ep - bp, this);
+		bp += ctl_kv_wrr(bp, ep - bp, this);
 		free_kvv(this);
 		*bp++ = '\n';
 		*bp = '\0';
