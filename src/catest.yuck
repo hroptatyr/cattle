@@ -1,7 +1,15 @@
-Usage: catest [OPTION]... [FILE]...
+Usage: catest [OPTION]... COMMAND [FILE]...
 
-Collect statistics about corporate events in FILE.
+Toolset to collect statistics about corporate events in FILE.
 If omitted take events from stdin.
+
+
+Usage: catest stat [FILE]...
+
+Count occurrences of every corporate action event type
+along with the period (in days) between them.
+
+  -f, --freq=SPEC       Instead of day-long periods use SPEC.
 
 ## Local variables:
 ## mode: auto-fill

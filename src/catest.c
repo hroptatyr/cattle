@@ -53,6 +53,7 @@
 #include "cattle.h"
 #include "caev.h"
 #include "caev-rdr.h"
+#include "caev-wrr.h"
 #include "caev-supp.h"
 #include "ctl-dfp754.h"
 #include "nifty.h"
@@ -78,6 +79,8 @@ struct ctl_ctx_s {
 	signed int prec;
 };
 
+static char pr_buf[4096U];
+
 
 static void
 __attribute__((format(printf, 1, 2)))
@@ -94,6 +97,18 @@ error(const char *fmt, ...)
 	}
 	fputc('\n', stderr);
 	return;
+}
+
+static size_t
+xstrlcpy(char *restrict dst, const char *src, size_t dsz)
+{
+	size_t ssz = strlen(src);
+	if (ssz > dsz) {
+		ssz = dsz - 1U;
+	}
+	memcpy(dst, src, ssz);
+	dst[ssz] = '\0';
+	return ssz;
 }
 
 
@@ -132,9 +147,9 @@ ctl_read_kv_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 /* beef */
 static int
-ctl_test_kv_by_caev(struct ctl_ctx_s ctx[static 1U])
+ctl_test_kv(struct ctl_ctx_s ctx[static 1U])
 {
-/* test GROUP BY CAEV */
+/* GROUP BY CAEV, frequency 1/d */
 	echs_instant_t ldat[CTL_NCAEV] = {0U};
 	int rc = 0;
 
@@ -142,43 +157,107 @@ ctl_test_kv_by_caev(struct ctl_ctx_s ctx[static 1U])
 	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q));) {
 		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
 		ctl_caev_code_t ccod = ctl_kvv_get_caev_code(this);
+		char *bp = pr_buf;
+		const char *const ep = pr_buf + sizeof(pr_buf);
+		echs_idiff_t d;
 
+		bp += xstrlcpy(bp, caev_names[ccod], ep - bp);
+		*bp++ = '\t';
 		if (LIKELY(!echs_nul_instant_p(ldat[ccod]))) {
-			echs_idiff_t d = echs_instant_diff(t, ldat[ccod]);
-
-			printf("%s\t%d\n", caev_names[ccod], d.dd);
+			d = echs_instant_diff(t, ldat[ccod]);
+			bp += snprintf(bp, ep - bp, "%d", d.dd);
 		}
+		*bp++ = '\t';
+		bp += ctl_kv_wrr(bp, ep - bp, this);
+		*bp = '\0';
+		puts(pr_buf);
+
 		ldat[ccod] = t;
+
+		free_kvv(this);
 	}
 	return rc;
 }
 
-#if 0
 static int
-ctl_test_kv_by_1(struct ctl_ctx_s ctx[static 1U])
+ctl_test_kv_freq(struct ctl_ctx_s ctx[static 1U], unsigned int f)
 {
-/* test differences absolutely */
-	echs_instant_t ldat = echs_nul_instant();
+/* GROUP BY CAEV frequency f/d */
+	ctl_caevs_t qf = make_ctl_wheap();
+	echs_instant_t ldat[CTL_NCAEV] = {0U};
 	int rc = 0;
 
+	if (UNLIKELY(qf == NULL)) {
+		return -1;
+	}
 	for (echs_instant_t t;
 	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q));) {
 		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
+		ctl_caev_code_t ccod = ctl_kvv_get_caev_code(this);
 
-		if (LIKELY(!echs_nul_instant_p(ldat))) {
-			echs_idiff_t d = echs_instant_diff(t, ldat);
+		if (LIKELY(!echs_nul_instant_p(ldat[ccod]))) {
+			echs_idiff_t d = echs_instant_diff(t, ldat[ccod]);
+			echs_instant_t per = {
+				.dpart = (d.dd + f - 1U) / f,
+				/* lest we end up with the nul instance */
+				.intra = 1U,
+			};
+			colour_t col = {.flds = this};
 
-			printf("%d\n", d.dd);
+			ctl_wheap_add_deferred(qf, per, col);
 		}
-		ldat = t;
+		ldat[ccod] = t;
 	}
+	/* now sort the guy */
+	ctl_wheap_fix_deferred(qf);
+
+	for (echs_instant_t per;
+	     !echs_nul_instant_p(per = ctl_wheap_top_rank(qf));) {
+		ctl_kvv_t this = ctl_wheap_pop(qf).flds;
+		ctl_caev_code_t ccod = ctl_kvv_get_caev_code(this);
+		char *bp = pr_buf;
+		const char *const ep = pr_buf + sizeof(pr_buf);
+
+		bp += xstrlcpy(bp, caev_names[ccod], ep - bp);
+		*bp++ = '\t';
+		bp += snprintf(bp, ep - bp, "%dd", (signed int)per.dpart);
+		*bp++ = '\t';
+		bp += ctl_kv_wrr(bp, ep - bp, this);
+		*bp = '\0';
+		puts(pr_buf);
+
+		free_kvv(this);
+	}
+
+	free_ctl_wheap(qf);
 	return rc;
 }
-#endif	/* 0 */
 
 
 #if defined STANDALONE
 #include "catest.yucc"
+
+static int
+cmd_stat(struct ctl_ctx_s ctx[static 1U], const struct yuck_cmd_stat_s argi[static 1U])
+{
+	int rc = 0;
+
+	if (argi->freq_arg) {
+		char *on;
+		long unsigned int f = strtoul(argi->freq_arg, &on, 10);
+
+		if (UNLIKELY(!f)) {
+			rc = 1;
+		} else if (ctl_test_kv_freq(ctx, (unsigned int)f) < 0) {
+			rc = 1;
+		}
+	} else {
+		if (ctl_test_kv(ctx) < 0) {
+			rc = 1;
+		}
+	}
+	return rc;
+}
 
 int
 main(int argc, char *argv[])
@@ -213,8 +292,12 @@ main(int argc, char *argv[])
 		}
 	}
 	/* run the bucketiser */
-	if (ctl_test_kv_by_caev(ctx) < 0) {
-		rc = 1;
+	switch (argi->cmd) {
+	case CATEST_CMD_STAT:
+		rc = cmd_stat(ctx, (const void*)argi);
+		break;
+	default:
+		break;
 	}
 
 out:
