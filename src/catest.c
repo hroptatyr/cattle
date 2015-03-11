@@ -147,9 +147,9 @@ ctl_read_kv_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 /* beef */
 static int
-ctl_test_kv_by_caev(struct ctl_ctx_s ctx[static 1U])
+ctl_test_kv(struct ctl_ctx_s ctx[static 1U])
 {
-/* test GROUP BY CAEV */
+/* GROUP BY CAEV, frequency 1/d */
 	echs_instant_t ldat[CTL_NCAEV] = {0U};
 	int rc = 0;
 
@@ -179,19 +179,80 @@ ctl_test_kv_by_caev(struct ctl_ctx_s ctx[static 1U])
 	return rc;
 }
 
+static int
+ctl_test_kv_freq(struct ctl_ctx_s ctx[static 1U], unsigned int f)
+{
+/* GROUP BY CAEV frequency f/d */
+	ctl_caevs_t qf = make_ctl_wheap();
+	echs_instant_t ldat[CTL_NCAEV] = {0U};
+	int rc = 0;
+
+	if (UNLIKELY(qf == NULL)) {
+		return -1;
+	}
+	for (echs_instant_t t;
+	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q));) {
+		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
+		ctl_caev_code_t ccod = ctl_kvv_get_caev_code(this);
+
+		if (LIKELY(!echs_nul_instant_p(ldat[ccod]))) {
+			echs_idiff_t d = echs_instant_diff(t, ldat[ccod]);
+			echs_instant_t per = {
+				.dpart = (d.dd + f - 1U) / f,
+				/* lest we end up with the nul instance */
+				.intra = 1U,
+			};
+			colour_t col = {.flds = this};
+
+			ctl_wheap_add_deferred(qf, per, col);
+		}
+		ldat[ccod] = t;
+	}
+	/* now sort the guy */
+	ctl_wheap_fix_deferred(qf);
+
+	for (echs_instant_t per;
+	     !echs_nul_instant_p(per = ctl_wheap_top_rank(qf));) {
+		ctl_kvv_t this = ctl_wheap_pop(qf).flds;
+		ctl_caev_code_t ccod = ctl_kvv_get_caev_code(this);
+		char *bp = pr_buf;
+		const char *const ep = pr_buf + sizeof(pr_buf);
+
+		bp += xstrlcpy(bp, caev_names[ccod], ep - bp);
+		*bp++ = '\t';
+		bp += snprintf(bp, ep - bp, "%dd", (signed int)per.dpart);
+		*bp++ = '\t';
+		bp += ctl_kv_wrr(bp, ep - bp, this);
+		*bp = '\0';
+		puts(pr_buf);
+
+		free_kvv(this);
+	}
+
+	free_ctl_wheap(qf);
+	return rc;
+}
+
 
 #if defined STANDALONE
 #include "catest.yucc"
 
 static int
-cmd_freq(struct ctl_ctx_s ctx[static 1U], const struct yuck_cmd_freq_s argi[static 1U])
+cmd_stat(struct ctl_ctx_s ctx[static 1U], const struct yuck_cmd_stat_s argi[static 1U])
 {
 	int rc = 0;
 
 	if (argi->freq_arg) {
-		;
+		char *on;
+		long unsigned int f = strtoul(argi->freq_arg, &on, 10);
+
+		if (UNLIKELY(!f)) {
+			rc = 1;
+		} else if (ctl_test_kv_freq(ctx, (unsigned int)f) < 0) {
+			rc = 1;
+		}
 	} else {
-		if (ctl_test_kv_by_caev(ctx) < 0) {
+		if (ctl_test_kv(ctx) < 0) {
 			rc = 1;
 		}
 	}
@@ -232,8 +293,8 @@ main(int argc, char *argv[])
 	}
 	/* run the bucketiser */
 	switch (argi->cmd) {
-	case CATEST_CMD_FREQ:
-		rc = cmd_freq(ctx, (const void*)argi);
+	case CATEST_CMD_STAT:
+		rc = cmd_stat(ctx, (const void*)argi);
 		break;
 	default:
 		break;
