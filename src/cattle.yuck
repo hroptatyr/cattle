@@ -42,6 +42,8 @@ Print resulting actors of caev echse messages.
   -r, --raw             Print raw actors.
   -u, --unique          Consider two CA events that do the same
                         equivalent and print only the first one.
+  --xdte                Prepend lines with ex-date or effective date.
+                        This does not work with the -S|--summary option.
 
 
 Usage: cattle exp TIME-SERIES-FILE [CAEV-FILE]...
