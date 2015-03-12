@@ -727,9 +727,9 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			bp += dt_strf(bp, ep - bp, ev->t);
 			*bp++ = '\t';
 			if (rawify) {
-				bp += ctl_caev_wrr(bp, ep - bp, caev);
+				bp += ctl_caev_wrr(bp, ep - bp, ev->t, caev);
 			} else {
-				bp += ctl_kv_wrr(bp, ep - bp, kvv);
+				bp += ctl_kv_wrr(bp, ep - bp, ev->t, kvv);
 			}
 			*bp++ = '\n';
 			*bp = '\0';
@@ -827,9 +827,9 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			bp += dt_strf(bp, ep - bp, ev->t);
 			*bp++ = '\t';
 			if (rawify) {
-				bp += ctl_caev_wrr(bp, ep - bp, caev);
+				bp += ctl_caev_wrr(bp, ep - bp, ev->t, caev);
 			} else {
-				bp += ctl_kv_wrr(bp, ep - bp, v);
+				bp += ctl_kv_wrr(bp, ep - bp, ev->t, v);
 			}
 			*bp++ = '\n';
 			*bp = '\0';
@@ -879,7 +879,7 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp, bool revp)
 			bp += dt_strf(bp, ep - bp, t);
 			*bp++ = '\t';
 		}
-		bp += ctl_caev_wrr(bp, ep - bp, this);
+		bp += ctl_caev_wrr(bp, ep - bp, t, this);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(pr_buf, stdout);
@@ -921,7 +921,7 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
 
-		bp += ctl_caev_wrr(bp, ep - bp, sum);
+		bp += ctl_caev_wrr(bp, ep - bp, echs_nul_instant(), sum);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(pr_buf, stdout);
@@ -957,7 +957,7 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp)
 			bp += dt_strf(bp, ep - bp, t);
 			*bp++ = '\t';
 		}
-		bp += ctl_kv_wrr(bp, ep - bp, this);
+		bp += ctl_kv_wrr(bp, ep - bp, t, this);
 		free_kvv(this);
 		*bp++ = '\n';
 		*bp = '\0';

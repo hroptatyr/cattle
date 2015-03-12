@@ -168,7 +168,7 @@ ctl_test_kv(struct ctl_ctx_s ctx[static 1U])
 			bp += snprintf(bp, ep - bp, "%d", d.dd);
 		}
 		*bp++ = '\t';
-		bp += ctl_kv_wrr(bp, ep - bp, this);
+		bp += ctl_kv_wrr(bp, ep - bp, t, this);
 		*bp = '\0';
 		puts(pr_buf);
 
@@ -222,7 +222,7 @@ ctl_test_kv_freq(struct ctl_ctx_s ctx[static 1U], unsigned int f)
 		*bp++ = '\t';
 		bp += snprintf(bp, ep - bp, "%dd", (signed int)per.dpart);
 		*bp++ = '\t';
-		bp += ctl_kv_wrr(bp, ep - bp, this);
+		bp += ctl_kv_wrr(bp, ep - bp, echs_nul_instant(), this);
 		*bp = '\0';
 		puts(pr_buf);
 
