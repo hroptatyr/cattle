@@ -135,9 +135,9 @@ static const struct pop_res_s {
 	/* we'll yield a pop_res_s */
 	struct pop_res_s res;
 
-	while (!echs_nul_instant_p(res.t = ctl_wheap_top_rank(c->q))) {
+	while (!echs_nul_instant_p(res.t = ctl_caevs_top_rank(c->q))) {
 		/* assign colour value */
-		res.msg = ctl_wheap_pop(c->q);
+		res.msg = ctl_caevs_pop(c->q);
 		yield(res);
 	}
 	return 0;
@@ -262,10 +262,10 @@ ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		ctl_caev_t c = ctl_caev_rdr(ln->t, ln->ln);
 
 		/* insert to heap */
-		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){c});
+		ctl_caevs_add_deferred(ctx->q, ln->t, (colour_t){c});
 	}
 	/* now sort the guy */
-	ctl_wheap_fix_deferred(ctx->q);
+	ctl_caevs_fix_deferred(ctx->q);
 	free_coru(rdr);
 	fclose(f);
 	fini_coru();
@@ -856,8 +856,8 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp, bool revp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
-		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
+	     !echs_nul_instant_p(t = ctl_caevs_top_rank(ctx->q)); prev_t = t) {
+		ctl_caev_t this = ctl_caevs_pop(ctx->q).c;
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
 
@@ -896,8 +896,8 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
-		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
+	     !echs_nul_instant_p(t = ctl_caevs_top_rank(ctx->q)); prev_t = t) {
+		ctl_caev_t this = ctl_caevs_pop(ctx->q).c;
 
 		if (uniqp) {
 			if (echs_instant_eq_p(prev_t, t) &&
@@ -937,8 +937,8 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
-		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
+	     !echs_nul_instant_p(t = ctl_caevs_top_rank(ctx->q)); prev_t = t) {
+		ctl_kvv_t this = ctl_caevs_pop(ctx->q).flds;
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
 
@@ -1069,7 +1069,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 		yuck_auto_help((const void*)argi);
 		res = 1;
 		goto out;
-	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+	} else if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
 		res = 1;
 		goto out;
 	}
@@ -1140,7 +1140,7 @@ cannot deduce factors for total return adjustment from `%s'", tser_fn);
 
 out:
 	if (LIKELY(ctx->q != NULL)) {
-		free_ctl_wheap(ctx->q);
+		free_ctl_caevs(ctx->q);
 		ctx->q = NULL;
 	}
 	return res;
