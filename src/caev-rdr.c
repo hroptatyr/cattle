@@ -238,7 +238,10 @@ ctl_kv_rdr(const char *s)
 		}
 
 		/* fast forward to the assignment */
-		for (cp = s; *s != '='; s++);
+		for (cp = s; *s && *s != '='; s++);
+		if (!*s) {
+			break;
+		}
 
 		/* use CHECK_FLDS from above */
 		CHECK_FLDS;
@@ -257,7 +260,10 @@ ctl_kv_rdr(const char *s)
 			/* no quotes :/ wish me luck */
 			break;
 		}
-		for (cp = s; *s >= ' ' && *s != ep; s++);
+		for (cp = s; *s && *s >= ' ' && *s != ep; s++);
+		if (!*s) {
+			break;
+		}
 		/* get interned value */
 		flds[fldi++].val = intern(cp, s - cp);
 	} while (1);
