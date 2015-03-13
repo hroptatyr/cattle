@@ -112,39 +112,6 @@ xstrlcpy(char *restrict dst, const char *src, size_t dsz)
 }
 
 
-/* public api, might go to libcattle one day */
-static int
-ctl_read_kv_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
-{
-/* wants a const char *fn */
-	coru_t rdr;
-	FILE *f;
-
-	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
-		f = stdin;
-	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
-		return -1;
-	}
-
-	init_coru();
-	rdr = make_coru(ctl_co_rdr, f);
-
-	for (const struct ctl_co_rdr_res_s *ln; (ln = next(rdr));) {
-		/* try to read the whole shebang */
-		ctl_kvv_t v = ctl_kv_rdr(ln->ln);
-
-		/* insert to heap */
-		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t)v);
-	}
-	/* now sort the guy */
-	ctl_wheap_fix_deferred(ctx->q);
-	free_coru(rdr);
-	fclose(f);
-	fini_coru();
-	return 0;
-}
-
-
 /* beef */
 static int
 ctl_test_kv(struct ctl_ctx_s ctx[static 1U])
@@ -285,7 +252,7 @@ main(int argc, char *argv[])
 	}
 	for (; i < argi->nargs; i++) {
 	one_off:
-		if (UNLIKELY(ctl_read_kv_file(ctx, argi->args[i]) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, argi->args[i]) < 0)) {
 			error("cannot open file `%s'", argi->args[i]);
 			goto out;
 		}
