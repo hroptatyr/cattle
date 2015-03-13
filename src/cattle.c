@@ -240,38 +240,6 @@ massage_adj(const struct echs_fund_s *msg)
 }
 
 
-/* public api, might go to libcattle one day */
-static int
-ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
-{
-/* wants a const char *fn */
-	coru_t rdr;
-	FILE *f;
-
-	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
-		f = stdin;
-	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
-		return -1;
-	}
-
-	init_coru();
-	rdr = make_coru(ctl_co_rdr, f);
-
-	for (const struct ctl_co_rdr_res_s *ln; (ln = next(rdr));) {
-		/* try to read the whole shebang */
-		ctl_caev_t c = ctl_caev_rdr(ln->t, ln->ln);
-
-		/* insert to heap */
-		ctl_caevs_add_deferred(ctx->q, ln->t, (colour_t){c});
-	}
-	/* now sort the guy */
-	ctl_caevs_fix_deferred(ctx->q);
-	free_coru(rdr);
-	fclose(f);
-	fini_coru();
-	return 0;
-}
-
 static int
 ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
@@ -1016,29 +984,16 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 		rawp = true;
 	}
 
-	if (argi->nargs == 0U && !rawp) {
+	if (argi->nargs == 0U) {
 		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			goto out;
 		}
-	} else if (argi->nargs == 0U) {
-		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
-			error("cannot read from stdin");
-			goto out;
-		}
 	}
-	for (size_t i = 0U; i < argi->nargs && !rawp; i++) {
+	for (size_t i = 0U; i < argi->nargs; i++) {
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
-			error("cannot open file `%s'", fn);
-			goto out;
-		}
-	}
-	for (size_t i = 0U; i < argi->nargs && rawp; i++) {
-		const char *fn = argi->args[i];
-
-		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
 			error("cannot open file `%s'", fn);
 			goto out;
 		}
@@ -1098,7 +1053,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
-		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			res = 1;
 			goto out;
@@ -1107,7 +1062,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 	for (size_t i = 1U; i < argi->nargs; i++) {
 		const char *fn = argi->args[i];
 
-		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open caev file `%s'", fn);
 			res = 1;
 			goto out;
