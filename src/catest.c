@@ -174,7 +174,7 @@ ctl_test_kv(struct ctl_ctx_s ctx[static 1U])
 
 		ldat[ccod] = t;
 
-		free_kvv(this);
+		ctl_free_kvv(this);
 	}
 	return rc;
 }
@@ -226,7 +226,7 @@ ctl_test_kv_freq(struct ctl_ctx_s ctx[static 1U], unsigned int f)
 		*bp = '\0';
 		puts(pr_buf);
 
-		free_kvv(this);
+		ctl_free_kvv(this);
 	}
 
 	free_ctl_wheap(qf);

@@ -265,7 +265,7 @@ ctl_kv_rdr(const char *s)
 }
 
 void
-free_kvv(ctl_kvv_t f)
+ctl_free_kvv(ctl_kvv_t f)
 {
 	free(f);
 	return;

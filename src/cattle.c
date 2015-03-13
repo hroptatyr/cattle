@@ -958,7 +958,7 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp)
 			*bp++ = '\t';
 		}
 		bp += ctl_kv_wrr(bp, ep - bp, t, this);
-		free_kvv(this);
+		ctl_free_kvv(this);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(pr_buf, stdout);
