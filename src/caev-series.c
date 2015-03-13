@@ -430,7 +430,8 @@ ctl_caev_sum(ctl_caevs_t cs)
 
 	ctl_wheap_sort(cs);
 	for (size_t i = 0; i < cs->n; i++) {
-		sum = ctl_caev_add(sum, cs->colours[i].c);
+		ctl_caev_t tmp = ctl_kvv_get_caev(cs->colours[i]);
+		sum = ctl_caev_add(sum, tmp);
 	}
 	return sum;
 }
@@ -459,7 +460,7 @@ ctl_read_caevs(ctl_caevs_t q, const char *fn)
 		ctl_kvv_t v = ctl_kv_rdr(ln->ln);
 
 		/* insert to heap */
-		ctl_wheap_add_deferred(q, ln->t, (colour_t){.flds = v});
+		ctl_wheap_add_deferred(q, ln->t, (colour_t)v);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(q);

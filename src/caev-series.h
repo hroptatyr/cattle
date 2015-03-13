@@ -40,10 +40,7 @@
 #include "caev.h"
 #include "coruaux.h"
 
-typedef union {
-	ctl_caev_t c;
-	void *flds;
-} colour_t;
+typedef void *colour_t;
 #define WHEAP_COLOUR_T
 
 typedef struct ctl_wheap_s *ctl_caevs_t;

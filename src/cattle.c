@@ -129,7 +129,7 @@ declcoru(co_appl_pop, {
 
 static const struct pop_res_s {
 	echs_instant_t t;
-	colour_t msg;
+	ctl_kvv_t msg;
 } *defcoru(co_appl_pop, c, UNUSED(arg))
 {
 	/* we'll yield a pop_res_s */
@@ -282,9 +282,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     LIKELY(ev != NULL) &&
 			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
 		     ev = next(pop)) {
-			ctl_caev_t caev;
-
-			caev = ev->msg.c;
+			ctl_caev_t caev = ctl_kvv_get_caev(ev->msg);
 
 			/* compute the new sum */
 			if (!ctx->rev) {
@@ -381,7 +379,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				goto out;
 			}
 
-			caev = ev->msg.c;
+			caev = ctl_kvv_get_caev(ev->msg);
 			aadj = (float)caev.mktprc.a;
 
 			if (UNLIKELY(ctx->rev)) {
@@ -495,10 +493,9 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			     (UNLIKELY(ln == NULL) ||
 			      UNLIKELY(!echs_instant_lt_p(ln->t, ev->t)));
 		     ev = next(pop)) {
-			ctl_caev_t caev;
+			ctl_caev_t caev = ctl_kvv_get_caev(ev->msg);
 			struct fa_s cell;
 
-			caev = ev->msg.c;
 			cell.last = last;
 			cell.aadj = (float)caev.mktprc.a;
 			cell.t = ev->t;
@@ -670,11 +667,10 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     ev = next(pop)) {
 			char *bp = pr_buf;
 			const char *const ep = pr_buf + sizeof(pr_buf);
-			ctl_kvv_t kvv = ev->msg.flds;
-			ctl_caev_t caev;
+			ctl_kvv_t kvv = ev->msg;
+			ctl_caev_t caev = ctl_kvv_get_caev(ev->msg);
 			bool rawify = false;
 
-			caev = ctl_kvv_get_caev(kvv);
 			if (caev.mktprc.a != 0.df) {
 				ctl_ratio_t r =
 					ctl_price_return(
@@ -763,7 +759,7 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     ev = next(pop)) {
 			char *bp = pr_buf;
 			const char *const ep = pr_buf + sizeof(pr_buf);
-			ctl_kvv_t v = ev->msg.flds;
+			ctl_kvv_t v = ev->msg;
 			ctl_caev_t caev;
 			bool rawify = false;
 
@@ -825,7 +821,8 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp, bool revp)
 
 	for (echs_instant_t t;
 	     !echs_nul_instant_p(t = ctl_caevs_top_rank(ctx->q)); prev_t = t) {
-		ctl_caev_t this = ctl_caevs_pop(ctx->q).c;
+		ctl_kvv_t msg = ctl_caevs_pop(ctx->q);
+		ctl_caev_t this = ctl_kvv_get_caev(msg);
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
 
@@ -865,7 +862,8 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 
 	for (echs_instant_t t;
 	     !echs_nul_instant_p(t = ctl_caevs_top_rank(ctx->q)); prev_t = t) {
-		ctl_caev_t this = ctl_caevs_pop(ctx->q).c;
+		ctl_kvv_t msg = ctl_caevs_pop(ctx->q);
+		ctl_caev_t this = ctl_kvv_get_caev(msg);
 
 		if (uniqp) {
 			if (echs_instant_eq_p(prev_t, t) &&
@@ -906,7 +904,7 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp)
 
 	for (echs_instant_t t;
 	     !echs_nul_instant_p(t = ctl_caevs_top_rank(ctx->q)); prev_t = t) {
-		ctl_kvv_t this = ctl_caevs_pop(ctx->q).flds;
+		ctl_kvv_t this = ctl_caevs_pop(ctx->q);
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
 

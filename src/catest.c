@@ -134,7 +134,7 @@ ctl_read_kv_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		ctl_kvv_t v = ctl_kv_rdr(ln->ln);
 
 		/* insert to heap */
-		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){.flds = v});
+		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t)v);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(ctx->q);
@@ -155,7 +155,7 @@ ctl_test_kv(struct ctl_ctx_s ctx[static 1U])
 
 	for (echs_instant_t t;
 	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q));) {
-		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
+		ctl_kvv_t this = ctl_wheap_pop(ctx->q);
 		ctl_caev_code_t ccod = ctl_kvv_get_caev_code(this);
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
@@ -192,7 +192,7 @@ ctl_test_kv_freq(struct ctl_ctx_s ctx[static 1U], unsigned int f)
 	}
 	for (echs_instant_t t;
 	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q));) {
-		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
+		ctl_kvv_t this = ctl_wheap_pop(ctx->q);
 		ctl_caev_code_t ccod = ctl_kvv_get_caev_code(this);
 
 		if (LIKELY(!echs_nul_instant_p(ldat[ccod]))) {
@@ -202,9 +202,8 @@ ctl_test_kv_freq(struct ctl_ctx_s ctx[static 1U], unsigned int f)
 				/* lest we end up with the nul instance */
 				.intra = 1U,
 			};
-			colour_t col = {.flds = this};
 
-			ctl_wheap_add_deferred(qf, per, col);
+			ctl_wheap_add_deferred(qf, per, (colour_t)this);
 		}
 		ldat[ccod] = t;
 	}
@@ -213,7 +212,7 @@ ctl_test_kv_freq(struct ctl_ctx_s ctx[static 1U], unsigned int f)
 
 	for (echs_instant_t per;
 	     !echs_nul_instant_p(per = ctl_wheap_top_rank(qf));) {
-		ctl_kvv_t this = ctl_wheap_pop(qf).flds;
+		ctl_kvv_t this = ctl_wheap_pop(qf);
 		ctl_caev_code_t ccod = ctl_kvv_get_caev_code(this);
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
