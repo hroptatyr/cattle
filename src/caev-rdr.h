@@ -44,11 +44,6 @@
 
 
 /**
- * Return a caev actor object from MSG at instant X. */
-extern ctl_caev_t
-ctl_caev_rdr(echs_instant_t x, const char *msg);
-
-/**
  * Return a key/val vector object from MSG. */
 extern ctl_kvv_t ctl_kv_rdr(const char *msg);
 

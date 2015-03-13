@@ -133,50 +133,6 @@ make_kvv(const struct ctl_kv_s *f, size_t n)
 }
 
 
-ctl_caev_t
-ctl_caev_rdr(echs_instant_t t, const char *s)
-{
-	static struct ctl_fld_s *flds;
-	static size_t nflds;
-	ctl_caev_code_t ccod;
-	ctl_caev_t res = ctl_zero_caev();
-	size_t fldi;
-
-	if (*s == '.') {
-		s++;
-	}
-	with (ctl_fld_rdr_t f) {
-		if ((f = __ctl_fldify(s, 4U)) == NULL) {
-			/* not a caev message */
-			goto out;
-		} else if ((ctl_fld_admin_t)f->fc != CTL_FLD_CAEV) {
-			/* a field but not a caev message */
-			goto out;
-		}
-		/* fast forward s then */
-		s += 4U/*CAEV*/ + 1U/*=*/;
-	}
-	/* otherwise try and read the code */
-	switch (*s) {
-	case '"':
-	case '\'':
-		s++;
-		break;
-	default:
-		/* no quotes :/ wish me luck */
-		break;
-	}
-	with (ctl_caev_rdr_t m = __ctl_caev_codify(s, 4U)) {
-		if (LIKELY(m == NULL)) {
-			/* not a caev message */
-			goto out;
-		}
-		/* otherwise assign the caev code */
-		ccod = m->code;
-		/* and fast forward s */
-		s += 4U;
-	}
-
 #define CHECK_FLDS							\
 	if (UNLIKELY(fldi >= nflds)) {					\
 		const size_t nu = nflds + 64U;				\
@@ -184,70 +140,6 @@ ctl_caev_rdr(echs_instant_t t, const char *s)
 		memset(flds + nflds, 0, (nu - nflds) * sizeof(*flds));	\
 		nflds = nu;						\
 	}
-
-	/* reset field counter */
-	fldi = 0U;
-	/* add the instant passed onto us as ex-date */
-	CHECK_FLDS;
-	flds[fldi++] = MAKE_CTL_FLD(admin, CTL_FLD_CAEV, ccod);
-	flds[fldi++] = MAKE_CTL_FLD(date, CTL_FLD_XDTE, t);
-
-	/* now look for .XXXX= or .XXXX/ or XXXX= or XXXX/ */
-	for (const char *sp = s; (sp = strchr(sp, ' ')) != NULL; sp++) {
-		sp++;
-		if (*sp == '{') {
-			/* overread braces */
-			sp++;
-		}
-		if (*sp == '.') {
-			/* overread . */
-			sp++;
-		}
-		switch (sp[4U]) {
-			ctl_fld_rdr_t f;
-			ctl_fld_unk_t fc;
-			ctl_fld_val_t fv;
-		case '/':
-		case '=':
-			/* ah, could be a field */
-			if ((f = __ctl_fldify(sp, 4U)) == NULL) {
-				break;
-			}
-			/* otherwise we've got the code */
-			fc = (ctl_fld_unk_t)f->fc;
-			with (const char *vp = sp += 4U) {
-				if (*vp++ != '=') {
-					if ((vp = strchr(vp, '=')) == NULL) {
-						continue;
-					}
-					vp++;
-				}
-				if (*vp == '"' || *vp == '\'') {
-					/* dequote */
-					vp++;
-				}
-				fv = snarf_fv(fc, vp);
-			}
-
-			/* bang to array */
-			if (fldi >= nflds) {
-				const size_t nu = nflds + 64U;
-				flds = realloc(flds, nu * sizeof(*flds));
-				memset(flds + nflds, 0, 64U * sizeof(*flds));
-				nflds = nu;
-			}
-			/* actually add the field now */
-			flds[fldi++] = (ctl_fld_t){{fc}, fv};
-			break;
-		default:
-			break;
-		}
-	}
-	/* just let the actual mt564 support figure everything out */
-	res = make_caev(flds, fldi);
-out:
-	return res;
-}
 
 __attribute__((pure, const)) ctl_caev_code_t
 ctl_kvv_get_caev_code(ctl_kvv_t fldv)
