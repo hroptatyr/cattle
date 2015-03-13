@@ -220,19 +220,19 @@ mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
 	const int prot = PROT_READ | PROT_WRITE;
 	const int mapf = MAP_ANON | MAP_PRIVATE;
 
-	if (mb->bof + z > mb->max) {
+	if (mb->bof + z + 1U > mb->max) {
 	flush:
 		/* flush to disk */
 		if (mb_flsh(mb) < 0) {
 			return -1;
 		}
 
-	} else if (mb->bof + z > mb->bsz) {
+	} else if (mb->bof + z + 1U > mb->bsz) {
 		char *const old = mb->buf;
 		const size_t olz = mb->bsz;
 
 		/* calc new size */
-		for (mb->bsz *= 2U; mb->bof + z > mb->bsz; mb->bsz *= 2U);
+		for (mb->bsz *= 2U; mb->bof + z + 1U > mb->bsz; mb->bsz *= 2U);
 		/* check if we need to resort to the disk */
 		if (UNLIKELY(mb->bsz > mb->max)) {
 			/* yep */
@@ -255,7 +255,8 @@ mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
 		}
 	}
 	memcpy(mb->buf + mb->bof, s, z);
-	mb->bof += z/*including \n*/;
+	mb->bof += z;
+	mb->buf[mb->bof++] = '\0';
 	return 0;
 }
 
@@ -355,8 +356,12 @@ rewind:
 					break;
 				}
 				res.t = dt_strp(bp, &p);
-				res.ln = p + 1U;
-				res.lz = eol - p - 1U;
+				if (!echs_nul_instant_p(res.t)) {
+					res.ln = p + 1U;
+				} else {
+					res.ln = p;
+				}
+				res.lz = eol - p;
 				/* increment by line length */
 				bp = eol;
 				/* and yield */
