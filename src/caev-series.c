@@ -305,7 +305,13 @@ rewind:
 			continue;
 		}
 		/* \nul out the line */
-		line[nrd - 1] = '\0';
+		if (line[nrd - 1] == '\n') {
+			line[--nrd] = '\0';
+		}
+		/* more \nul'ing */
+		if (line[nrd - 1] == '\r') {
+			line[--nrd] = '\0';
+		}
 		/* check if this guy needs buffering */
 		if (mb.buf != NULL && mb_cat(&mb, line, nrd) < 0) {
 			/* big bugger */
@@ -313,7 +319,7 @@ rewind:
 		}
 		/* pack the result structure */
 		res.ln = p + 1U;
-		res.lz = nrd - 1/*\n*/ - (p + 1U - line);
+		res.lz = nrd - (p + 1U - line);
 		yield(res);
 	}
 
