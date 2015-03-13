@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "jsmn.h"
 #include "caev-supp.h"
 #include "caev-rdr.h"
 #include "ctl-dfp754.h"
@@ -133,6 +134,7 @@ make_kvv(const struct ctl_kv_s *f, size_t n)
 }
 
 
+/* readers, all of which write into FLDS */
 #define CHECK_FLDS							\
 	if (UNLIKELY(fldi >= nflds)) {					\
 		const size_t nu = nflds + 64U;				\
@@ -141,6 +143,108 @@ make_kvv(const struct ctl_kv_s *f, size_t n)
 		nflds = nu;						\
 	}
 
+static ctl_kvv_t
+_read_ctlold(const char *s, size_t z)
+{
+/* ye olde key="value" reader */
+	static struct ctl_kv_s *flds;
+	static size_t nflds;
+	const char *const ep = s + z;
+	const char *cp;
+	size_t fldi = 0U;
+
+	do {
+		char dlm = ' ';
+
+		/* fast forward to a field */
+		for (; s < ep && !isalpha(*s); s++);
+		if (UNLIKELY(s >= ep)) {
+			break;
+		}
+
+		/* fast forward to the assignment */
+		for (cp = s; s < ep && *s != '='; s++);
+		if (UNLIKELY(s >= ep)) {
+			break;
+		}
+
+		/* use CHECK_FLDS from above */
+		CHECK_FLDS;
+
+		/* get interned field */
+		flds[fldi].key = intern(cp, s++ - cp);
+		if (UNLIKELY(s >= ep)) {
+			break;
+		}
+
+		/* otherwise try and read the code */
+		switch (*s) {
+		case '"':
+		case '\'':
+			dlm = *s;
+			s++;
+			break;
+		default:
+			/* no quotes :/ wish me luck */
+			break;
+		}
+		for (cp = s; s < ep && *s >= ' ' && *s != dlm; s++);
+		if (UNLIKELY(s >= ep)) {
+			break;
+		}
+		/* get interned value */
+		flds[fldi++].val = intern(cp, s - cp);
+	} while (1);
+	return make_kvv(flds, fldi);
+}
+
+static ctl_kvv_t
+_read_json(const char *s, size_t z)
+{
+/* teh n3w json r33dr */
+	static struct ctl_kv_s *flds;
+	static size_t nflds;
+	size_t fldi = 0U;
+	jsmn_parser p;
+	jsmntok_t tok[64U];
+	int r;
+
+	/* it's a given that we start off with { */
+	if (UNLIKELY(*s != '{' && s[z - 1U] != '}')) {
+		/* not json it's not */
+		return NULL;
+	}
+
+	jsmn_init(&p);
+	if ((r = jsmn_parse(&p, s, z, tok, countof(tok))) < 0) {
+		/* didn't work */
+		return NULL;
+	}
+
+	/* top-level element should be an object */
+	if (r < 1 || tok->type != JSMN_OBJECT) {
+		return NULL;
+	}
+
+	/* loop and intern */
+	for (int i = 1; i < r; i++) {
+		const char *ks;
+		size_t kz;
+
+		CHECK_FLDS;
+		ks = s + tok[i].start;
+		kz = tok[i].end - tok[i].start;
+		flds[fldi].key = intern(ks, kz);
+		i++;
+		ks = s + tok[i].start;
+		kz = tok[i].end - tok[i].start;
+		flds[fldi].val = intern(ks, kz);
+		fldi++;
+	}
+	return make_kvv(flds, fldi);
+}
+
+
 __attribute__((pure, const)) ctl_caev_code_t
 ctl_kvv_get_caev_code(ctl_kvv_t fldv)
 {
@@ -221,57 +325,16 @@ out:
 }
 
 ctl_kvv_t
-ctl_kv_rdr(const char *s, size_t z)
+ctl_kv_rdr(const char *msg, size_t len)
 {
-	static struct ctl_kv_s *flds;
-	static size_t nflds;
-	const char *const ep = s + z;
-	const char *cp;
-	size_t fldi = 0U;
-
-	do {
-		char ep = ' ';
-
-		/* fast forward to a field */
-		for (; s < ep && !isalpha(*s); s++);
-		if (UNLIKELY(s >= ep)) {
-			break;
-		}
-
-		/* fast forward to the assignment */
-		for (cp = s; s < ep && *s != '='; s++);
-		if (UNLIKELY(s >= ep)) {
-			break;
-		}
-
-		/* use CHECK_FLDS from above */
-		CHECK_FLDS;
-
-		/* get interned field */
-		flds[fldi].key = intern(cp, s++ - cp);
-		if (UNLIKELY(s >= ep)) {
-			break;
-		}
-
-		/* otherwise try and read the code */
-		switch (*s) {
-		case '"':
-		case '\'':
-			ep = *s;
-			s++;
-			break;
-		default:
-			/* no quotes :/ wish me luck */
-			break;
-		}
-		for (cp = s; s < ep && *s >= ' ' && *s != ep; s++);
-		if (UNLIKELY(s >= ep)) {
-			break;
-		}
-		/* get interned value */
-		flds[fldi++].val = intern(cp, s - cp);
-	} while (1);
-	return make_kvv(flds, fldi);
+	if (UNLIKELY(len == 0U)) {
+		return NULL;
+	} else if (LIKELY(*msg == '{')) {
+		/* json! */
+		return _read_json(msg, len);
+	}
+	/* otherwise try that old key=value thing */
+	return _read_ctlold(msg, len);
 }
 
 void

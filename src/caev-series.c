@@ -301,7 +301,7 @@ rewind:
 			continue;
 		} else if (echs_nul_instant_p(res.t = dt_strp(line, &p))) {
 			continue;
-		} else if (*p != '\t') {
+		} else if (*p != '\t' && *p != '{') {
 			continue;
 		}
 		/* \nul out the line */
