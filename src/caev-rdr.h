@@ -45,7 +45,7 @@
 
 /**
  * Return a key/val vector object from MSG. */
-extern ctl_kvv_t ctl_kv_rdr(const char *msg);
+extern ctl_kvv_t ctl_kv_rdr(const char *msg, size_t len);
 
 extern void ctl_free_kvv(ctl_kvv_t);
 

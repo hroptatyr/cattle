@@ -463,7 +463,7 @@ ctl_read_caevs(ctl_caevs_t q, const char *fn)
 
 	for (const struct ctl_co_rdr_res_s *ln; (ln = next(rdr));) {
 		/* try to read the whole shebang */
-		ctl_kvv_t v = ctl_kv_rdr(ln->ln);
+		ctl_kvv_t v = ctl_kv_rdr(ln->ln, ln->lz);
 
 		/* insert to heap */
 		ctl_wheap_add_deferred(q, ln->t, (colour_t)v);

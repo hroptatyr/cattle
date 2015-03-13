@@ -221,10 +221,11 @@ out:
 }
 
 ctl_kvv_t
-ctl_kv_rdr(const char *s)
+ctl_kv_rdr(const char *s, size_t z)
 {
 	static struct ctl_kv_s *flds;
 	static size_t nflds;
+	const char *const ep = s + z;
 	const char *cp;
 	size_t fldi = 0U;
 
@@ -232,14 +233,14 @@ ctl_kv_rdr(const char *s)
 		char ep = ' ';
 
 		/* fast forward to a field */
-		for (; *s && !isalpha(*s); s++);
-		if (!*s) {
+		for (; s < ep && !isalpha(*s); s++);
+		if (UNLIKELY(s >= ep)) {
 			break;
 		}
 
 		/* fast forward to the assignment */
-		for (cp = s; *s && *s != '='; s++);
-		if (!*s) {
+		for (cp = s; s < ep && *s != '='; s++);
+		if (UNLIKELY(s >= ep)) {
 			break;
 		}
 
@@ -248,6 +249,9 @@ ctl_kv_rdr(const char *s)
 
 		/* get interned field */
 		flds[fldi].key = intern(cp, s++ - cp);
+		if (UNLIKELY(s >= ep)) {
+			break;
+		}
 
 		/* otherwise try and read the code */
 		switch (*s) {
@@ -260,8 +264,8 @@ ctl_kv_rdr(const char *s)
 			/* no quotes :/ wish me luck */
 			break;
 		}
-		for (cp = s; *s && *s >= ' ' && *s != ep; s++);
-		if (!*s) {
+		for (cp = s; s < ep && *s >= ' ' && *s != ep; s++);
+		if (UNLIKELY(s >= ep)) {
 			break;
 		}
 		/* get interned value */
