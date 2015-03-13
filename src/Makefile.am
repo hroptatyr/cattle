@@ -49,6 +49,7 @@ libcattle_la_SOURCES += caev--dvse.c
 libcattle_la_SOURCES += caev--rhts.c
 libcattle_la_SOURCES += caev--splf.c
 libcattle_la_SOURCES += caev--splr.c
+libcattle_la_SOURCES += jsmn.c jsmn.h
 libcattle_la_SOURCES += caev-rdr.c caev-rdr.h
 libcattle_la_SOURCES += caev-rdr-gp.erf
 libcattle_la_SOURCES += caev-fld-gp.erf
