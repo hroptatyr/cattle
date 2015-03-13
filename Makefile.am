@@ -20,6 +20,7 @@ DISTCLEANFILES += .version
 EXTRA_DIST += version.mk.in
 
 doc_DATA = README.md
+doc_DATA += LICENSE
 EXTRA_DIST += $(doc_DATA)
 
 if USE_ASM_CORUS
