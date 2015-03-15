@@ -70,6 +70,8 @@ struct ctl_ctx_s {
 	unsigned int abs_prec:1;
 	/* generic all flag */
 	unsigned int all:1;
+	/* whether to print the xdte first */
+	unsigned int xxdtp:1;
 
 	/* use prec fractional digits if abs_prec */
 	signed int prec;
@@ -688,8 +690,10 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			/* print caev */
-			bp += dt_strf(bp, ep - bp, ev->t);
-			*bp++ = '\t';
+			if (ctx->xxdtp) {
+				bp += dt_strf(bp, ep - bp, ev->t);
+				*bp++ = '\t';
+			}
 			if (rawify) {
 				bp += ctl_caev_wrr(bp, ep - bp, ev->t, caev);
 			} else {
@@ -788,8 +792,10 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		prnt:
 			/* print caev */
-			bp += dt_strf(bp, ep - bp, ev->t);
-			*bp++ = '\t';
+			if (ctx->xxdtp) {
+				bp += dt_strf(bp, ep - bp, ev->t);
+				*bp++ = '\t';
+			}
 			if (rawify) {
 				bp += ctl_caev_wrr(bp, ep - bp, ev->t, caev);
 			} else {
@@ -1114,6 +1120,9 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		goto out;
 	}
 
+	/* sanrf some options */
+	ctx->xxdtp = argi->xdte_flag;
+
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
@@ -1131,6 +1140,9 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 			goto out;
 		}
 	}
+
+	/* sanrf some options */
+	ctx->xxdtp = argi->xdte_flag;
 
 	/* open time series file */
 	with (const char *tser_fn = argi->args[0U]) {
