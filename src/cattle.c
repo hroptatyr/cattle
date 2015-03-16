@@ -71,7 +71,7 @@ struct ctl_ctx_s {
 	/* generic all flag */
 	unsigned int all:1;
 	/* whether to print the xdte first */
-	unsigned int xxdtp:1;
+	unsigned int xdt:1;
 
 	/* use prec fractional digits if abs_prec */
 	signed int prec;
@@ -690,7 +690,7 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			/* print caev */
-			if (ctx->xxdtp) {
+			if (ctx->xdt) {
 				bp += dt_strf(bp, ep - bp, ev->t);
 				*bp++ = '\t';
 			}
@@ -792,7 +792,7 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		prnt:
 			/* print caev */
-			if (ctx->xxdtp) {
+			if (ctx->xdt) {
 				bp += dt_strf(bp, ep - bp, ev->t);
 				*bp++ = '\t';
 			}
@@ -819,7 +819,7 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 /* printer commands */
 static int
-ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp, bool revp)
+ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 {
 	ctl_caev_t prev = ctl_zero_caev();
 	echs_instant_t prev_t = {.u = 0U};
@@ -842,11 +842,11 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp, bool revp)
 		/* keep track of this caev for the next uniquify run */
 		prev = this;
 
-		if (revp) {
+		if (ctx->rev) {
 			this = ctl_caev_inv(this);
 		}
 
-		if (xdp) {
+		if (ctx->xdt) {
 			bp += dt_strf(bp, ep - bp, t);
 			*bp++ = '\t';
 		}
@@ -859,7 +859,7 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp, bool revp)
 }
 
 static int
-ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
+ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 {
 	ctl_caev_t sum = ctl_zero_caev();
 	ctl_caev_t prev = sum;
@@ -881,7 +881,7 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 		/* keep track of this caev for the next uniquify run */
 		prev = this;
 
-		if (revp) {
+		if (ctx->rev) {
 			this = ctl_caev_inv(this);
 		}
 
@@ -902,7 +902,7 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 }
 
 static int
-ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp)
+ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 {
 	ctl_caev_t prev_c = ctl_zero_caev();
 	echs_instant_t prev_t = {.u = 0U};
@@ -925,7 +925,7 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool xdp, bool uniqp)
 			prev_c = this_c;
 		}
 
-		if (xdp) {
+		if (ctx->xdt) {
 			bp += dt_strf(bp, ep - bp, t);
 			*bp++ = '\t';
 		}
@@ -972,8 +972,6 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	static struct ctl_ctx_s ctx[1];
 	bool rawp = argi->raw_flag;
 	bool uniqp = argi->unique_flag;
-	bool revp = argi->reverse_flag;
-	bool xdp = argi->xdte_flag;
 	int rc = 1;
 
 	if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
@@ -1002,12 +1000,15 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 			goto out;
 		}
 	}
+	/* set flags */
+	ctx->xdt = argi->xdte_flag;
+	ctx->rev = argi->reverse_flag;
 
-	if (!rawp && ctl_print_kv(ctx, xdp, uniqp) >= 0) {
+	if (!rawp && ctl_print_kv(ctx, uniqp) >= 0) {
 		rc = 0;
-	} else if (argi->summary_flag && ctl_print_sum(ctx, uniqp, revp) >= 0) {
+	} else if (argi->summary_flag && ctl_print_sum(ctx, uniqp) >= 0) {
 		rc = 0;
-	} else if (rawp && ctl_print_raw(ctx, xdp, uniqp, revp) >= 0) {
+	} else if (rawp && ctl_print_raw(ctx, uniqp) >= 0) {
 		rc = 0;
 	}
 
@@ -1121,7 +1122,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 	}
 
 	/* sanrf some options */
-	ctx->xxdtp = argi->xdte_flag;
+	ctx->xdt = argi->xdte_flag;
 
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
@@ -1142,7 +1143,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 	}
 
 	/* sanrf some options */
-	ctx->xxdtp = argi->xdte_flag;
+	ctx->xdt = argi->xdte_flag;
 
 	/* open time series file */
 	with (const char *tser_fn = argi->args[0U]) {
