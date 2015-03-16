@@ -138,12 +138,23 @@ make_kvv(const struct ctl_kv_s *f, size_t n)
 static struct ctl_kv_s *kvs;
 static size_t nkvs;
 
+static obint_t xxdt;
+static obint_t xdte;
+static obint_t effd;
+
 #define CHECK_FLDS(x, i, z)						\
 	if (UNLIKELY((i) >= (z))) {					\
 		const size_t nu = (z) + 64U;				\
 		x = realloc(x, nu * sizeof(*x));			\
 		memset(x + (z), 0, (nu - (z)) * sizeof(*x));		\
 		z = nu;							\
+	}
+
+#define CHECK_XDT				\
+	if (UNLIKELY(!xxdt)) {			\
+		xxdt = intern("xxdt", 4U);	\
+		xdte = intern("xdte", 4U);	\
+		effd = intern("effd", 4U);	\
 	}
 
 static ctl_kvv_t
@@ -153,7 +164,9 @@ _read_ctlold(const char *s, size_t z)
 	const char *const ep = s + z;
 	const char *cp;
 	size_t fldi = 0U;
+	obint_t xdt = 0U;
 
+	CHECK_XDT;
 	do {
 		char dlm = ' ';
 
@@ -194,8 +207,27 @@ _read_ctlold(const char *s, size_t z)
 			break;
 		}
 		/* get interned value */
-		kvs[fldi++].val = intern(cp, s - cp);
+		kvs[fldi].val = intern(cp, s - cp);
+
+		/* check if it's a xxdt contributing field */
+		if (kvs[fldi].key == xdte || kvs[fldi].key == effd) {
+			if (!xdt) {
+				xdt = kvs[fldi].val;
+			}
+		} else if (kvs[fldi].key == xxdt) {
+			/* always track this one */
+			xdt = -1U;
+		}
+
+		/* advance field counter */
+		fldi++;
 	} while (1);
+	/* enrich with xxdt */
+	if (xdt && xdt != -1U) {
+		kvs[fldi].key = xxdt;
+		kvs[fldi].val = xdt;
+		fldi++;
+	}
 	return make_kvv(kvs, fldi);
 }
 
@@ -206,6 +238,7 @@ _read_json(const char *s, size_t z)
 	size_t fldi = 0U;
 	jsmn_parser p;
 	jsmntok_t tok[64U];
+	obint_t xdt = 0U;
 	int r;
 
 	/* it's a given that we start off with { */
@@ -213,6 +246,8 @@ _read_json(const char *s, size_t z)
 		/* not json it's not */
 		return NULL;
 	}
+
+	CHECK_XDT;
 
 	jsmn_init(&p);
 	if ((r = jsmn_parse(&p, s, z, tok, countof(tok))) < 0) {
@@ -238,6 +273,24 @@ _read_json(const char *s, size_t z)
 		ks = s + tok[i].start;
 		kz = tok[i].end - tok[i].start;
 		kvs[fldi].val = intern(ks, kz);
+
+		/* check if it's a xxdt contributing field */
+		if (kvs[fldi].key == xdte || kvs[fldi].key == effd) {
+			if (!xdt) {
+				xdt = kvs[fldi].val;
+			}
+		} else if (kvs[fldi].key == xxdt) {
+			/* always track this one */
+			xdt = -1U;
+		}
+
+		/* advance field index */
+		fldi++;
+	}
+	/* enrich with xxdt */
+	if (xdt && xdt != -1U) {
+		kvs[fldi].key = xxdt;
+		kvs[fldi].val = xdt;
 		fldi++;
 	}
 	return make_kvv(kvs, fldi);
