@@ -300,9 +300,8 @@ rewind:
 
 		if (*line == '#') {
 			continue;
-		} else if (echs_nul_instant_p(res.t = dt_strp(line, &p))) {
-			continue;
-		} else if (*p != '\t' && *p != '{') {
+		} else if ((res.t = dt_strp(line, &p),
+			    *p != '\t' && *p != '{')) {
 			continue;
 		}
 		/* \nul out the line */
@@ -319,8 +318,12 @@ rewind:
 			goto out;
 		}
 		/* pack the result structure */
-		res.ln = p + 1U;
-		res.lz = nrd - (p + 1U - line);
+		if (!echs_nul_instant_p(res.t)) {
+			res.ln = p + 1U;
+		} else {
+			res.ln = p;
+		}
+		res.lz = nrd - (res.ln - line);
 		yield(res);
 	}
 
