@@ -121,6 +121,7 @@ ctl_kv_wrr(char *restrict buf, size_t bsz, echs_instant_t x, ctl_kvv_t flds)
 {
 	char *restrict bp = buf;
 	const char *const ep = buf + bsz;
+	obint_t xxdt = intern("xxdt", 4U);
 
 	*bp++ = '{';
 	for (size_t i = 0U; i < flds->nkvv && bp + 4U < ep; i++) {
@@ -129,7 +130,7 @@ ctl_kv_wrr(char *restrict buf, size_t bsz, echs_instant_t x, ctl_kvv_t flds)
 		if (UNLIKELY(!kv.key)) {
 			/* skip this guy altogether */
 			continue;
-		} else if (UNLIKELY(i == 1U) && !echs_nul_instant_p(x)) {
+		} else if (UNLIKELY(i == 1U && kv.key != xxdt)) {
 			/* quick interim,  */
 			bp += BANG_LIT(bp, ep, xdte);
 			*bp++ = '"';
