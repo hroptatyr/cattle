@@ -481,7 +481,7 @@ ctl_read_caevs(ctl_caevs_t q, const char *fn)
 			continue;
 		}
 		/* check for xxdt */
-		if (LIKELY(v->kvv[1U].key == xxdt)) {
+		if (LIKELY(v->nkvv > 1U && v->kvv[1U].key == xxdt)) {
 			t = dt_strp(obint_name(v->kvv[1U].val), NULL);
 		}
 
