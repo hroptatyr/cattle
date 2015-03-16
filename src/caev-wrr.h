@@ -45,10 +45,12 @@
 
 /**
  * Write actor object E to buffer BUF of size BSZ. */
-extern ssize_t ctl_caev_wrr(char *restrict buf, size_t bsz, ctl_caev_t e);
+extern ssize_t
+ctl_caev_wrr(char *restrict buf, size_t bsz, echs_instant_t x, ctl_caev_t e);
 
 /**
  * Write key/val object E to buffer BUF of size BSZ. */
-extern ssize_t ctl_kv_wrr(char *restrict buf, size_t bsz, ctl_kvv_t e);
+extern ssize_t
+ctl_kv_wrr(char *restrict buf, size_t bsz, echs_instant_t x, ctl_kvv_t e);
 
 #endif	/* INCLUDED_caev_wrr_h_ */

@@ -40,10 +40,7 @@
 #include "caev.h"
 #include "coruaux.h"
 
-typedef union {
-	ctl_caev_t c;
-	void *flds;
-} colour_t;
+typedef void *colour_t;
 #define WHEAP_COLOUR_T
 
 typedef struct ctl_wheap_s *ctl_caevs_t;
@@ -103,5 +100,11 @@ free_ctl_caevs(ctl_caevs_t q)
 {
 	return free_ctl_wheap(q);
 }
+
+#define ctl_caevs_top_rank	ctl_wheap_top_rank
+#define ctl_caevs_pop		ctl_wheap_pop
+#define ctl_caevs_add		ctl_wheap_add
+#define ctl_caevs_add_deferred	ctl_wheap_add_deferred
+#define ctl_caevs_fix_deferred	ctl_wheap_fix_deferred
 
 #endif	/* INCLUDED_caev_series_h_ */

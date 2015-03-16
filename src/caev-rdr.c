@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "jsmn.h"
 #include "caev-supp.h"
 #include "caev-rdr.h"
 #include "ctl-dfp754.h"
@@ -133,122 +134,213 @@ make_kvv(const struct ctl_kv_s *f, size_t n)
 }
 
 
-ctl_caev_t
-ctl_caev_rdr(echs_instant_t t, const char *s)
+/* readers, all of which write into FLDS */
+static struct ctl_kv_s *kvs;
+static size_t nkvs;
+
+static obint_t caev;
+static obint_t xxdt;
+static obint_t xdte;
+static obint_t effd;
+
+#define CHECK_FLDS(x, i, z)						\
+	if (UNLIKELY((i) >= (z))) {					\
+		const size_t nu = (z) + 64U;				\
+		x = realloc(x, nu * sizeof(*x));			\
+		memset(x + (z), 0, (nu - (z)) * sizeof(*x));		\
+		z = nu;							\
+	}
+
+#define CHECK_XDT				\
+	if (UNLIKELY(!caev)) {			\
+		caev = intern("caev", 4U);	\
+		xxdt = intern("xxdt", 4U);	\
+		xdte = intern("xdte", 4U);	\
+		effd = intern("effd", 4U);	\
+	}
+
+static ctl_kvv_t
+_read_ctlold(const char *s, size_t z)
 {
-	static struct ctl_fld_s *flds;
-	static size_t nflds;
-	ctl_caev_code_t ccod;
-	ctl_caev_t res = ctl_zero_caev();
-	size_t fldi;
+/* ye olde key="value" reader */
+	const char *const ep = s + z;
+	const char *cp;
+	size_t fldi = 0U;
+	size_t caevi = 0U;
+	size_t xxdti = 0U;
+	obint_t xdt = 0U;
 
-	if (*s == '.') {
-		s++;
-	}
-	with (ctl_fld_rdr_t f) {
-		if ((f = __ctl_fldify(s, 4U)) == NULL) {
-			/* not a caev message */
-			goto out;
-		} else if ((ctl_fld_admin_t)f->fc != CTL_FLD_CAEV) {
-			/* a field but not a caev message */
-			goto out;
+	CHECK_XDT;
+	do {
+		char dlm = ' ';
+
+		/* fast forward to a field */
+		for (; s < ep && !isalpha(*s); s++);
+		if (UNLIKELY(s >= ep)) {
+			break;
 		}
-		/* fast forward s then */
-		s += 4U/*CAEV*/ + 1U/*=*/;
-	}
-	/* otherwise try and read the code */
-	switch (*s) {
-	case '"':
-	case '\'':
-		s++;
-		break;
-	default:
-		/* no quotes :/ wish me luck */
-		break;
-	}
-	with (ctl_caev_rdr_t m = __ctl_caev_codify(s, 4U)) {
-		if (LIKELY(m == NULL)) {
-			/* not a caev message */
-			goto out;
+
+		/* fast forward to the assignment */
+		for (cp = s; s < ep && *s != '='; s++);
+		if (UNLIKELY(s >= ep)) {
+			break;
 		}
-		/* otherwise assign the caev code */
-		ccod = m->code;
-		/* and fast forward s */
-		s += 4U;
-	}
 
-#define CHECK_FLDS							\
-	if (UNLIKELY(fldi >= nflds)) {					\
-		const size_t nu = nflds + 64U;				\
-		flds = realloc(flds, nu * sizeof(*flds));		\
-		memset(flds + nflds, 0, (nu - nflds) * sizeof(*flds));	\
-		nflds = nu;						\
-	}
+		/* use CHECK_FLDS from above */
+		CHECK_FLDS(kvs, fldi, nkvs);
 
-	/* reset field counter */
-	fldi = 0U;
-	/* add the instant passed onto us as ex-date */
-	CHECK_FLDS;
-	flds[fldi++] = MAKE_CTL_FLD(admin, CTL_FLD_CAEV, ccod);
-	flds[fldi++] = MAKE_CTL_FLD(date, CTL_FLD_XDTE, t);
-
-	/* now look for .XXXX= or .XXXX/ or XXXX= or XXXX/ */
-	for (const char *sp = s; (sp = strchr(sp, ' ')) != NULL; sp++) {
-		sp++;
-		if (*sp == '{') {
-			/* overread braces */
-			sp++;
+		/* get interned field */
+		kvs[fldi].key = intern(cp, s++ - cp);
+		if (UNLIKELY(s >= ep)) {
+			break;
 		}
-		if (*sp == '.') {
-			/* overread . */
-			sp++;
-		}
-		switch (sp[4U]) {
-			ctl_fld_rdr_t f;
-			ctl_fld_unk_t fc;
-			ctl_fld_val_t fv;
-		case '/':
-		case '=':
-			/* ah, could be a field */
-			if ((f = __ctl_fldify(sp, 4U)) == NULL) {
-				break;
-			}
-			/* otherwise we've got the code */
-			fc = (ctl_fld_unk_t)f->fc;
-			with (const char *vp = sp += 4U) {
-				if (*vp++ != '=') {
-					if ((vp = strchr(vp, '=')) == NULL) {
-						continue;
-					}
-					vp++;
-				}
-				if (*vp == '"' || *vp == '\'') {
-					/* dequote */
-					vp++;
-				}
-				fv = snarf_fv(fc, vp);
-			}
 
-			/* bang to array */
-			if (fldi >= nflds) {
-				const size_t nu = nflds + 64U;
-				flds = realloc(flds, nu * sizeof(*flds));
-				memset(flds + nflds, 0, 64U * sizeof(*flds));
-				nflds = nu;
-			}
-			/* actually add the field now */
-			flds[fldi++] = (ctl_fld_t){{fc}, fv};
+		/* otherwise try and read the code */
+		switch (*s) {
+		case '"':
+		case '\'':
+			dlm = *s;
+			s++;
 			break;
 		default:
+			/* no quotes :/ wish me luck */
 			break;
 		}
+		for (cp = s; s < ep && *s >= ' ' && *s != dlm; s++);
+		if (UNLIKELY(s >= ep)) {
+			break;
+		}
+		/* get interned value */
+		kvs[fldi].val = intern(cp, s - cp);
+
+		/* check if it's a xxdt contributing field */
+		if (kvs[fldi].key == xdte || kvs[fldi].key == effd) {
+			if (!xxdti) {
+				xdt = kvs[fldi].val;
+			}
+		} else if (kvs[fldi].key == xxdt) {
+			/* always track this one */
+			xxdti = fldi + 1U;
+		} else if (kvs[fldi].key == caev) {
+			caevi = fldi + 1U;
+		}
+
+		/* advance field counter */
+		fldi++;
+	} while (1);
+	/* enrich with xxdt? */
+	if (!xxdti && xdt) {
+		CHECK_FLDS(kvs, fldi, nkvs);
+
+		kvs[fldi].key = xxdt;
+		kvs[fldi].val = xdt;
+		xxdti = ++fldi;
 	}
-	/* just let the actual mt564 support figure everything out */
-	res = make_caev(flds, fldi);
-out:
-	return res;
+	/* make sure caev is 0th and xxdt is 1st */
+	if (caevi > 1U) {
+		struct ctl_kv_s c = kvs[caevi - 1U];
+		memmove(kvs + 1U, kvs, (caevi - 1U) * sizeof(*kvs));
+		kvs[0U] = c;
+		if (xxdti < caevi) {
+			/* it's now on pos+1 */
+			xxdti++;
+		}
+	}
+	if (xxdti && xxdti != 2U) {
+		struct ctl_kv_s x = kvs[xxdti - 1U];
+		memmove(kvs + 2U, kvs + 1U, (xxdti - 1U) * sizeof(*kvs));
+		kvs[1U] = x;
+	}
+	return make_kvv(kvs, fldi);
 }
 
+static ctl_kvv_t
+_read_json(const char *s, size_t z)
+{
+/* teh n3w json r33dr */
+	size_t fldi = 0U;
+	jsmn_parser p;
+	jsmntok_t tok[64U];
+	size_t caevi = 0U;
+	size_t xxdti = 0U;
+	obint_t xdt = 0U;
+	int r;
+
+	/* it's a given that we start off with { */
+	if (UNLIKELY(*s != '{' && s[z - 1U] != '}')) {
+		/* not json it's not */
+		return NULL;
+	}
+
+	CHECK_XDT;
+
+	jsmn_init(&p);
+	if ((r = jsmn_parse(&p, s, z, tok, countof(tok))) < 0) {
+		/* didn't work */
+		return NULL;
+	}
+
+	/* top-level element should be an object */
+	if (r < 1 || tok->type != JSMN_OBJECT) {
+		return NULL;
+	}
+
+	/* loop and intern */
+	for (int i = 1; i < r; i++) {
+		const char *ks;
+		size_t kz;
+
+		CHECK_FLDS(kvs, fldi, nkvs);
+		ks = s + tok[i].start;
+		kz = tok[i].end - tok[i].start;
+		kvs[fldi].key = intern(ks, kz);
+		i++;
+		ks = s + tok[i].start;
+		kz = tok[i].end - tok[i].start;
+		kvs[fldi].val = intern(ks, kz);
+
+		/* check if it's a xxdt contributing field */
+		if (kvs[fldi].key == xdte || kvs[fldi].key == effd) {
+			if (!xxdti) {
+				xdt = kvs[fldi].val;
+			}
+		} else if (kvs[fldi].key == xxdt) {
+			/* always track this one */
+			xxdti = fldi + 1U;
+		} else if (kvs[fldi].key == caev) {
+			caevi = fldi + 1U;
+		}
+
+		/* advance field index */
+		fldi++;
+	}
+	/* enrich with xxdt? */
+	if (!xxdti && xdt) {
+		CHECK_FLDS(kvs, fldi, nkvs);
+
+		kvs[fldi].key = xxdt;
+		kvs[fldi].val = xdt;
+		xxdti = ++fldi;
+	}
+	/* make sure caev is 0th and xxdt is 1st */
+	if (caevi > 1U) {
+		struct ctl_kv_s c = kvs[caevi - 1U];
+		memmove(kvs + 1U, kvs, (caevi - 1U) * sizeof(*kvs));
+		kvs[0U] = c;
+		if (xxdti < caevi) {
+			/* it's now on pos+1 */
+			xxdti++;
+		}
+	}
+	if (xxdti && xxdti != 2U) {
+		struct ctl_kv_s x = kvs[xxdti - 1U];
+		memmove(kvs + 2U, kvs + 1U, (xxdti - 1U) * sizeof(*kvs));
+		kvs[1U] = x;
+	}
+	return make_kvv(kvs, fldi);
+}
+
+
 __attribute__((pure, const)) ctl_caev_code_t
 ctl_kvv_get_caev_code(ctl_kvv_t fldv)
 {
@@ -299,7 +391,7 @@ ctl_kvv_get_caev(ctl_kvv_t fldv)
 	/* reset field counter */
 	fldi = 0U;
 	/* add the instant passed onto us as ex-date */
-	CHECK_FLDS;
+	CHECK_FLDS(flds, fldi, nflds);
 	flds[fldi++] = MAKE_CTL_FLD(admin, CTL_FLD_CAEV, ccod);
 	/* go through all them fields then */
 	for (size_t i = 1U; i < fldv->nkvv; i++) {
@@ -318,7 +410,7 @@ ctl_kvv_get_caev(ctl_kvv_t fldv)
 		fv = snarf_fv(fc, v);
 
 		/* bang to array */
-		CHECK_FLDS;
+		CHECK_FLDS(flds, fldi, nflds);
 		/* actually add the field now */
 		flds[fldi++] = (ctl_fld_t){{fc}, fv};
 	}
@@ -329,51 +421,20 @@ out:
 }
 
 ctl_kvv_t
-ctl_kv_rdr(const char *s)
+ctl_kv_rdr(const char *msg, size_t len)
 {
-	static struct ctl_kv_s *flds;
-	static size_t nflds;
-	const char *cp;
-	size_t fldi = 0U;
-
-	do {
-		char ep = ' ';
-
-		/* fast forward to a field */
-		for (; *s && !isalpha(*s); s++);
-		if (!*s) {
-			break;
-		}
-
-		/* fast forward to the assignment */
-		for (cp = s; *s != '='; s++);
-
-		/* use CHECK_FLDS from above */
-		CHECK_FLDS;
-
-		/* get interned field */
-		flds[fldi].key = intern(cp, s++ - cp);
-
-		/* otherwise try and read the code */
-		switch (*s) {
-		case '"':
-		case '\'':
-			ep = *s;
-			s++;
-			break;
-		default:
-			/* no quotes :/ wish me luck */
-			break;
-		}
-		for (cp = s; *s >= ' ' && *s != ep; s++);
-		/* get interned value */
-		flds[fldi++].val = intern(cp, s - cp);
-	} while (1);
-	return make_kvv(flds, fldi);
+	if (UNLIKELY(len == 0U)) {
+		return NULL;
+	} else if (LIKELY(*msg == '{')) {
+		/* json! */
+		return _read_json(msg, len);
+	}
+	/* otherwise try that old key=value thing */
+	return _read_ctlold(msg, len);
 }
 
 void
-free_kvv(ctl_kvv_t f)
+ctl_free_kvv(ctl_kvv_t f)
 {
 	free(f);
 	return;

@@ -70,6 +70,8 @@ struct ctl_ctx_s {
 	unsigned int abs_prec:1;
 	/* generic all flag */
 	unsigned int all:1;
+	/* whether to print the xdte first */
+	unsigned int xdt:1;
 
 	/* use prec fractional digits if abs_prec */
 	signed int prec;
@@ -129,15 +131,15 @@ declcoru(co_appl_pop, {
 
 static const struct pop_res_s {
 	echs_instant_t t;
-	colour_t msg;
+	ctl_kvv_t msg;
 } *defcoru(co_appl_pop, c, UNUSED(arg))
 {
 	/* we'll yield a pop_res_s */
 	struct pop_res_s res;
 
-	while (!echs_nul_instant_p(res.t = ctl_wheap_top_rank(c->q))) {
+	while (!echs_nul_instant_p(res.t = ctl_caevs_top_rank(c->q))) {
 		/* assign colour value */
-		res.msg = ctl_wheap_pop(c->q);
+		res.msg = ctl_caevs_pop(c->q);
 		yield(res);
 	}
 	return 0;
@@ -240,38 +242,6 @@ massage_adj(const struct echs_fund_s *msg)
 }
 
 
-/* public api, might go to libcattle one day */
-static int
-ctl_read_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
-{
-/* wants a const char *fn */
-	coru_t rdr;
-	FILE *f;
-
-	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
-		f = stdin;
-	} else if (UNLIKELY((f = fopen(fn, "r")) == NULL)) {
-		return -1;
-	}
-
-	init_coru();
-	rdr = make_coru(ctl_co_rdr, f);
-
-	for (const struct ctl_co_rdr_res_s *ln; (ln = next(rdr));) {
-		/* try to read the whole shebang */
-		ctl_caev_t c = ctl_caev_rdr(ln->t, ln->ln);
-
-		/* insert to heap */
-		ctl_wheap_add_deferred(ctx->q, ln->t, (colour_t){c});
-	}
-	/* now sort the guy */
-	ctl_wheap_fix_deferred(ctx->q);
-	free_coru(rdr);
-	fclose(f);
-	fini_coru();
-	return 0;
-}
-
 static int
 ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 {
@@ -314,9 +284,7 @@ ctl_appl_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     LIKELY(ev != NULL) &&
 			     UNLIKELY(!echs_instant_lt_p(ln->t, ev->t));
 		     ev = next(pop)) {
-			ctl_caev_t caev;
-
-			caev = ev->msg.c;
+			ctl_caev_t caev = ctl_kvv_get_caev(ev->msg);
 
 			/* compute the new sum */
 			if (!ctx->rev) {
@@ -413,7 +381,7 @@ ctl_fadj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 				goto out;
 			}
 
-			caev = ev->msg.c;
+			caev = ctl_kvv_get_caev(ev->msg);
 			aadj = (float)caev.mktprc.a;
 
 			if (UNLIKELY(ctx->rev)) {
@@ -527,10 +495,9 @@ ctl_badj_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			     (UNLIKELY(ln == NULL) ||
 			      UNLIKELY(!echs_instant_lt_p(ln->t, ev->t)));
 		     ev = next(pop)) {
-			ctl_caev_t caev;
+			ctl_caev_t caev = ctl_kvv_get_caev(ev->msg);
 			struct fa_s cell;
 
-			caev = ev->msg.c;
 			cell.last = last;
 			cell.aadj = (float)caev.mktprc.a;
 			cell.t = ev->t;
@@ -702,11 +669,10 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     ev = next(pop)) {
 			char *bp = pr_buf;
 			const char *const ep = pr_buf + sizeof(pr_buf);
-			ctl_kvv_t kvv = ev->msg.flds;
-			ctl_caev_t caev;
+			ctl_kvv_t kvv = ev->msg;
+			ctl_caev_t caev = ctl_kvv_get_caev(ev->msg);
 			bool rawify = false;
 
-			caev = ctl_kvv_get_caev(kvv);
 			if (caev.mktprc.a != 0.df) {
 				ctl_ratio_t r =
 					ctl_price_return(
@@ -724,12 +690,14 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 			}
 
 			/* print caev */
-			bp += dt_strf(bp, ep - bp, ev->t);
-			*bp++ = '\t';
+			if (ctx->xdt) {
+				bp += dt_strf(bp, ep - bp, ev->t);
+				*bp++ = '\t';
+			}
 			if (rawify) {
-				bp += ctl_caev_wrr(bp, ep - bp, caev);
+				bp += ctl_caev_wrr(bp, ep - bp, ev->t, caev);
 			} else {
-				bp += ctl_kv_wrr(bp, ep - bp, kvv);
+				bp += ctl_kv_wrr(bp, ep - bp, ev->t, kvv);
 			}
 			*bp++ = '\n';
 			*bp = '\0';
@@ -795,7 +763,7 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 		     ev = next(pop)) {
 			char *bp = pr_buf;
 			const char *const ep = pr_buf + sizeof(pr_buf);
-			ctl_kvv_t v = ev->msg.flds;
+			ctl_kvv_t v = ev->msg;
 			ctl_caev_t caev;
 			bool rawify = false;
 
@@ -824,12 +792,14 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 		prnt:
 			/* print caev */
-			bp += dt_strf(bp, ep - bp, ev->t);
-			*bp++ = '\t';
+			if (ctx->xdt) {
+				bp += dt_strf(bp, ep - bp, ev->t);
+				*bp++ = '\t';
+			}
 			if (rawify) {
-				bp += ctl_caev_wrr(bp, ep - bp, caev);
+				bp += ctl_caev_wrr(bp, ep - bp, ev->t, caev);
 			} else {
-				bp += ctl_kv_wrr(bp, ep - bp, v);
+				bp += ctl_kv_wrr(bp, ep - bp, ev->t, v);
 			}
 			*bp++ = '\n';
 			*bp = '\0';
@@ -849,15 +819,16 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 
 /* printer commands */
 static int
-ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
+ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 {
 	ctl_caev_t prev = ctl_zero_caev();
 	echs_instant_t prev_t = {.u = 0U};
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
-		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
+	     !echs_nul_instant_p(t = ctl_caevs_top_rank(ctx->q)); prev_t = t) {
+		ctl_kvv_t msg = ctl_caevs_pop(ctx->q);
+		ctl_caev_t this = ctl_kvv_get_caev(msg);
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
 
@@ -871,13 +842,15 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 		/* keep track of this caev for the next uniquify run */
 		prev = this;
 
-		if (revp) {
+		if (ctx->rev) {
 			this = ctl_caev_inv(this);
 		}
 
-		bp += dt_strf(bp, ep - bp, t);
-		*bp++ = '\t';
-		bp += ctl_caev_wrr(bp, ep - bp, this);
+		if (ctx->xdt) {
+			bp += dt_strf(bp, ep - bp, t);
+			*bp++ = '\t';
+		}
+		bp += ctl_caev_wrr(bp, ep - bp, t, this);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(pr_buf, stdout);
@@ -886,7 +859,7 @@ ctl_print_raw(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 }
 
 static int
-ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
+ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 {
 	ctl_caev_t sum = ctl_zero_caev();
 	ctl_caev_t prev = sum;
@@ -894,8 +867,9 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
-		ctl_caev_t this = ctl_wheap_pop(ctx->q).c;
+	     !echs_nul_instant_p(t = ctl_caevs_top_rank(ctx->q)); prev_t = t) {
+		ctl_kvv_t msg = ctl_caevs_pop(ctx->q);
+		ctl_caev_t this = ctl_kvv_get_caev(msg);
 
 		if (uniqp) {
 			if (echs_instant_eq_p(prev_t, t) &&
@@ -907,7 +881,7 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 		/* keep track of this caev for the next uniquify run */
 		prev = this;
 
-		if (revp) {
+		if (ctx->rev) {
 			this = ctl_caev_inv(this);
 		}
 
@@ -919,7 +893,7 @@ ctl_print_sum(struct ctl_ctx_s ctx[static 1U], bool uniqp, bool revp)
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
 
-		bp += ctl_caev_wrr(bp, ep - bp, sum);
+		bp += ctl_caev_wrr(bp, ep - bp, echs_nul_instant(), sum);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(pr_buf, stdout);
@@ -935,8 +909,8 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 	int res = 0;
 
 	for (echs_instant_t t;
-	     !echs_nul_instant_p(t = ctl_wheap_top_rank(ctx->q)); prev_t = t) {
-		ctl_kvv_t this = ctl_wheap_pop(ctx->q).flds;
+	     !echs_nul_instant_p(t = ctl_caevs_top_rank(ctx->q)); prev_t = t) {
+		ctl_kvv_t this = ctl_caevs_pop(ctx->q);
 		char *bp = pr_buf;
 		const char *const ep = pr_buf + sizeof(pr_buf);
 
@@ -951,10 +925,12 @@ ctl_print_kv(struct ctl_ctx_s ctx[static 1U], bool uniqp)
 			prev_c = this_c;
 		}
 
-		bp += dt_strf(bp, ep - bp, t);
-		*bp++ = '\t';
-		bp += ctl_kv_wrr(bp, ep - bp, this);
-		free_kvv(this);
+		if (ctx->xdt) {
+			bp += dt_strf(bp, ep - bp, t);
+			*bp++ = '\t';
+		}
+		bp += ctl_kv_wrr(bp, ep - bp, t, this);
+		ctl_free_kvv(this);
 		*bp++ = '\n';
 		*bp = '\0';
 		fputs(pr_buf, stdout);
@@ -996,7 +972,6 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 	static struct ctl_ctx_s ctx[1];
 	bool rawp = argi->raw_flag;
 	bool uniqp = argi->unique_flag;
-	bool revp = argi->reverse_flag;
 	int rc = 1;
 
 	if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
@@ -1011,18 +986,13 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 		rawp = true;
 	}
 
-	if (argi->nargs == 0U && !rawp) {
+	if (argi->nargs == 0U) {
 		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			goto out;
 		}
-	} else if (argi->nargs == 0U) {
-		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
-			error("cannot read from stdin");
-			goto out;
-		}
 	}
-	for (size_t i = 0U; i < argi->nargs && !rawp; i++) {
+	for (size_t i = 0U; i < argi->nargs; i++) {
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
@@ -1030,20 +1000,15 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 			goto out;
 		}
 	}
-	for (size_t i = 0U; i < argi->nargs && rawp; i++) {
-		const char *fn = argi->args[i];
-
-		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
-			error("cannot open file `%s'", fn);
-			goto out;
-		}
-	}
+	/* set flags */
+	ctx->xdt = argi->xdte_flag;
+	ctx->rev = argi->reverse_flag;
 
 	if (!rawp && ctl_print_kv(ctx, uniqp) >= 0) {
 		rc = 0;
-	} else if (argi->summary_flag && ctl_print_sum(ctx, uniqp, revp) >= 0) {
+	} else if (argi->summary_flag && ctl_print_sum(ctx, uniqp) >= 0) {
 		rc = 0;
-	} else if (rawp && ctl_print_raw(ctx, uniqp, revp) >= 0) {
+	} else if (rawp && ctl_print_raw(ctx, uniqp) >= 0) {
 		rc = 0;
 	}
 
@@ -1064,7 +1029,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 		yuck_auto_help((const void*)argi);
 		res = 1;
 		goto out;
-	} else if (UNLIKELY((ctx->q = make_ctl_wheap()) == NULL)) {
+	} else if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
 		res = 1;
 		goto out;
 	}
@@ -1093,7 +1058,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
-		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
 			res = 1;
 			goto out;
@@ -1102,7 +1067,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 	for (size_t i = 1U; i < argi->nargs; i++) {
 		const char *fn = argi->args[i];
 
-		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
+		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open caev file `%s'", fn);
 			res = 1;
 			goto out;
@@ -1135,7 +1100,7 @@ cannot deduce factors for total return adjustment from `%s'", tser_fn);
 
 out:
 	if (LIKELY(ctx->q != NULL)) {
-		free_ctl_wheap(ctx->q);
+		free_ctl_caevs(ctx->q);
 		ctx->q = NULL;
 	}
 	return res;
@@ -1156,6 +1121,9 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		goto out;
 	}
 
+	/* sanrf some options */
+	ctx->xdt = argi->xdte_flag;
+
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
@@ -1173,6 +1141,9 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 			goto out;
 		}
 	}
+
+	/* sanrf some options */
+	ctx->xdt = argi->xdte_flag;
 
 	/* open time series file */
 	with (const char *tser_fn = argi->args[0U]) {

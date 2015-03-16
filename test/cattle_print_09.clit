@@ -1,13 +1,13 @@
 #!/usr/bin/clitoris ## -*- shell-script -*-
 
 $ cattle print "${srcdir}/cattle_12.echs" "${srcdir}/cattle_13.echs" --raw
-2013-10-04	caev=CTL1 {.xmkt="-2.00+0<-0" .xnom="0+0<-0" .xout="0+0<-0"}
-2013-10-04	caev=CTL1 {.xmkt="-2.00+0<-0" .xnom="0+0<-0" .xout="0+0<-0"}
-2013-10-07	caev=CTL1 {.xmkt="-2.00+0<-0" .xnom="0+0<-0" .xout="0+0<-0"}
-2013-10-07	caev=CTL1 {.xmkt="-2.00+0<-0" .xnom="0+0<-0" .xout="0+0<-0"}
-2013-10-08	caev=CTL1 {.xmkt="0+1<-2" .xnom="0+1<-2" .xout="0+2<-1"}
-2013-10-09	caev=CTL1 {.xmkt="-1.00+0<-0" .xnom="0+0<-0" .xout="0+0<-0"}
-2013-10-09	caev=CTL1 {.xmkt="-0.50+0<-0" .xnom="0+0<-0" .xout="0+0<-0"}
+{"caev":"CTL1","xxdt":"2013-10-04","xmkt":"-2.00+0<-0","xnom":"0+0<-0","xout":"0+0<-0"}
+{"caev":"CTL1","xxdt":"2013-10-04","xmkt":"-2.00+0<-0","xnom":"0+0<-0","xout":"0+0<-0"}
+{"caev":"CTL1","xxdt":"2013-10-07","xmkt":"-2.00+0<-0","xnom":"0+0<-0","xout":"0+0<-0"}
+{"caev":"CTL1","xxdt":"2013-10-07","xmkt":"-2.00+0<-0","xnom":"0+0<-0","xout":"0+0<-0"}
+{"caev":"CTL1","xxdt":"2013-10-08","xmkt":"0+1<-2","xnom":"0+1<-2","xout":"0+2<-1"}
+{"caev":"CTL1","xxdt":"2013-10-09","xmkt":"-1.00+0<-0","xnom":"0+0<-0","xout":"0+0<-0"}
+{"caev":"CTL1","xxdt":"2013-10-09","xmkt":"-0.50+0<-0","xnom":"0+0<-0","xout":"0+0<-0"}
 $
 
 ## cattle_09.clit ends here

@@ -220,19 +220,19 @@ mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
 	const int prot = PROT_READ | PROT_WRITE;
 	const int mapf = MAP_ANON | MAP_PRIVATE;
 
-	if (mb->bof + z > mb->max) {
+	if (mb->bof + z + 1U > mb->max) {
 	flush:
 		/* flush to disk */
 		if (mb_flsh(mb) < 0) {
 			return -1;
 		}
 
-	} else if (mb->bof + z > mb->bsz) {
+	} else if (mb->bof + z + 1U > mb->bsz) {
 		char *const old = mb->buf;
 		const size_t olz = mb->bsz;
 
 		/* calc new size */
-		for (mb->bsz *= 2U; mb->bof + z > mb->bsz; mb->bsz *= 2U);
+		for (mb->bsz *= 2U; mb->bof + z + 1U > mb->bsz; mb->bsz *= 2U);
 		/* check if we need to resort to the disk */
 		if (UNLIKELY(mb->bsz > mb->max)) {
 			/* yep */
@@ -255,7 +255,8 @@ mb_cat(struct membuf_s *restrict mb, const char *s, size_t z)
 		}
 	}
 	memcpy(mb->buf + mb->bof, s, z);
-	mb->bof += z/*including \n*/;
+	mb->bof += z;
+	mb->buf[mb->bof++] = '\0';
 	return 0;
 }
 
@@ -299,21 +300,30 @@ rewind:
 
 		if (*line == '#') {
 			continue;
-		} else if (echs_nul_instant_p(res.t = dt_strp(line, &p))) {
-			continue;
-		} else if (*p != '\t') {
+		} else if ((res.t = dt_strp(line, &p),
+			    *p != '\t' && *p != '{')) {
 			continue;
 		}
 		/* \nul out the line */
-		line[nrd - 1] = '\0';
+		if (line[nrd - 1] == '\n') {
+			line[--nrd] = '\0';
+		}
+		/* more \nul'ing */
+		if (line[nrd - 1] == '\r') {
+			line[--nrd] = '\0';
+		}
 		/* check if this guy needs buffering */
 		if (mb.buf != NULL && mb_cat(&mb, line, nrd) < 0) {
 			/* big bugger */
 			goto out;
 		}
 		/* pack the result structure */
-		res.ln = p + 1U;
-		res.lz = nrd - 1/*\n*/ - (p + 1U - line);
+		if (!echs_nul_instant_p(res.t)) {
+			res.ln = p + 1U;
+		} else {
+			res.ln = p;
+		}
+		res.lz = nrd - (res.ln - line);
 		yield(res);
 	}
 
@@ -349,8 +359,12 @@ rewind:
 					break;
 				}
 				res.t = dt_strp(bp, &p);
-				res.ln = p + 1U;
-				res.lz = eol - p - 1U;
+				if (!echs_nul_instant_p(res.t)) {
+					res.ln = p + 1U;
+				} else {
+					res.ln = p;
+				}
+				res.lz = eol - p;
 				/* increment by line length */
 				bp = eol;
 				/* and yield */
@@ -430,7 +444,8 @@ ctl_caev_sum(ctl_caevs_t cs)
 
 	ctl_wheap_sort(cs);
 	for (size_t i = 0; i < cs->n; i++) {
-		sum = ctl_caev_add(sum, cs->colours[i].c);
+		ctl_caev_t tmp = ctl_kvv_get_caev(cs->colours[i]);
+		sum = ctl_caev_add(sum, tmp);
 	}
 	return sum;
 }
@@ -439,11 +454,13 @@ int
 ctl_read_caevs(ctl_caevs_t q, const char *fn)
 {
 /* wants a const char *fn */
+	static obint_t xxdt;
 	coru_t rdr;
 	FILE *f;
 
 	/* initialise coru core singleton */
 	init_coru_core();
+	xxdt = intern("xxdt", 4U);
 
 	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
 		f = stdin;
@@ -456,10 +473,20 @@ ctl_read_caevs(ctl_caevs_t q, const char *fn)
 
 	for (const struct ctl_co_rdr_res_s *ln; (ln = next(rdr));) {
 		/* try to read the whole shebang */
-		ctl_kvv_t v = ctl_kv_rdr(ln->ln);
+		ctl_kvv_t v = ctl_kv_rdr(ln->ln, ln->lz);
+		echs_instant_t t = ln->t;
+
+		if (UNLIKELY(v == NULL || v->nkvv == 0U)) {
+			/* fuck it */
+			continue;
+		}
+		/* check for xxdt */
+		if (LIKELY(v->nkvv > 1U && v->kvv[1U].key == xxdt)) {
+			t = dt_strp(obint_name(v->kvv[1U].val), NULL);
+		}
 
 		/* insert to heap */
-		ctl_wheap_add_deferred(q, ln->t, (colour_t){.flds = v});
+		ctl_wheap_add_deferred(q, t, (colour_t)v);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(q);
