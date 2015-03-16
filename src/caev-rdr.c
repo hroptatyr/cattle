@@ -138,6 +138,7 @@ make_kvv(const struct ctl_kv_s *f, size_t n)
 static struct ctl_kv_s *kvs;
 static size_t nkvs;
 
+static obint_t caev;
 static obint_t xxdt;
 static obint_t xdte;
 static obint_t effd;
@@ -151,7 +152,8 @@ static obint_t effd;
 	}
 
 #define CHECK_XDT				\
-	if (UNLIKELY(!xxdt)) {			\
+	if (UNLIKELY(!caev)) {			\
+		caev = intern("caev", 4U);	\
 		xxdt = intern("xxdt", 4U);	\
 		xdte = intern("xdte", 4U);	\
 		effd = intern("effd", 4U);	\
@@ -164,6 +166,8 @@ _read_ctlold(const char *s, size_t z)
 	const char *const ep = s + z;
 	const char *cp;
 	size_t fldi = 0U;
+	size_t caevi = 0U;
+	size_t xxdti = 0U;
 	obint_t xdt = 0U;
 
 	CHECK_XDT;
@@ -211,22 +215,41 @@ _read_ctlold(const char *s, size_t z)
 
 		/* check if it's a xxdt contributing field */
 		if (kvs[fldi].key == xdte || kvs[fldi].key == effd) {
-			if (!xdt) {
+			if (!xxdti) {
 				xdt = kvs[fldi].val;
 			}
 		} else if (kvs[fldi].key == xxdt) {
 			/* always track this one */
-			xdt = -1U;
+			xxdti = fldi + 1U;
+		} else if (kvs[fldi].key == caev) {
+			caevi = fldi + 1U;
 		}
 
 		/* advance field counter */
 		fldi++;
 	} while (1);
-	/* enrich with xxdt */
-	if (xdt && xdt != -1U) {
+	/* enrich with xxdt? */
+	if (!xxdti && xdt) {
+		CHECK_FLDS(kvs, fldi, nkvs);
+
 		kvs[fldi].key = xxdt;
 		kvs[fldi].val = xdt;
-		fldi++;
+		xxdti = ++fldi;
+	}
+	/* make sure caev is 0th and xxdt is 1st */
+	if (caevi > 1U) {
+		struct ctl_kv_s c = kvs[caevi - 1U];
+		memmove(kvs + 1U, kvs, (caevi - 1U) * sizeof(*kvs));
+		kvs[0U] = c;
+		if (xxdti < caevi) {
+			/* it's now on pos+1 */
+			xxdti++;
+		}
+	}
+	if (xxdti && xxdti != 2U) {
+		struct ctl_kv_s x = kvs[xxdti - 1U];
+		memmove(kvs + 2U, kvs + 1U, (xxdti - 1U) * sizeof(*kvs));
+		kvs[1U] = x;
 	}
 	return make_kvv(kvs, fldi);
 }
@@ -238,6 +261,8 @@ _read_json(const char *s, size_t z)
 	size_t fldi = 0U;
 	jsmn_parser p;
 	jsmntok_t tok[64U];
+	size_t caevi = 0U;
+	size_t xxdti = 0U;
 	obint_t xdt = 0U;
 	int r;
 
@@ -276,22 +301,41 @@ _read_json(const char *s, size_t z)
 
 		/* check if it's a xxdt contributing field */
 		if (kvs[fldi].key == xdte || kvs[fldi].key == effd) {
-			if (!xdt) {
+			if (!xxdti) {
 				xdt = kvs[fldi].val;
 			}
 		} else if (kvs[fldi].key == xxdt) {
 			/* always track this one */
-			xdt = -1U;
+			xxdti = fldi + 1U;
+		} else if (kvs[fldi].key == caev) {
+			caevi = fldi + 1U;
 		}
 
 		/* advance field index */
 		fldi++;
 	}
-	/* enrich with xxdt */
-	if (xdt && xdt != -1U) {
+	/* enrich with xxdt? */
+	if (!xxdti && xdt) {
+		CHECK_FLDS(kvs, fldi, nkvs);
+
 		kvs[fldi].key = xxdt;
 		kvs[fldi].val = xdt;
-		fldi++;
+		xxdti = ++fldi;
+	}
+	/* make sure caev is 0th and xxdt is 1st */
+	if (caevi > 1U) {
+		struct ctl_kv_s c = kvs[caevi - 1U];
+		memmove(kvs + 1U, kvs, (caevi - 1U) * sizeof(*kvs));
+		kvs[0U] = c;
+		if (xxdti < caevi) {
+			/* it's now on pos+1 */
+			xxdti++;
+		}
+	}
+	if (xxdti && xxdti != 2U) {
+		struct ctl_kv_s x = kvs[xxdti - 1U];
+		memmove(kvs + 2U, kvs + 1U, (xxdti - 1U) * sizeof(*kvs));
+		kvs[1U] = x;
 	}
 	return make_kvv(kvs, fldi);
 }

@@ -451,11 +451,13 @@ int
 ctl_read_caevs(ctl_caevs_t q, const char *fn)
 {
 /* wants a const char *fn */
+	static obint_t xxdt;
 	coru_t rdr;
 	FILE *f;
 
 	/* initialise coru core singleton */
 	init_coru_core();
+	xxdt = intern("xxdt", 4U);
 
 	if (fn == NULL || fn[0U] == '-' && fn[1U] == '\0') {
 		f = stdin;
@@ -469,9 +471,15 @@ ctl_read_caevs(ctl_caevs_t q, const char *fn)
 	for (const struct ctl_co_rdr_res_s *ln; (ln = next(rdr));) {
 		/* try to read the whole shebang */
 		ctl_kvv_t v = ctl_kv_rdr(ln->ln, ln->lz);
+		echs_instant_t t = ln->t;
+
+		/* check for xxdt */
+		if (LIKELY(v->kvv[1U].key == xxdt)) {
+			t = dt_strp(obint_name(v->kvv[1U].val), NULL);
+		}
 
 		/* insert to heap */
-		ctl_wheap_add_deferred(q, ln->t, (colour_t)v);
+		ctl_wheap_add_deferred(q, t, (colour_t)v);
 	}
 	/* now sort the guy */
 	ctl_wheap_fix_deferred(q);
