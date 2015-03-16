@@ -135,20 +135,21 @@ make_kvv(const struct ctl_kv_s *f, size_t n)
 
 
 /* readers, all of which write into FLDS */
-#define CHECK_FLDS							\
-	if (UNLIKELY(fldi >= nflds)) {					\
-		const size_t nu = nflds + 64U;				\
-		flds = realloc(flds, nu * sizeof(*flds));		\
-		memset(flds + nflds, 0, (nu - nflds) * sizeof(*flds));	\
-		nflds = nu;						\
+static struct ctl_kv_s *kvs;
+static size_t nkvs;
+
+#define CHECK_FLDS(x, i, z)						\
+	if (UNLIKELY((i) >= (z))) {					\
+		const size_t nu = (z) + 64U;				\
+		x = realloc(x, nu * sizeof(*x));			\
+		memset(x + (z), 0, (nu - (z)) * sizeof(*x));		\
+		z = nu;							\
 	}
 
 static ctl_kvv_t
 _read_ctlold(const char *s, size_t z)
 {
 /* ye olde key="value" reader */
-	static struct ctl_kv_s *flds;
-	static size_t nflds;
 	const char *const ep = s + z;
 	const char *cp;
 	size_t fldi = 0U;
@@ -169,10 +170,10 @@ _read_ctlold(const char *s, size_t z)
 		}
 
 		/* use CHECK_FLDS from above */
-		CHECK_FLDS;
+		CHECK_FLDS(kvs, fldi, nkvs);
 
 		/* get interned field */
-		flds[fldi].key = intern(cp, s++ - cp);
+		kvs[fldi].key = intern(cp, s++ - cp);
 		if (UNLIKELY(s >= ep)) {
 			break;
 		}
@@ -193,17 +194,15 @@ _read_ctlold(const char *s, size_t z)
 			break;
 		}
 		/* get interned value */
-		flds[fldi++].val = intern(cp, s - cp);
+		kvs[fldi++].val = intern(cp, s - cp);
 	} while (1);
-	return make_kvv(flds, fldi);
+	return make_kvv(kvs, fldi);
 }
 
 static ctl_kvv_t
 _read_json(const char *s, size_t z)
 {
 /* teh n3w json r33dr */
-	static struct ctl_kv_s *flds;
-	static size_t nflds;
 	size_t fldi = 0U;
 	jsmn_parser p;
 	jsmntok_t tok[64U];
@@ -231,17 +230,17 @@ _read_json(const char *s, size_t z)
 		const char *ks;
 		size_t kz;
 
-		CHECK_FLDS;
+		CHECK_FLDS(kvs, fldi, nkvs);
 		ks = s + tok[i].start;
 		kz = tok[i].end - tok[i].start;
-		flds[fldi].key = intern(ks, kz);
+		kvs[fldi].key = intern(ks, kz);
 		i++;
 		ks = s + tok[i].start;
 		kz = tok[i].end - tok[i].start;
-		flds[fldi].val = intern(ks, kz);
+		kvs[fldi].val = intern(ks, kz);
 		fldi++;
 	}
-	return make_kvv(flds, fldi);
+	return make_kvv(kvs, fldi);
 }
 
 
@@ -295,7 +294,7 @@ ctl_kvv_get_caev(ctl_kvv_t fldv)
 	/* reset field counter */
 	fldi = 0U;
 	/* add the instant passed onto us as ex-date */
-	CHECK_FLDS;
+	CHECK_FLDS(flds, fldi, nflds);
 	flds[fldi++] = MAKE_CTL_FLD(admin, CTL_FLD_CAEV, ccod);
 	/* go through all them fields then */
 	for (size_t i = 1U; i < fldv->nkvv; i++) {
@@ -314,7 +313,7 @@ ctl_kvv_get_caev(ctl_kvv_t fldv)
 		fv = snarf_fv(fc, v);
 
 		/* bang to array */
-		CHECK_FLDS;
+		CHECK_FLDS(flds, fldi, nflds);
 		/* actually add the field now */
 		flds[fldi++] = (ctl_fld_t){{fc}, fv};
 	}
