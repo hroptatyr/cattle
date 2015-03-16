@@ -476,6 +476,10 @@ ctl_read_caevs(ctl_caevs_t q, const char *fn)
 		ctl_kvv_t v = ctl_kv_rdr(ln->ln, ln->lz);
 		echs_instant_t t = ln->t;
 
+		if (UNLIKELY(v == NULL || v->nkvv == 0U)) {
+			/* fuck it */
+			continue;
+		}
 		/* check for xxdt */
 		if (LIKELY(v->kvv[1U].key == xxdt)) {
 			t = dt_strp(obint_name(v->kvv[1U].val), NULL);
