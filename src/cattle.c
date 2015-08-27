@@ -1536,8 +1536,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
-			error("Error: cannot open file `%s'", fn);
-			goto out;
+			error("Warning: cannot open file `%s'", fn);
 		}
 	}
 
@@ -1605,9 +1604,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
-			error("Error: cannot open caev file `%s'", fn);
-			rc = 1;
-			goto out;
+			error("Warning: cannot open caev file `%s'", fn);
 		}
 	}
 
@@ -1670,9 +1667,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
-			error("Error: cannot open caev file `%s'", fn);
-			rc = 1;
-			goto out;
+			error("Warning: cannot open caev file `%s'", fn);
 		}
 	}
 
@@ -1726,9 +1721,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
-			error("Error: cannot open caev file `%s'", fn);
-			rc = 1;
-			goto out;
+			error("Warning: cannot open caev file `%s'", fn);
 		}
 	}
 
