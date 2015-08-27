@@ -26,14 +26,16 @@ AC_COPYRIGHT([dnl
 AM_INIT_AUTOMAKE([foreign parallel-tests dist-xz color-tests subdir-objects])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-AX_YUCK_SCMVER([version.mk])
-AC_CONFIG_LINKS([GNUmakefile:GNUmakefile])
-
 ## the build chain
 AC_PROG_CC([icc gcc cc])
 SXE_CHECK_CC([gnu11 gnu99])
 SXE_CHECK_CFLAGS
 AC_C_BIGENDIAN
+
+## check for yuck helper
+AX_CHECK_YUCK([with_included_yuck="yes"])
+AX_YUCK_SCMVER([version.mk])
+AC_CONFIG_LINKS([GNUmakefile:GNUmakefile])
 
 SXE_CHECK_DFP754
 ## big barf if dfp754 support isn't there
@@ -91,9 +93,6 @@ AM_CONDITIONAL([USE_ASM_CORUS], [test "${use_asm_corus}" = "yes"])
 if test "${use_asm_corus}" = "yes"; then
 	AC_DEFINE([USE_ASM_CORUS], [1], [Whether to use asm backed coroutines])
 fi
-
-## check for yuck helper
-AX_CHECK_YUCK([with_included_yuck="yes"])
 
 ## check for clitoris helper
 AX_CHECK_CLITORIS
