@@ -1,13 +1,14 @@
 language: c
 
+sudo: false
+
 compiler:
   - gcc
 
-before_install:
-  - sudo apt-get -qq update
-
-install:
-  - sudo apt-get install -qq gperf
+addons:
+  apt:
+    packages:
+      - gperf
 
 before_script:
   - autoreconf -vfi
