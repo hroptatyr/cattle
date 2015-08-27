@@ -1023,14 +1023,14 @@ static int
 cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 {
 	static struct ctl_ctx_s ctx[1];
-	int res = 0;
+	int rc = 0;
 
 	if (argi->nargs < 1U) {
 		yuck_auto_help((const void*)argi);
-		res = 1;
+		rc = 1;
 		goto out;
 	} else if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
-		res = 1;
+		rc = 1;
 		goto out;
 	}
 
@@ -1051,7 +1051,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 		}
 		if ((ctx->prec = -strtol(p, &on, 10), *on)) {
 			error("invalid precision `%s'", argi->precision_arg);
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1060,7 +1060,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1069,7 +1069,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 
 		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open caev file `%s'", fn);
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1081,19 +1081,19 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 			if (UNLIKELY(ctl_badj_caev_file(ctx, tser_fn) < 0)) {
 				error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
+				rc = 1;
 				goto out;
 			}
 		} else if (argi->total_return_flag/* && ctx->fwd */) {
 			if (UNLIKELY(ctl_fadj_caev_file(ctx, tser_fn) < 0)) {
 				error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
-				res = 1;
+				rc = 1;
 				goto out;
 			}
 		} else if (UNLIKELY(ctl_appl_caev_file(ctx, tser_fn) < 0)) {
 			error("cannot open series file `%s'", tser_fn);
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1103,21 +1103,21 @@ out:
 		free_ctl_caevs(ctx->q);
 		ctx->q = NULL;
 	}
-	return res;
+	return rc;
 }
 
 static int
 cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 {
 	static struct ctl_ctx_s ctx[1];
-	int res = 0;
+	int rc = 0;
 
 	if (argi->nargs < 1U) {
 		yuck_auto_help((const void*)argi);
-		res = 1;
+		rc = 1;
 		goto out;
 	} else if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
-		res = 1;
+		rc = 1;
 		goto out;
 	}
 
@@ -1128,7 +1128,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1137,7 +1137,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 
 		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open caev file `%s'", fn);
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1151,7 +1151,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		if (UNLIKELY(ctl_bexp_caev_file(ctx, tser_fn) < 0)) {
 			error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1161,21 +1161,21 @@ out:
 		free_ctl_caevs(ctx->q);
 		ctx->q = NULL;
 	}
-	return res;
+	return rc;
 }
 
 static int
 cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 {
 	static struct ctl_ctx_s ctx[1];
-	int res = 0;
+	int rc = 0;
 
 	if (argi->nargs < 1U) {
 		yuck_auto_help((const void*)argi);
-		res = 1;
+		rc = 1;
 		goto out;
 	} else if (UNLIKELY((ctx->q = make_ctl_caevs()) == NULL)) {
-		res = 1;
+		rc = 1;
 		goto out;
 	}
 
@@ -1187,7 +1187,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_caevs(ctx->q, NULL) < 0)) {
 			error("cannot read from stdin");
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1196,7 +1196,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 
 		if (UNLIKELY(ctl_read_caevs(ctx->q, fn) < 0)) {
 			error("cannot open caev file `%s'", fn);
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1207,7 +1207,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 		if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
 			error("\
 cannot deduce factors for total return adjustment from `%s'", tser_fn);
-			res = 1;
+			rc = 1;
 			goto out;
 		}
 	}
@@ -1217,17 +1217,17 @@ out:
 		free_ctl_caevs(ctx->q);
 		ctx->q = NULL;
 	}
-	return res;
+	return rc;
 }
 
 int
 main(int argc, char *argv[])
 {
 	yuck_t argi[1U];
-	int res = 0;
+	int rc = 0;
 
 	if (yuck_parse(argi, argc, argv)) {
-		res = 99;
+		rc = 99;
 		goto out;
 	}
 
@@ -1240,23 +1240,23 @@ main(int argc, char *argv[])
 	case CATTLE_CMD_NONE:
 		error("No valid command specified.\n\
 See --help to obtain a list of available commands.");
-		res = 1;
+		rc = 1;
 		break;
 
 	case CATTLE_CMD_APPLY:
-		res = cmd_apply((const void*)argi);
+		rc = cmd_apply((const void*)argi);
 		break;
 
 	case CATTLE_CMD_PRINT:
-		res = cmd_print((const void*)argi);
+		rc = cmd_print((const void*)argi);
 		break;
 
 	case CATTLE_CMD_EXP:
-		res = cmd_exp((const void*)argi);
+		rc = cmd_exp((const void*)argi);
 		break;
 
 	case CATTLE_CMD_LOG:
-		res = cmd_log((const void*)argi);
+		rc = cmd_log((const void*)argi);
 		break;
 	}
 
@@ -1264,7 +1264,7 @@ out:
 	/* just to make sure */
 	fflush(stdout);
 	yuck_free(argi);
-	return res;
+	return rc;
 }
 #endif	/* STANDALONE */
 
