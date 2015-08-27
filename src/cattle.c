@@ -1515,12 +1515,12 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 
 	if (argi->nargs == 0U && !rawp) {
 		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
-			error("cannot read from stdin");
+			error("Error: cannot read from stdin");
 			goto out;
 		}
 	} else if (argi->nargs == 0U) {
 		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
-			error("cannot read from stdin");
+			error("Error: cannot read from stdin");
 			goto out;
 		}
 	}
@@ -1528,7 +1528,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
-			error("cannot open file `%s'", fn);
+			error("Error: cannot open file `%s'", fn);
 			goto out;
 		}
 	}
@@ -1536,7 +1536,7 @@ cmd_print(const struct yuck_cmd_print_s argi[static 1U])
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
-			error("cannot open file `%s'", fn);
+			error("Error: cannot open file `%s'", fn);
 			goto out;
 		}
 	}
@@ -1587,7 +1587,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 			ctx->abs_prec = 1U;
 		}
 		if ((ctx->prec = -strtol(p, &on, 10), *on)) {
-			error("invalid precision `%s'", argi->precision_arg);
+			error("Error: invalid precision `%s'", p);
 			rc = 1;
 			goto out;
 		}
@@ -1596,7 +1596,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_caev_file(ctx, NULL) < 0)) {
-			error("cannot read from stdin");
+			error("Error: cannot read from stdin");
 			rc = 1;
 			goto out;
 		}
@@ -1605,7 +1605,7 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_caev_file(ctx, fn) < 0)) {
-			error("cannot open caev file `%s'", fn);
+			error("Error: cannot open caev file `%s'", fn);
 			rc = 1;
 			goto out;
 		}
@@ -1617,19 +1617,19 @@ cmd_apply(const struct yuck_cmd_apply_s argi[static 1U])
 			/* total return back adjustment needs 2 scans */
 			if (UNLIKELY(ctl_badj_caev_file(ctx, tser_fn) < 0)) {
 				error("\
-cannot deduce factors for total return adjustment from `%s'", tser_fn);
+Error: cannot deduce factors for total return adjustment from `%s'", tser_fn);
 				rc = 1;
 				goto out;
 			}
 		} else if (argi->total_return_flag/* && ctx->fwd */) {
 			if (UNLIKELY(ctl_fadj_caev_file(ctx, tser_fn) < 0)) {
 				error("\
-cannot deduce factors for total return adjustment from `%s'", tser_fn);
+Error: cannot deduce factors for total return adjustment from `%s'", tser_fn);
 				rc = 1;
 				goto out;
 			}
 		} else if (UNLIKELY(ctl_appl_caev_file(ctx, tser_fn) < 0)) {
-			error("cannot open series file `%s'", tser_fn);
+			error("Error: cannot open series file `%s'", tser_fn);
 			rc = 1;
 			goto out;
 		}
@@ -1661,7 +1661,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
-			error("cannot read from stdin");
+			error("Error: cannot read from stdin");
 			rc = 1;
 			goto out;
 		}
@@ -1670,7 +1670,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
-			error("cannot open caev file `%s'", fn);
+			error("Error: cannot open caev file `%s'", fn);
 			rc = 1;
 			goto out;
 		}
@@ -1681,7 +1681,7 @@ cmd_exp(const struct yuck_cmd_exp_s argi[static 1U])
 		/* total return back adjustment needs 2 scans */
 		if (UNLIKELY(ctl_bexp_caev_file(ctx, tser_fn) < 0)) {
 			error("\
-cannot deduce factors for total return adjustment from `%s'", tser_fn);
+Error: cannot deduce factors for total return adjustment from `%s'", tser_fn);
 			rc = 1;
 			goto out;
 		}
@@ -1717,7 +1717,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 	/* open caev files and read */
 	if (argi->nargs <= 1U) {
 		if (UNLIKELY(ctl_read_kv_file(ctx, NULL) < 0)) {
-			error("cannot read from stdin");
+			error("Error: cannot read from stdin");
 			rc = 1;
 			goto out;
 		}
@@ -1726,7 +1726,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 		const char *fn = argi->args[i];
 
 		if (UNLIKELY(ctl_read_kv_file(ctx, fn) < 0)) {
-			error("cannot open caev file `%s'", fn);
+			error("Error: cannot open caev file `%s'", fn);
 			rc = 1;
 			goto out;
 		}
@@ -1737,7 +1737,7 @@ cmd_log(const struct yuck_cmd_log_s argi[static 1U])
 		/* total return back adjustment needs 2 scans */
 		if (UNLIKELY(ctl_blog_caev_file(ctx, tser_fn) < 0)) {
 			error("\
-cannot deduce factors for total return adjustment from `%s'", tser_fn);
+Error: cannot deduce factors for total return adjustment from `%s'", tser_fn);
 			rc = 1;
 			goto out;
 		}
@@ -1769,7 +1769,7 @@ main(int argc, char *argv[])
 	switch (argi->cmd) {
 	default:
 	case CATTLE_CMD_NONE:
-		error("No valid command specified.\n\
+		error("Error: No valid command specified.\n\
 See --help to obtain a list of available commands.");
 		rc = 1;
 		break;
