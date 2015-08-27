@@ -73,6 +73,10 @@
 # define countof(x)	(sizeof(x) / sizeof(*x))
 #endif	/* !countof */
 
+#if !defined strlenof
+# define strlenof(x)	(sizeof(x) - 1U)
+#endif	/* !strlenof */
+
 #if !defined with
 # define with(args...)	for (args, *__ep__ = (void*)1; __ep__; __ep__ = 0)
 #endif	/* !with */
@@ -336,6 +340,65 @@ cmdify(char *restrict cmd)
 	return v;
 }
 
+/* takes ideas from Gregory Pakosz's whereami */
+static char*
+get_argv0dir(const char *argv0)
+{
+/* return current executable */
+	char *res;
+
+	if (0) {
+#if 0
+#elif defined __linux__
+/* don't rely on argv0 at all */
+	} else if (1) {
+		if ((res = realpath("/proc/self/exe", NULL)) == NULL) {
+			/* we've got a plan B */
+			goto planb;
+		}
+#elif defined __APPLE__
+	} else if (1) {
+		char buf[PATH_MAX];
+		uint32_t bsz = strlenof(buf);
+
+		if (_NSGetExecutablePath(buf, &bsz) < 0) {
+			/* plan B again */
+			goto planb;
+		}
+		/* strdup BUF quickly */
+		res = strdup(buf);
+#endif	/* OS */
+	} else {
+	planb:
+		/* backup plan, massage argv0 */
+		if (argv0 == NULL) {
+			return NULL;
+		}
+		/* otherwise simply copy ARGV0 */
+		res = strdup(argv0);
+	}
+
+	/* path extraction aka dirname'ing, absolute or otherwise */
+	if (res == NULL) {
+		return NULL;
+	}
+	with (char *dir0 = strrchr(res, '/')) {
+		if (dir0 == NULL) {
+			free(res);
+			return NULL;
+		}
+		*dir0 = '\0';
+	}
+	return res;
+}
+
+static void
+free_argv0dir(char *a0)
+{
+	free(a0);
+	return;
+}
+
 
 /* clit bit handling */
 #define CLIT_BIT_FD(x)	(clit_bit_fd_p(x) ? (int)(x).z : -1)
@@ -573,12 +636,12 @@ find_ignore(struct clit_tst_s tst[static 1])
 		static char tok_out[] = "output";
 		static char tok_ret[] = "return";
 
-		if (strncmp(cmd, tok_ign, sizeof(tok_ign) - 1U)) {
+		if (strncmp(cmd, tok_ign, strlenof(tok_ign))) {
 			/* don't bother */
 			break;
 		}
 		/* fast-forward a little */
-		cmd += sizeof(tok_ign) - 1U;
+		cmd += strlenof(tok_ign);
 
 		if (isspace(*cmd)) {
 			/* it's our famous ignore token it seems */
@@ -586,14 +649,14 @@ find_ignore(struct clit_tst_s tst[static 1])
 		} else if (*cmd++ != '-') {
 			/* unknown token then */
 			break;
-		} else if (!strncmp(cmd, tok_out, sizeof(tok_out) - 1U)) {
+		} else if (!strncmp(cmd, tok_out, strlenof(tok_out))) {
 			/* ignore-output it is */
 			tst->ign_out = 1U;
-			cmd += sizeof(tok_out) - 1U;
-		} else if (!strncmp(cmd, tok_ret, sizeof(tok_ret) - 1U)) {
+			cmd += strlenof(tok_out);
+		} else if (!strncmp(cmd, tok_ret, strlenof(tok_ret))) {
 			/* ignore-return it is */
 			tst->ign_ret = 1U;
-			cmd += sizeof(tok_ret) - 1U;
+			cmd += strlenof(tok_ret);
 		} else {
 			/* don't know what's going on */
 			break;
@@ -741,7 +804,7 @@ find_opt(struct clit_opt_s options, const char *bp, size_t bz)
 	static const char magic[] = "setopt ";
 
 	for (const char *mp;
-	     (mp = xmemmem(bp, bz, magic, sizeof(magic) - 1U)) != NULL;
+	     (mp = xmemmem(bp, bz, magic, strlenof(magic))) != NULL;
 	     bz -= (mp + 1U) - bp, bp = mp + 1U) {
 		unsigned int opt;
 
@@ -755,12 +818,14 @@ find_opt(struct clit_opt_s options, const char *bp, size_t bz)
 			opt = 0U;
 		} else {
 			/* found rubbish then */
-			mp += sizeof(magic) - 1U;
+			mp += strlenof(magic);
 			continue;
 		}
-#define CMP(x, lit)	(strncmp((x), (lit), sizeof(lit) - 1))
+#define CMP(x, lit)	(strncmp((x), (lit), strlenof(lit)))
 		/* parse the option value */
-		if ((mp += sizeof(magic) - 1U) == NULL) {
+		mp += strlenof(magic);
+		if (NULL) {
+			/* not reached */
 			;
 		} else if (CMP(mp, "verbose\n") == 0) {
 			options.verbosep = opt;
@@ -1081,9 +1146,6 @@ differ(struct clit_chld_s ctx[static 1], clit_bit_t exp, bool xpnd_proto_p)
 		if (expfd >= 0) {
 			close(expfd);
 		}
-		if (actfd >= 0) {
-			close(actfd);
-		}
 		kill(difftool, SIGTERM);
 		difftool = -1;
 		break;
@@ -1237,6 +1299,8 @@ run_tst(struct clit_chld_s ctx[static 1], struct clit_tst_s tst[static 1])
 		goto wait;
 	}
 	if (ctx->options.timeo > 0 && (ctx->feed > 0 || ctx->diff > 0)) {
+		alrm_handler_closure.feed = ctx->feed;
+		alrm_handler_closure.diff = ctx->diff;
 		alrm_handler_closure.old_hdl = signal(SIGALRM, alrm_handler);
 	}
 	with (const char *p = tst->cmd.d, *const ep = tst->cmd.d + tst->cmd.z) {
@@ -1252,6 +1316,7 @@ run_tst(struct clit_chld_s ctx[static 1], struct clit_tst_s tst[static 1])
 		 * or in case of a pty, send exit command and keep fingers
 		 * crossed the pty will close itself */
 		close(ctx->pin);
+		ctx->pin = -1;
 	}
 
 	/* wait for the beef child */
@@ -1303,7 +1368,7 @@ wait:
 	}
 
 #if defined HAVE_PTY_H
-	if (UNLIKELY(ctx->options.ptyp)) {
+	if (UNLIKELY(ctx->options.ptyp && ctx->pin >= 0)) {
 		/* also close child's stdin here */
 		close(ctx->pin);
 	}
@@ -1542,14 +1607,25 @@ main(int argc, char *argv[])
 		cmd_diff = getenv("DIFF");
 	}
 
-	/* prepend our current directory and our argv[0] directory */
-	with (char *arg0 = argv[0]) {
-		char *dir0;
-		if ((dir0 = strrchr(arg0, '/')) != NULL) {
-			*dir0 = '\0';
+	/* Although I cannot support my claim with a hard survey, I would
+	 * say in 99.9 cases out of a hundred the cli tool in question
+	 * has not been installed at the time of testing it, so somehow
+	 * we must make sure to test the version in the build directory
+	 * rather than a globally installed one.
+	 *
+	 * On the other hand, in general we won't know where the build
+	 * directory is, we've got --builddir for that, however we can
+	 * assist our users by prepending the current working directory
+	 * and the directory we're run from to PATH.
+	 *
+	 * So let's prepend our argv[0] directory */
+	with (char *arg0 = get_argv0dir(argv[0])) {
+		if (LIKELY(arg0 != NULL)) {
 			prepend_path(arg0);
+			free_argv0dir(arg0);
 		}
 	}
+	/* ... and our current directory */
 	prepend_path(".");
 	/* also bang builddir to path */
 	with (char *blddir = getenv("builddir")) {
@@ -1557,8 +1633,8 @@ main(int argc, char *argv[])
 			/* use at most 256U bytes for blddir */
 			char _blddir[256U];
 
-			memccpy(_blddir, blddir, '\0', sizeof(_blddir) - 1U);
-			_blddir[sizeof(_blddir) - 1U] = '\0';
+			memccpy(_blddir, blddir, '\0', strlenof(_blddir));
+			_blddir[strlenof(_blddir)] = '\0';
 			prepend_path(_blddir);
 		}
 	}
