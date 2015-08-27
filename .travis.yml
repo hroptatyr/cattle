@@ -21,11 +21,10 @@ script:
   - ./configure "${CONFOPTS}" || { cat config.log; false; }
   - make clean all check distcheck || { cat test/test-suite.log; false; }
 
-## whitelist
+## blacklist
 branches:
-  only:
-    - master
-    - series/0.3
+  except:
+    - gh-pages
 
 notifications:
   email:
