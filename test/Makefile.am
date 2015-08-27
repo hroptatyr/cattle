@@ -327,6 +327,8 @@ TESTS += cattle_apply_03.clit
 TESTS += cattle_apply_04.clit
 TESTS += cattle_apply_05.clit
 TESTS += cattle_apply_06.clit
+TESTS += cattle_apply_07.clit
+TESTS += cattle_apply_08.clit
 EXTRA_DIST += cattle_05.tser
 EXTRA_DIST += cattle_05.echs
 
