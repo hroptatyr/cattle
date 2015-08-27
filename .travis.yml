@@ -25,6 +25,7 @@ script:
 branches:
   only:
     - master
+    - series/0.3
 
 notifications:
   email:
