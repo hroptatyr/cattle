@@ -26,6 +26,16 @@ branches:
   except:
     - gh-pages
 
+deploy:
+  provider: releases
+  api_key:
+    secure: "T5vzRXsMEh7EioE1t84TKsULEjqUZUweTgbkdFubyI7O3YG8nqklv7xO0nLLd/jbvBOz5wkyQUwP+jwi7YzJ8/1Gz5ni+yGVR/jhJdnrAg5POwst+1jtERIVA4WELfz0OdD994ngXdf+uG7ZpZ/W5IruXqQ6Mi8Po3HMGyNCgV0="
+  file_glob: true
+  file: cattle-*.tar.xz
+  skip_cleanup: true
+  on:
+    tags: true
+
 notifications:
   email:
     - devel@fresse.org
