@@ -1,6 +1,6 @@
 /*** dt-strpf.h -- parser and formatter funs for date/times
  *
- * Copyright (C) 2011-2015 Sebastian Freundt
+ * Copyright (C) 2011-2018 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
