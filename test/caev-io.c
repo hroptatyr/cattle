@@ -10,7 +10,7 @@
 #include "cattle-perio.h"
 #include "cattle-date.h"
 #include "caev.h"
-#include "ctl-dfp754.h"
+#include "dfp754_d32.h"
 
 static inline void
 ctl_caev_pr(ctl_caev_t e)

@@ -252,43 +252,6 @@ TESTS += wheap_14.clit
 TESTS += wheap_15.clit
 TESTS += wheap_16.clit
 
-noinst_LIBRARIES += libdfp754.a
-libdfp754_a_SOURCES = ctl-dfp754.c
-
-check_PROGRAMS += pr-d32_01
-pr_d32_01_SOURCES = pr-d32_01.c
-pr_d32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
-pr_d32_01_LDADD = libdfp754.a
-TESTS += pr-d32_01
-
-check_PROGRAMS += pr-d32_02
-pr_d32_02_SOURCES = pr-d32_02.c
-pr_d32_02_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
-pr_d32_02_LDADD = libdfp754.a
-TESTS += pr-d32_02
-
-check_PROGRAMS += rd-d32_01
-rd_d32_01_SOURCES = rd-d32_01.c
-rd_d32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
-rd_d32_01_LDADD = libdfp754.a
-TESTS += rd-d32_01
-
-check_PROGRAMS += rd-d32_02
-rd_d32_02_SOURCES = rd-d32_02.c
-rd_d32_02_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
-rd_d32_02_LDADD = libdfp754.a
-TESTS += rd-d32_02
-
-check_PROGRAMS += rp-bid32_01
-rp_bid32_01_SOURCES = rp-bid32_01.c
-rp_bid32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
-rp_bid32_01_LDADD = libdfp754.a
-
-check_PROGRAMS += rp-dpd32_01
-rp_dpd32_01_SOURCES = rp-dpd32_01.c
-rp_dpd32_01_CPPFLAGS = $(AM_CPPFLAGS) $(cattle_CFLAGS)
-rp_dpd32_01_LDADD = libdfp754.a
-
 
 TESTS += cattle_print_01.clit
 TESTS += cattle_print_02.clit
@@ -485,7 +448,7 @@ wheap.c: $(top_srcdir)/src/wheap.c
 dt-strpf.c: $(top_srcdir)/src/dt-strpf.c
 	cp $< $@
 
-ctl-dfp754.c: $(top_srcdir)/src/ctl-dfp754.c
+dfp754_d32.c: $(top_srcdir)/src/dfp754_d32.c
 	cp $< $@
 
 ## Makefile.am ends here

@@ -56,7 +56,7 @@ libcattle_la_SOURCES += caev-rdr-gp.erf
 libcattle_la_SOURCES += caev-fld-gp.erf
 libcattle_la_SOURCES += caev-wrr.c caev-wrr.h
 ## dfp754 utils
-libcattle_la_SOURCES += ctl-dfp754.c ctl-dfp754.h
+libcattle_la_SOURCES += dfp754_d32.c dfp754_d32.h
 libcattle_la_CPPFLAGS = $(AM_CPPFLAGS)
 libcattle_la_CPPFLAGS += $(dfp754_CFLAGS)
 libcattle_la_CPPFLAGS += -DWHEAP_COLOUR_H='"caev-series.h"'

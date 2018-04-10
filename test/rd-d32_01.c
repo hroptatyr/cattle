@@ -3,7 +3,7 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <stdio.h>
-#include "ctl-dfp754.h"
+#include "dfp754_d32.h"
 #include "nifty.h"
 
 #if !defined _Static_assert

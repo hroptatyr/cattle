@@ -55,7 +55,7 @@
 #include "caev-rdr.h"
 #include "caev-wrr.h"
 #include "caev-supp.h"
-#include "ctl-dfp754.h"
+#include "dfp754_d32.h"
 #include "nifty.h"
 #include "dt-strpf.h"
 #include "caev-series.h"

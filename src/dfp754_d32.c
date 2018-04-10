@@ -1,10 +1,10 @@
-/*** ctl-dfp754.c -- _Decimal32 goodness
+/*** dfp754_d32.c -- _Decimal32 goodness
  *
- * Copyright (C) 2013-2015 Sebastian Freundt
+ * Copyright (C) 2013-2016 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
- * This file is part of cattle.
+ * This file is part of dfp754.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,42 +39,70 @@
 #endif	/* HAVE_CONFIG_H */
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #if defined HAVE_DFP754_H
 # include <dfp754.h>
 #elif defined HAVE_DFP_STDLIB_H
 # include <dfp/stdlib.h>
+#else  /* !HAVE_DFP754_H && !HAVE_DFP_STDLIB_H */
+extern int isinfd64(_Decimal64);
 #endif	/* HAVE_DFP754_H */
-#include "ctl-dfp754.h"
-#include "nifty.h"
+#include "dfp754_d32.h"
 
 #define U(x)	(uint_least8_t)((x) - '0')
 #define C(x)	(char)((x) + '0')
 
-
-static inline __attribute__((pure, const)) int
-sign_bid(_Decimal32 x)
+#if !defined LIKELY
+# define LIKELY(_x)	__builtin_expect((_x), 1)
+#endif	/* !LIKELY */
+#if !defined UNLIKELY
+# define UNLIKELY(_x)	__builtin_expect((_x), 0)
+#endif	/* UNLIKELY */
+
+#define _paste(x, y)	x ## y
+#define paste(x, y)	_paste(x, y)
+
+#if !defined with
+# define with(args...)							\
+	for (args, *paste(__ep, __LINE__) = (void*)1;			\
+	     paste(__ep, __LINE__); paste(__ep, __LINE__)= 0)
+#endif	/* !with */
+
+static inline void*
+deconst(const void *cp)
 {
-	uint32_t b = bits(x);
-	return (int32_t)b >> 31U;
+	union {
+		const void *c;
+		void *p;
+	} tmp = {cp};
+	return tmp.p;
 }
 
-static inline __attribute__((pure, const)) int
-sign_dpd(_Decimal32 x)
+static inline __attribute__((const, pure)) size_t
+min_z(size_t z1, size_t z2)
 {
-	uint32_t b = bits(x);
+	return z1 <= z2 ? z1 : z2;
+}
+
+
+# if defined HAVE_DFP754_BID_LITERALS
+static inline __attribute__((pure, const)) int
+sign_bid32(_Decimal32 x)
+{
+	uint32_t b = bits32(x);
 	return (int32_t)b >> 31U;
 }
 
 static inline __attribute__((pure, const)) uint_least32_t
-mant_bid(_Decimal32 x)
+mant_bid32(_Decimal32 x)
 {
-	uint32_t b = bits(x);
+	uint32_t b = bits32(x);
 	register uint_least32_t res;
 
 	if (UNLIKELY((b & 0x60000000U) == 0x60000000U)) {
 		/* mantissa is only 21 bits + 0b100 */
 		res = 0b100U << 21U;
-		res |= (b & 0x1fffffU);
+		res ^= (b & 0x1fffffU);
 	} else {
 		/* mantissa is full */
 		res = b & 0x7fffffU;
@@ -82,10 +110,19 @@ mant_bid(_Decimal32 x)
 	return res;
 }
 
-static inline __attribute__((pure, const)) uint_least32_t
-mant_dpd(_Decimal32 x)
+#elif defined HAVE_DFP754_DPD_LITERALS
+
+static inline __attribute__((pure, const)) int
+sign_dpd32(_Decimal32 x)
 {
-	uint32_t b = bits(x);
+	uint32_t b = bits32(x);
+	return (int32_t)b >> 31U;
+}
+
+static inline __attribute__((pure, const)) uint_least32_t
+mant_dpd32(_Decimal32 x)
+{
+	uint32_t b = bits32(x);
 	register uint_least32_t res;
 
 	/* at least the last 20 bits aye */
@@ -93,12 +130,13 @@ mant_dpd(_Decimal32 x)
 	b >>= 26U;
 	if (UNLIKELY((b & 0b11000U) == 0b11000U)) {
 		/* exponent is two more bits, then the high bit */
-		res |= (b & 0b00001U | 0b1000U) << 20U;
+		res ^= (b & 0b00001U | 0b1000U) << 20U;
 	} else {
-		res |= (b & 0b00111U) << 20U;
+		res ^= (b & 0b00111U) << 20U;
 	}
 	return res;
 }
+#endif	/* HAVE_DFP754_BID_LITERALS || HAVE_DFP754_DPD_LITERALS */
 
 static unsigned int
 pack_declet(unsigned int x)
@@ -241,7 +279,11 @@ unpack_declet(unsigned int x)
 				res |= (0b1000U << 4U) | (x & 0b0000010000U);
 				res |= (0b1000U << 0U) | (x & 0b0000000001U);
 				break;
+			default:
+				break;
 			}
+			break;
+		default:
 			break;
 		}
 	}
@@ -255,17 +297,17 @@ assemble_bid(uint32_t m, uint32_t ex, uint32_t s)
 
 	/* check if 24th bit of mantissa is set */
 	if (UNLIKELY(m & (1U << 23U))) {
-		u |= 0b11U << 29U;
-		u |= ex << 21U;
+		u ^= 0b11U << 29U;
+		u ^= ex << 21U;
 		/* just use 21 bits of the mantissa */
 		m &= 0x1fffffU;
 	} else {
-		u |= ex << 23U;
+		u ^= ex << 23U;
 		/* use all 23 bits */
 		m &= 0x7fffffU;
 	}
-	u |= m;
-	return bobs(u);
+	u ^= m;
+	return bobs32(u);
 }
 
 static _Decimal32
@@ -275,9 +317,9 @@ bcd32tobid(bcd32_t b)
 
 	/* massage the mantissa, first mirror it, so the most significant
 	 * nibble is the lowest */
-	b.mant = (b.mant & 0xffff0000U) >> 16U | (b.mant & 0x0000ffffU) << 16U;
-	b.mant = (b.mant & 0xff00ff00U) >> 8U | (b.mant & 0x00ff00ffU) << 8U;
-	b.mant = (b.mant & 0xf0f0f0f0U) >> 4U | (b.mant & 0x0f0f0f0fU) << 4U;
+	b.mant = (b.mant & 0xffff0000U) >> 16U ^ (b.mant & 0x0000ffffU) << 16U;
+	b.mant = (b.mant & 0xff00ff00U) >> 8U ^ (b.mant & 0x00ff00ffU) << 8U;
+	b.mant = (b.mant & 0xf0f0f0f0U) >> 4U ^ (b.mant & 0x0f0f0f0fU) << 4U;
 	b.mant >>= 4U;
 	for (size_t i = 7U; i > 0U; b.mant >>= 4U, i--) {
 		m *= 10U;
@@ -308,7 +350,7 @@ bcd32todpd(bcd32_t b)
 	u |= rex << 20U;
 	/* the TTT bits (or T) */
 	u |= (m & 0x7U) << 26U;
-	return bobs(u);
+	return bobs32(u);
 }
 
 static uint_least32_t
@@ -338,6 +380,9 @@ strtobcd32(const char *src, char **on)
 
 	if (UNLIKELY(*sp == '-')) {
 		sign = 1;
+		sp++;
+	} else if (UNLIKELY(*sp == '+')) {
+		sign = 0;
 		sp++;
 	}
 	/* skip leading zeros innit? */
@@ -434,7 +479,7 @@ quantizebid32(_Decimal32 x, _Decimal32 r)
 	er = quantexpbid32(r);
 	ex = quantexpbid32(x);
 
-	m = mant_bid(x);
+	m = mant_bid32(x);
 
 	/* truncate */
 	for (; ex < er; ex++) {
@@ -446,7 +491,7 @@ quantizebid32(_Decimal32 x, _Decimal32 r)
 	}
 
 	/* assemble the bid32 */
-	return assemble_bid(m, ex + 101, sign_bid(x));
+	return assemble_bid(m, ex + 101, sign_bid32(x));
 }
 #elif defined HAVE_DFP754_DPD_LITERALS
 static _Decimal32
@@ -464,7 +509,7 @@ quantizedpd32(_Decimal32 x, _Decimal32 r)
 	ex = quantexpdpd32(x);
 
 	/* get the mantissa TTT MH ML, with MH, ML being declets */
-	m = mant_dpd(x);
+	m = mant_dpd32(x);
 	/* unpack the declets and TTT, TTT first, then MH, then ML */
 	b = (m & 0xf00000U);
 	b >>= 8U;
@@ -489,7 +534,7 @@ quantizedpd32(_Decimal32 x, _Decimal32 r)
 	}
 
 	/* assemble the d32 */
-	return bcd32todpd((bcd32_t){b, ex, sign_dpd(x)});
+	return bcd32todpd((bcd32_t){b, ex, sign_dpd32(x)});
 }
 #endif	/* HAVE_DFP754_*_LITERALS */
 
@@ -499,7 +544,7 @@ static _Decimal32
 scalbnbid32(_Decimal32 x, int n)
 {
 	/* just fiddle with the exponent of X then */
-	with (uint32_t b = bits(x), u) {
+	with (uint32_t b = bits32(x), u) {
 		/* the idea is to xor the current expo with the new expo
 		 * and shift the result to the right position and xor again */
 		if (UNLIKELY((b & 0x60000000U) == 0x60000000U)) {
@@ -515,7 +560,7 @@ scalbnbid32(_Decimal32 x, int n)
 			u <<= 23U;
 		}
 		b ^= u;
-		x = bobs(b);
+		x = bobs32(b);
 	}
 	return x;
 }
@@ -524,14 +569,14 @@ static _Decimal32
 scalbndpd32(_Decimal32 x, int n)
 {
 	/* just fiddle with the exponent of X then */
-	with (uint32_t b = bits(x), u) {
+	with (uint32_t b = bits32(x), u) {
 		/* the idea is to xor the current expo with the new expo
 		 * and shift the result to the right position and xor again */
 		if (UNLIKELY((b & 0x60000000U) == 0x60000000U)) {
 			/* 24th bit of mantissa is set, special expo
 			 * 11ee T (ee)eeeeee mmm... */
 			u = (b >> 20U) & 0x3fU;
-			u |= (b >> 21U) & 0xc0U;
+			u ^= (b >> 21U) & 0xc0U;
 			u ^= u + n;
 			/* move the top-2 bits out by 1 bit again */
 			u = (u & 0x3fU) | ((u & 0xc0U) << 1U);
@@ -539,14 +584,14 @@ scalbndpd32(_Decimal32 x, int n)
 		} else {
 			/* ee TTT (ee)eeeeee mmm... */
 			u = (b >> 20U) & 0x3fU;
-			u |= (b >> 23U) & 0xc0U;
+			u ^= (b >> 23U) & 0xc0U;
 			u ^= u + n;
 			/* move the top-2 bits out by 3 bits again */
 			u = (u & 0x3fU) | ((u & 0xc0U) << 3U);
 			u <<= 20U;
 		}
 		b ^= u;
-		x = bobs(b);
+		x = bobs32(b);
 	}
 	return x;
 }
@@ -554,7 +599,8 @@ scalbndpd32(_Decimal32 x, int n)
 #endif	/* !HAVE_SCALBND32 */
 
 
-_Decimal32
+#if defined HAVE_DFP754_BID_LITERALS
+static _Decimal32
 strtobid32(const char *src, char **on)
 {
 /* d32s look like s??eeeeee mm..23..mm
@@ -563,8 +609,8 @@ strtobid32(const char *src, char **on)
 	bcd32_t b = strtobcd32(src, on);
 	return bcd32tobid(b);
 }
-
-_Decimal32
+#elif defined HAVE_DFP754_DPD_LITERALS
+static _Decimal32
 strtodpd32(const char *src, char **on)
 {
 /* d32s look like s??eeeeee mm..23..mm
@@ -573,8 +619,9 @@ strtodpd32(const char *src, char **on)
 	bcd32_t b = strtobcd32(src, on);
 	return bcd32todpd(b);
 }
+#endif	/* HAVE_DFP754_BID_LITERALS || HAVE_DFP754_DPD_LITERALS */
 
-#if !defined HAVE_STRTOD32
+#if !defined HAVE_STRTOD32 || !defined HAVE_CLEAN_STRTOD32
 _Decimal32
 strtod32(const char *src, char **on)
 {
@@ -584,10 +631,11 @@ strtod32(const char *src, char **on)
 	return strtodpd32(src, on);
 # endif	 /* HAVE_DFP754_*_LITERALS */
 }
-#endif	/* !HAVE_STRTOD32 */
+#endif	/* !HAVE_STRTOD32 || !HAVE_CLEAN_STRTOD32 */
 
-int
-bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
+#if defined HAVE_DFP754_BID_LITERALS
+static int
+bid32tostr(char *restrict buf, size_t bsz, _Decimal32 x)
 {
 /* d32s look like s??eeeeee mm..23..mm
  * and the decimal is (-1 * s) * m * 10^(e - 101),
@@ -598,8 +646,8 @@ bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 
 	/* get the exponent, sign and mantissa */
 	e = quantexpbid32(x);
-	m = mant_bid(x);
-	s = m ? sign_bid(x) : 0/*no stinking signed naughts*/;
+	m = mant_bid32(x);
+	s = m ? sign_bid32(x) : 0/*no stinking signed naughts*/;
 
 	/* reencode m as bcd */
 	with (uint_least32_t bcdm = 0U) {
@@ -607,15 +655,15 @@ bid32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 			uint_least32_t digit;
 
 			digit = m % 10U, m /= 10U;
-			bcdm |= digit << 28U;
+			bcdm ^= digit << 28U;
 		}
 		m = bcdm;
 	}
 	return (int)bcd32tostr(buf, bsz, m, e, s);
 }
-
-int
-dpd32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
+#elif defined HAVE_DFP754_DPD_LITERALS
+static int
+dpd32tostr(char *restrict buf, size_t bsz, _Decimal32 x)
 {
 /* d32s look like s??eeeeee mm..23..mm
  * and the decimal is (-1 * s) * m * 10^(e - 101),
@@ -626,12 +674,12 @@ dpd32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 
 	/* get the exponent, sign and mantissa */
 	e = quantexpdpd32(x);
-	if (LIKELY((m = mant_dpd(x)))) {
+	if (LIKELY((m = mant_dpd32(x)))) {
 		uint_least32_t b;
 
-		s = sign_dpd(x);
+		s = sign_dpd32(x);
 		/* get us a proper bcd version of M */
-		b = (m & 0xf00000U);
+		b = (m & 0x00f00000U);
 		b >>= 8U;
 		b |= unpack_declet((m >> 10U) & 0x3ffU);
 		b <<= 12U;
@@ -643,16 +691,28 @@ dpd32tostr(char *restrict buf, size_t UNUSED(bsz), _Decimal32 x)
 	}
 	return bcd32tostr(buf, bsz, m, e, s);
 }
+#endif	/* HAVE_DFP754_BID_LITERALS || HAVE_DFP754_DPD_LITERALS */
 
 int
 d32tostr(char *restrict buf, size_t bsz, _Decimal32 x)
 {
+	if (UNLIKELY(isnand32(x))) {
+		const size_t z = min_z(3U, bsz);
+		memcpy(buf, "nan", z);
+		return z;
+	} else if (UNLIKELY(isinfd32(x))) {
+		const size_t z = min_z(3U + (x < 0.df), bsz);
+		buf[0U] = '-';
+		memcpy(buf + (x < 0.df), "inf", z);
+		return z;
+	}
 #if defined HAVE_DFP754_BID_LITERALS
 	return bid32tostr(buf, bsz, x);
 #elif defined HAVE_DFP754_DPD_LITERALS
 	return dpd32tostr(buf, bsz, x);
 #endif	 /* HAVE_DFP754_*_LITERALS */
 }
+
 
 /* always use our own version,
  * the official version would return NAN in case the significand's
@@ -686,10 +746,10 @@ bcd32_t
 decompd32(_Decimal32 x)
 {
 #if defined HAVE_DFP754_BID_LITERALS
-	return (bcd32_t){mant_bid(x), quantexpbid32(x), sign_bid(x)};
+	return (bcd32_t){mant_bid32(x), quantexpbid32(x), sign_bid32(x)};
 #elif defined HAVE_DFP754_DPD_LITERALS
-	return (bcd32_t){mant_dpd(x), quantexpdpd32(x), sign_dpd(x)};
+	return (bcd32_t){mant_dpd32(x), quantexpdpd32(x), sign_dpd32(x)};
 #endif	/* HAVE_DFP754_*_LITERALS */
 }
 
-/* ctl-dfp754.c ends here */
+/* dfp754_d32.c ends here */

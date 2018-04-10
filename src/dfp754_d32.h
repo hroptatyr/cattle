@@ -1,10 +1,10 @@
-/*** ctl-dfp754.h -- _Decimal32 goodness
+/*** dfp754_d32.h -- _Decimal32 goodness
  *
- * Copyright (C) 2013-2015 Sebastian Freundt
+ * Copyright (C) 2013-2016 Sebastian Freundt
  *
  * Author:  Sebastian Freundt <freundt@ga-group.nl>
  *
- * This file is part of cattle.
+ * This file is part of dfp754.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,8 +34,8 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  ***/
-#if !defined INCLUDED_ctl_dfp754_h_
-#define INCLUDED_ctl_dfp754_h_
+#if !defined INCLUDED_dfp754_d32_h_
+#define INCLUDED_dfp754_d32_h_
 
 #if defined HAVE_CONFIG_H
 # include "config.h"
@@ -44,6 +44,14 @@
 #include <stdint.h>
 
 #define NAND32_U		(0x7c000000U)
+#define INFD32_U		(0x78000000U)
+
+#if !defined __DEC32_MOST_POSITIVE__
+# define __DEC32_MOST_POSITIVE__	(__DEC32_MAX__)
+#endif	/* !__DEC32_MOST_POSITIVE__ */
+#if !defined __DEC32_MOST_NEGATIVE__
+# define __DEC32_MOST_NEGATIVE__	(-__DEC32_MOST_POSITIVE__)
+#endif	/* !__DEC32_MOST_NEGATIVE__ */
 
 typedef struct {
 	uint_least32_t mant;
@@ -52,15 +60,10 @@ typedef struct {
 }  bcd32_t;
 
 
-extern int bid32tostr(char *restrict buf, size_t bsz, _Decimal32);
-extern _Decimal32 strtobid32(const char*, char**);
-
-extern int dpd32tostr(char *restrict buf, size_t bsz, _Decimal32);
-extern _Decimal32 strtodpd32(const char*, char**);
+extern _Decimal32 strtod32(const char*, char**);
 
 #if defined HAVE_DFP754_BID_LITERALS || defined HAVE_DFP754_DPD_LITERALS
 extern int d32tostr(char *restrict buf, size_t bsz, _Decimal32);
-extern _Decimal32 strtod32(const char*, char**);
 
 /**
  * Round X to the quantum of R. */
@@ -77,10 +80,8 @@ extern _Decimal32 scalbnd32(_Decimal32 x, int n);
 extern bcd32_t decompd32(_Decimal32 x);
 
 
-inline __attribute__((pure, const)) uint32_t bits(_Decimal32 x);
-inline __attribute__((pure, const)) _Decimal32 bobs(uint32_t u);
-inline __attribute__((pure, const)) int quantexpbid32(_Decimal32 x);
-inline __attribute__((pure, const)) int quantexpdpd32(_Decimal32 x);
+inline __attribute__((pure, const)) uint32_t bits32(_Decimal32 x);
+inline __attribute__((pure, const)) _Decimal32 bobs32(uint32_t u);
 inline __attribute__((pure, const)) int quantexpd32(_Decimal32 x);
 #if !defined HAVE_NAND32
 inline __attribute__((pure, const)) _Decimal32 nand32(char *__tagp);
@@ -90,21 +91,23 @@ inline __attribute__((pure, const)) _Decimal32 nand32(char *__tagp);
 #endif	/* !HAVE_ISNAND32 */
 
 inline __attribute__((pure, const)) uint32_t
-bits(_Decimal32 x)
+bits32(_Decimal32 x)
 {
 	return (union {_Decimal32 x; uint32_t u;}){x}.u;
 }
 
 inline __attribute__((pure, const)) _Decimal32
-bobs(uint32_t u)
+bobs32(uint32_t u)
 {
 	return (union {uint32_t u; _Decimal32 x;}){u}.x;
 }
 
+#if defined HAVE_DFP754_BID_LITERALS
+inline __attribute__((pure, const)) int quantexpbid32(_Decimal32 x);
 inline __attribute__((pure, const)) int
 quantexpbid32(_Decimal32 x)
 {
-	register uint32_t b = bits(x);
+	register uint32_t b = bits32(x);
 	register int tmp;
 
 	if (b == 0U) {
@@ -117,11 +120,12 @@ quantexpbid32(_Decimal32 x)
 	}
 	return (tmp & 0xffU) - 101;
 }
-
+#elif defined HAVE_DFP754_DPD_LITERALS
+inline __attribute__((pure, const)) int quantexpdpd32(_Decimal32 x);
 inline __attribute__((pure, const)) int
 quantexpdpd32(_Decimal32 x)
 {
-	register uint32_t b = bits(x);
+	register uint32_t b = bits32(x);
 	register int tmp;
 
 	b >>= 20U;
@@ -135,6 +139,7 @@ quantexpdpd32(_Decimal32 x)
 	}
 	return tmp - 101;
 }
+#endif	/* HAVE_DFP754_DPD_LITERALS || HAVE_DFP754_BID_LITERALS */
 
 #if defined HAVE_DFP754_BID_LITERALS || defined HAVE_DFP754_DPD_LITERALS
 inline __attribute__((pure, const)) int
@@ -148,12 +153,35 @@ quantexpd32(_Decimal32 x)
 }
 #endif	/* !HAVE_DFP754_*_LITERALS */
 
+#if defined HAVE_BUILTIN_NAND32
+# define NAND32		__builtin_nand32("")
+#elif defined HAVE_BUILTIN_NAN_FOR_NAND32
+# define NAND32		((_Decimal32)__builtin_nan(""))
+#else
+# define NAND32		((union {uint32_t u; _Decimal32 x;}){NAND32_U}.x)
+#endif
+#if defined HAVE_BUILTIN_INFD32
+# define INFD32		__builtin_infd32()
+#elif defined HAVE_BUILTIN_INF_FOR_INFD32
+# define INFD32		((_Decimal32)__builtin_inf())
+#else
+# define INFD32		(((union {uint32_t u; _Decimal32 x;}){INFD32_U}).x)
+#endif
+
 #if !defined HAVE_NAND32
 inline __attribute__((pure, const)) _Decimal32
 nand32(char *__tagp __attribute__((unused)))
 {
-	return bobs(NAND32_U);
+	return NAND32;
 }
 #endif	/* !HAVE_NAND32 */
 
-#endif	/* INCLUDED_ctl_dfp754_h_ */
+#if !defined HAVE_INFD32
+inline __attribute__((pure, const)) _Decimal32
+infd32(void)
+{
+	return INFD32;
+}
+#endif	/* !HAVE_INFD32 */
+
+#endif	/* INCLUDED_dfp754_d32_h_ */

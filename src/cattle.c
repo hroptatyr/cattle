@@ -51,7 +51,7 @@
 #include "caev.h"
 #include "caev-rdr.h"
 #include "caev-wrr.h"
-#include "ctl-dfp754.h"
+#include "dfp754_d32.h"
 #include "nifty.h"
 #include "dt-strpf.h"
 #include "caev-series.h"
@@ -645,7 +645,7 @@ ctl_bexp_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = make_coru(ctl_co_rdr, f);
 	pop = make_coru(co_appl_pop, ctx->q);
 
-	ctl_price_t last = nand32(NULL);
+	ctl_price_t last = NAND32;
 	const struct pop_res_s *ev;
 	const struct ctl_co_rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {
@@ -739,7 +739,7 @@ ctl_blog_caev_file(struct ctl_ctx_s ctx[static 1U], const char *fn)
 	rdr = make_coru(ctl_co_rdr, f);
 	pop = make_coru(co_appl_pop, ctx->q);
 
-	ctl_price_t last = nand32(NULL);
+	ctl_price_t last = NAND32;
 	const struct pop_res_s *ev;
 	const struct ctl_co_rdr_res_s *ln;
 	for (ln = next(rdr), ev = next(pop); ln != NULL;) {

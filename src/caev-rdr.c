@@ -43,7 +43,7 @@
 #include "jsmn.h"
 #include "caev-supp.h"
 #include "caev-rdr.h"
-#include "ctl-dfp754.h"
+#include "dfp754_d32.h"
 #include "intern.h"
 #include "nifty.h"
 
