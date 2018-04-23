@@ -16,6 +16,7 @@ EXTRA_DIST = $(BUILT_SOURCES) $(ctests)
 TESTS = $(btests) $(ctests)
 TEST_EXTENSIONS =
 BUILT_SOURCES =
+SUFFIXES =
 ctests =
 btests =
 check_PROGRAMS =
