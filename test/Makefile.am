@@ -443,12 +443,12 @@ TESTS += intern.01.clit
 
 
 wheap.c: $(top_srcdir)/src/wheap.c
-	cp $< $@
+	cp $(top_srcdir)/src/wheap.c $@
 
 dt-strpf.c: $(top_srcdir)/src/dt-strpf.c
-	cp $< $@
+	cp $(top_srcdir)/src/dt-strpf.c $@
 
 dfp754_d32.c: $(top_srcdir)/src/dfp754_d32.c
-	cp $< $@
+	cp $(top_srcdir)/src/dfp754_d32.c $@
 
 ## Makefile.am ends here
